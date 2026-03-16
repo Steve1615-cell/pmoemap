@@ -20,7 +20,7 @@
             margin: 0;
             background-color: var(--bg);
             color: var(--text-main);
-            -webkit-text-size-adjust: 100%; /* 防止 iOS 旋轉時字體放大 */
+            -webkit-text-size-adjust: 100%;
         }
 
         .app-container {
@@ -30,7 +30,7 @@
             transition: padding 0.3s;
         }
 
-        /* 頂部標題與按鈕區塊 */
+        /* 頂部標題與按鈕區塊 (修正絕對置中) */
         header {
             display: flex;
             align-items: center;
@@ -42,15 +42,45 @@
             gap: 10px;
         }
 
+        /* 左右兩側設定為固定寬度，確保中間標題絕對置中 */
         .header-left {
             display: flex;
             gap: 8px;
-            flex: 1;
+            width: 140px; 
+            flex-shrink: 0;
             align-items: center;
         }
 
         .header-right {
+            width: 140px; 
+            flex-shrink: 0;
+        }
+
+        /* 標題容器與跑馬燈設定 */
+        .title-container {
             flex: 1;
+            overflow: hidden; /* 超出範圍隱藏 */
+            white-space: nowrap; /* 強制不換行 */
+            text-align: center;
+            position: relative;
+            display: flex;
+            justify-content: center;
+        }
+
+        #main-title {
+            margin: 0;
+            font-size: clamp(18px, 4.5vw, 24px);
+            display: inline-block;
+        }
+
+        /* 跑馬燈動畫 */
+        .marquee {
+            animation: scrollText 8s linear infinite;
+        }
+
+        @keyframes scrollText {
+            0% { transform: translateX(50%); }
+            100% { transform: translateX(-100%); }
         }
 
         .btn-nav {
@@ -66,7 +96,6 @@
             white-space: nowrap;
         }
 
-        /* 專門給側邊欄漢堡按鈕的樣式 */
         .btn-menu {
             padding: 8px 12px;
             font-size: 16px;
@@ -74,16 +103,7 @@
             color: white;
         }
         .btn-menu:hover { background: #1d4ed8; color: white; }
-
         .btn-nav:hover { background: #cbd5e1; }
-
-        #main-title {
-            margin: 0;
-            font-size: clamp(18px, 4.5vw, 26px);
-            text-align: center;
-            flex: 2;
-            line-height: 1.3;
-        }
 
         /* 路徑紀錄 (麵包屑) */
         .breadcrumb {
@@ -97,11 +117,7 @@
             flex-wrap: wrap;
         }
 
-        .breadcrumb-item {
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-
+        .breadcrumb-item { cursor: pointer; transition: color 0.2s; }
         .breadcrumb-item:hover { color: var(--primary); text-decoration: underline; }
         .breadcrumb-item.current { cursor: default; color: var(--text-main); text-decoration: none; }
         .breadcrumb-separator { color: #cbd5e1; font-size: 14px; }
@@ -127,9 +143,7 @@
             border-bottom: 1px solid #e2e8f0; color: var(--text-main);
             display: flex; justify-content: space-between; align-items: center;
         }
-        .btn-close {
-            background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted);
-        }
+        .btn-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); }
 
         .sidebar-menu { flex: 1; padding: 10px 0; overflow-y: auto; }
         .menu-item {
@@ -138,22 +152,16 @@
         }
         .menu-item:hover { background: var(--accent); color: var(--primary); }
         
-        /* 側邊欄 - 開發中項目的懸浮提示與不可點擊狀態 */
-        .menu-item.disabled {
-            color: #94a3b8; cursor: not-allowed; position: relative;
-        }
+        .menu-item.disabled { color: #94a3b8; cursor: not-allowed; position: relative; }
         .menu-item.disabled:hover { background: transparent; color: #94a3b8; }
         
         .tooltip-container::after {
-            content: attr(data-tooltip);
-            position: absolute; left: 60px; top: 100%;
+            content: attr(data-tooltip); position: absolute; left: 60px; top: 100%;
             background: #1e293b; color: white; padding: 6px 12px; border-radius: 6px;
             font-size: 13px; white-space: nowrap; font-weight: normal;
             pointer-events: none; opacity: 0; visibility: hidden; transition: all 0.2s; z-index: 1000;
         }
-        .tooltip-container:hover::after {
-            opacity: 1; visibility: visible; margin-top: 5px;
-        }
+        .tooltip-container:hover::after { opacity: 1; visibility: visible; margin-top: 5px; }
 
         .sidebar-footer {
             padding: 15px; text-align: center; color: var(--text-muted);
@@ -177,8 +185,6 @@
             cursor: pointer; transition: all 0.2s; border: 2px solid transparent; position: relative;
         }
         .nav-card:hover { transform: translateY(-5px); border-color: var(--primary); }
-        
-        /* 若卡片不想有上浮效果 (例如分機表卡片) 可以加此 Class */
         .nav-card.no-hover:hover { transform: none; border-color: transparent; cursor: default; }
 
         /* 標籤頁控制 */
@@ -190,34 +196,56 @@
         }
         .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-        /* 懸浮預覽與密碼清單 */
+        /* 電腦版：懸浮預覽與密碼清單 */
         .preview-list {
             max-height: 0; opacity: 0; overflow: hidden; list-style: none; padding: 0; margin: 0;
             transition: all 0.3s ease; font-size: 14px; color: var(--text-muted);
         }
         .nav-card:hover .preview-list { max-height: 250px; opacity: 1; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; }
+        
         .password-container { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease; }
         .nav-card:hover .password-container { max-height: 60px; opacity: 1; margin-top: 10px; }
+        
         .password-badge { color: var(--danger); font-weight: bold; font-family: monospace; font-size: 18px; background: #fee2e2; padding: 4px 10px; border-radius: 4px; display: inline-block; }
+        
         .detail-info { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease; text-align: left; font-size: 13px; line-height: 1.6; color: #444; }
         .nav-card:hover .detail-info { max-height: 300px; opacity: 1; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; }
 
-        /* 設備表格樣式 */
         .facility-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .facility-table td { padding: 5px; border: 1px solid #e2e8f0; font-size: 12px; }
         .facility-label { background: #f1f5f9; font-weight: bold; width: 40%; }
 
-        @media (max-width: 768px) {
+        /* ======== 針對觸控設備 (手機/平板) 的專屬設定 ======== */
+        @media (hover: none) {
             .app-container { padding: 10px 15px; }
-            .header-left { gap: 5px; }
+            .header-left { gap: 5px; width: 100px; } /* 手機版按鈕區縮小 */
+            .header-right { width: 100px; }
             .btn-nav { padding: 6px 10px; }
-            /* 移除了強制展開隱藏區塊的語法，恢復原有的懸浮顯示功能 */
+
+            /* 一律展開隱藏區塊 */
+            .nav-card .preview-list, .nav-card .detail-info { 
+                max-height: none; opacity: 1; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; 
+            }
+            .nav-card .password-container { 
+                max-height: none; opacity: 1; margin-top: 10px; 
+            }
+            
+            /* 取消上浮動畫並禁止長按選取 (防呆) */
+            .nav-card:hover { transform: none; border-color: transparent; }
+            .nav-card {
+                -webkit-user-select: none;
+                user-select: none;
+            }
+            /* 但允許詳細資料內的文字可以被選取複製 */
+            .detail-info, .password-badge, h3, h2 {
+                -webkit-user-select: text;
+                user-select: text;
+            }
         }
     </style>
 </head>
 <body>
 
-<!-- 側邊欄與遮罩區域 -->
 <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
@@ -225,11 +253,9 @@
         <button class="btn-close" onclick="closeSidebar()">×</button>
     </div>
     <div class="sidebar-menu">
-        <!-- 開發中的項目 -->
         <div class="menu-item disabled tooltip-container" data-tooltip="辦公室地圖視角開發中！">
             🗺️ 地圖顯示
         </div>
-        <!-- 分機表 -->
         <div class="menu-item" onclick="showExtensionsView()">
             📞 辦公室分機表
         </div>
@@ -246,16 +272,14 @@
             <button class="btn-nav" id="btn-global-home" style="visibility:hidden;" onclick="goHome()">🏠 首頁</button>
             <button class="btn-nav" id="btn-global-back" style="visibility:hidden;" onclick="goBack()">← 上一頁</button>
         </div>
-        <h1 id="main-title">ＰＭＯ電子圖資系統</h1>
+        <div class="title-container" id="title-container">
+            <h1 id="main-title">ＰＭＯ電子圖資系統</h1>
+        </div>
         <div class="header-right"></div> 
     </header>
 
-    <!-- 路徑紀錄 (Breadcrumb) -->
-    <div id="breadcrumb" class="breadcrumb">
-        <!-- 內容由 JavaScript 動態生成 -->
-    </div>
+    <div id="breadcrumb" class="breadcrumb"></div>
 
-    <!-- 第一層：樓層 (首頁) -->
     <div id="view-floor" class="view active">
         <div class="grid-nav">
             <div class="nav-card" onclick="showOffices('修船大樓３Ｆ')">
@@ -269,60 +293,27 @@
         </div>
     </div>
 
-    <!-- 第二層：辦公室 -->
     <div id="view-office" class="view">
         <div class="grid-nav" id="office-list"></div>
     </div>
 
-    <!-- 第三層：詳細資訊頁 -->
     <div id="view-detail" class="view">
         <div class="tabs">
             <button id="tab-staff" class="tab-btn active" onclick="switchTab('staff')">人員</button>
             <button id="tab-assets" class="tab-btn" onclick="switchTab('assets')">資產</button>
             <button id="tab-facilities" class="tab-btn" onclick="switchTab('facilities')">設備</button>
         </div>
-        <div id="detail-grid" class="grid-nav">
-            <!-- 根據標籤動態生成內容 -->
-        </div>
+        <div id="detail-grid" class="grid-nav"></div>
     </div>
 
-    <!-- 第四層：全辦公室分機總表 (由側邊欄進入) -->
     <div id="view-extensions" class="view">
-        <div id="ext-container">
-            <!-- 分機內容由 JavaScript 動態生成 -->
-        </div>
+        <div id="ext-container"></div>
     </div>
 </div>
 
+<script src="data.js"></script>
 <script>
-    // === 整合資料庫 ===
-    const memberData = {
-        "A-01": { name: "王重文", ext: "6100", pc_id: "9059145", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A01", "椅子-A01", "主機-A01", "螢幕-A01"] },
-        "A-02": { name: "林筱融", ext: "6100", pc_id: "9069235", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A02", "椅子-A02", "主機-A02", "螢幕-A02"] },
-        "A-03": { name: "葉耀仁", ext: "6100", pc_id: "9069234", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A03", "椅子-A03", "主機-A03", "螢幕-A03"] },
-        "A-04": { name: "陳進吉", ext: "6100", pc_id: "9069237", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A04"] },
-        "A-05": { name: "鄭至欽", ext: "6100", pc_id: "9069236", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A05"] },
-        "A-06": { name: "葉旭昇", ext: "6208", pc_id: "9059146", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A06"] },
-        "A-07": { name: "邵家宏", ext: "6208", pc_id: "9069625", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A07"] },
-        "A-08": { name: "譚曉陽", ext: "6208", pc_id: "9059163", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A08"] },
-        "A-09": { name: "莊榮瑞", ext: "6208", pc_id: "9069627", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A09"] },
-        "A-10": { name: "姚首亨", ext: "6208", pc_id: "9069624", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A10"] },
-        "A-11": { name: "房昕", ext: "6208", pc_id: "9069626", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A11"] },
-        "A-12": { name: "李奕恆", ext: "6208", pc_id: "9069628", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員", join_date: "2024-05-20", assets: ["桌子-A12"] },
-
-        "C-01": { name: "曹璧蘭", ext: "6823", pc_id: "9059874", net_port: "ABS-N01", phone_port: "ABS-P01", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C01", "椅子-C01"] },
-        "C-02": { name: "陳秀玟", ext: "6827", pc_id: "9059875", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C02"] },
-        "C-03": { name: "許芙美", ext: "6825", pc_id: "9059869", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C03"] },
-        "C-04": { name: "陳冠諭", ext: "6820", pc_id: "9059872", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C04"] },
-        "C-05": { name: "徐中康", ext: "6822", pc_id: "9059877", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C05"] },
-        "C-06": { name: "王寵惕", ext: "6826", pc_id: "9059873", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C06"] },
-        "C-07": { name: "蕭聖勇", ext: "6821", pc_id: "9069161", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C07"] },
-        "C-08": { name: "林彥豪", ext: "6830", pc_id: "9059870", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C08"] },
-        "C-09": { name: "張乃文", ext: "6829", pc_id: "9059868", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C09"] },
-        "C-11": { name: "許首雄", ext: "6824", pc_id: "9059871", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C11"] },
-        "C-12": { name: "劉家達", ext: "6828", pc_id: "9069162", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)", join_date: "2023-11-15", assets: ["桌子-C12"] }
-    };
-
+    // === 補充原本直接寫在 HTML 的辦公室基礎資料 ===
     const officeAssets = {
         "高緯度遠洋巡護船接艦辦公室": [
             { item: "冷氣機 A", sn: "AC-4F-A01", status: "正常" },
@@ -353,7 +344,7 @@
     };
 
     // === 導航狀態管理 ===
-    let currentLevel = 0; // 0: 首頁, 1: 樓層, 2: 辦公室, 3: 側邊欄特殊頁面(分機表)
+    let currentLevel = 0; 
     let currentFloor = '';
     let currentOffice = '';
     let currentTab = 'staff';
@@ -370,14 +361,47 @@
             });
         });
         updateNavigationUI();
+        history.replaceState({ level: 0 }, "");
     }
+
+    // ==== 動態變更標題與檢查跑馬燈 ====
+    function updateMainTitle(text) {
+        const titleContainer = document.getElementById('title-container');
+        const mainTitle = document.getElementById('main-title');
+        
+        mainTitle.classList.remove('marquee'); // 先移除動畫
+        mainTitle.innerText = text;
+        
+        // 延遲一點點讓瀏覽器渲染完再檢查寬度
+        setTimeout(() => {
+            if (mainTitle.scrollWidth > titleContainer.clientWidth) {
+                mainTitle.classList.add('marquee'); // 如果字太長，啟動跑馬燈
+            }
+        }, 50);
+    }
+
+    // ==== 瀏覽器歷史紀錄 (History API) 監聽 ====
+    window.addEventListener('popstate', (event) => {
+        const state = event.state;
+        if (!state) { goHome(false); return; }
+
+        if (state.level === 0) {
+            goHome(false);
+        } else if (state.level === 1) {
+            showOffices(state.floor, false);
+        } else if (state.level === 2) {
+            currentFloor = state.floor; 
+            showDetail(state.office, false);
+        } else if (state.level === 3) {
+            showExtensionsView(false);
+        }
+    });
 
     // ==== 側邊欄控制 ====
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('active');
         document.getElementById('sidebar-overlay').classList.toggle('active');
     }
-
     function closeSidebar() {
         document.getElementById('sidebar').classList.remove('active');
         document.getElementById('sidebar-overlay').classList.remove('active');
@@ -388,74 +412,55 @@
         const btnHome = document.getElementById('btn-global-home');
         const btnBack = document.getElementById('btn-global-back');
         const breadcrumb = document.getElementById('breadcrumb');
-        const mainTitle = document.getElementById('main-title');
 
         if (currentLevel === 0) {
-            btnHome.style.visibility = 'hidden'; 
-            btnBack.style.visibility = 'hidden';
-            mainTitle.innerText = 'ＰＭＯ電子圖資系統'; 
+            btnHome.style.visibility = 'hidden'; btnBack.style.visibility = 'hidden';
+            updateMainTitle('ＰＭＯ電子圖資系統'); 
         } else {
-            btnHome.style.visibility = 'visible';
-            btnBack.style.visibility = 'visible';
-            
-            if (currentLevel === 1) mainTitle.innerText = currentFloor;
-            else if (currentLevel === 2) mainTitle.innerText = currentOffice;
-            else if (currentLevel === 3) mainTitle.innerText = '辦公室分機總表';
+            btnHome.style.visibility = 'visible'; btnBack.style.visibility = 'visible';
+            if (currentLevel === 1) updateMainTitle(currentFloor);
+            else if (currentLevel === 2) updateMainTitle(currentOffice);
+            else if (currentLevel === 3) updateMainTitle('辦公室分機總表');
         }
 
-        // 動態生成路徑紀錄
         let pathHtml = '';
-        if (currentLevel === 0) {
-            pathHtml = `<span class="breadcrumb-item current">首頁</span>`;
-        } else {
-            pathHtml = `<span class="breadcrumb-item" onclick="goHome()">首頁</span>`;
-        }
+        if (currentLevel === 0) pathHtml = `<span class="breadcrumb-item current">首頁</span>`;
+        else pathHtml = `<span class="breadcrumb-item" onclick="goHome()">首頁</span>`;
         
         if (currentLevel === 1 || currentLevel === 2) {
             pathHtml += `<span class="breadcrumb-separator">/</span>`;
-            if (currentLevel === 1) {
-                pathHtml += `<span class="breadcrumb-item current">${currentFloor}</span>`;
-            } else {
-                pathHtml += `<span class="breadcrumb-item" onclick="showOffices('${currentFloor}')">${currentFloor}</span>`;
-            }
+            if (currentLevel === 1) pathHtml += `<span class="breadcrumb-item current">${currentFloor}</span>`;
+            else pathHtml += `<span class="breadcrumb-item" onclick="showOffices('${currentFloor}')">${currentFloor}</span>`;
         }
-        
         if (currentLevel === 2) {
-            pathHtml += `<span class="breadcrumb-separator">/</span>`;
-            pathHtml += `<span class="breadcrumb-item current">${currentOffice}</span>`;
+            pathHtml += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">${currentOffice}</span>`;
         }
-
         if (currentLevel === 3) {
-            pathHtml += `<span class="breadcrumb-separator">/</span>`;
-            pathHtml += `<span class="breadcrumb-item current">分機總表</span>`;
+            pathHtml += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">分機總表</span>`;
         }
-        
         breadcrumb.innerHTML = pathHtml;
     }
 
-    // 切換顯示的容器
     function switchView(viewId) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById(viewId).classList.add('active');
         updateNavigationUI();
     }
 
-    // 回到首頁 (Level 0)
-    function goHome() {
+    function goHome(push = true) {
         currentLevel = 0; currentFloor = ''; currentOffice = '';
+        if (push) history.pushState({ level: 0 }, "");
         switchView('view-floor');
     }
 
-    // 回上一頁
     function goBack() {
-        if (currentLevel === 3) { goHome(); } // 從特殊頁面退回首頁
-        else if (currentLevel === 2) { showOffices(currentFloor); } 
-        else if (currentLevel === 1) { goHome(); }
+        history.back(); 
     }
 
-    // 進入樓層視圖 (Level 1)
-    function showOffices(floor) {
+    function showOffices(floor, push = true) {
         currentLevel = 1; currentFloor = floor; currentOffice = '';
+        if (push) history.pushState({ level: 1, floor: floor }, "");
+        
         const list = document.getElementById('office-list');
         list.innerHTML = '';
         officeData[floor].forEach(off => {
@@ -472,9 +477,10 @@
         switchView('view-office');
     }
 
-    // 進入辦公室詳情視圖 (Level 2)
-    function showDetail(office) {
+    function showDetail(office, push = true) {
         currentLevel = 2; currentOffice = office; currentTab = 'staff';
+        if (push) history.pushState({ level: 2, floor: currentFloor, office: office }, "");
+        
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('tab-staff').classList.add('active');
         updateDetailContent();
@@ -501,12 +507,8 @@
             if(memberKeys.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
             memberKeys.forEach(key => {
                 const m = memberData[key];
-                const card = document.createElement('div');
-                card.className = 'nav-card';
-                card.innerHTML = `
-                    <h3>${m.name}</h3><p style="color:#666;">${key}</p>
-                    <div class="detail-info"><div><b>分機：</b>${m.ext}</div><div><b>入場日期：</b>${m.join_date}</div><div><b>電腦編號：</b>${m.pc_id}</div></div>
-                `;
+                const card = document.createElement('div'); card.className = 'nav-card';
+                card.innerHTML = `<h3>${m.name}</h3><p style="color:#666;">${key}</p><div class="detail-info"><div><b>分機：</b>${m.ext}</div><div><b>入場日期：</b>${m.join_date || 'N/A'}</div><div><b>電腦編號：</b>${m.pc_id}</div></div>`;
                 grid.appendChild(card);
             });
         } 
@@ -536,15 +538,14 @@
         }
     }
 
-    // ==== 產生全部分機表 (Level 3) ====
-    function showExtensionsView() {
+    function showExtensionsView(push = true) {
         closeSidebar();
         currentLevel = 3;
+        if (push) history.pushState({ level: 3 }, "");
         
         const container = document.getElementById('ext-container');
         container.innerHTML = '';
 
-        // 利用 dept 屬性將人員自動歸類到對應的辦公室/部門
         const deptMap = {};
         for (let key in memberData) {
             const m = memberData[key];
@@ -553,49 +554,32 @@
             deptMap[deptName].push(m);
         }
 
-        // 動態生成 HTML
         for (let deptName in deptMap) {
             const groupDiv = document.createElement('div');
             groupDiv.style.marginBottom = '30px';
-            
-            // 辦公室標題
-            let html = `
-                <h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">
-                    ${deptName}
-                </h2>
-                <div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px;">
-            `;
+            let html = `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">${deptName}</h2>
+                        <div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px;">`;
 
-            // 辦公室內人員清單
             deptMap[deptName].forEach(m => {
                 const hasExt = (m.ext && m.ext !== 'N/A');
                 const extText = hasExt ? m.ext : '無分機';
                 const extColor = hasExt ? 'var(--primary)' : 'var(--text-muted)';
-                
                 html += `
                     <div class="nav-card no-hover" style="padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${m.name}</div>
-                            <div style="font-size: 12px; color: var(--text-muted);">
-                                ${m.pc_id !== 'N/A' ? 'PC: ' + m.pc_id : ''}
-                            </div>
+                            <div style="font-size: 12px; color: var(--text-muted);">${m.pc_id !== 'N/A' ? 'PC: ' + m.pc_id : ''}</div>
                         </div>
-                        <div style="font-size: 24px; font-weight: bold; color: ${extColor}; font-family: monospace;">
-                            ${extText}
-                        </div>
-                    </div>
-                `;
+                        <div style="font-size: 24px; font-weight: bold; color: ${extColor}; font-family: monospace;">${extText}</div>
+                    </div>`;
             });
-
             html += `</div>`;
             groupDiv.innerHTML = html;
             container.appendChild(groupDiv);
         }
-
         switchView('view-extensions');
     }
 
-    // 執行初始化
     window.onload = init;
 </script>
 </body>

@@ -306,7 +306,7 @@
         <div class="tabs">
             <button id="tab-staff" class="tab-btn active" onclick="switchTab('staff')">人員</button>
             <button id="tab-assets" class="tab-btn" onclick="switchTab('assets')">資產</button>
-            <button id="tab-facilities" class="tab-btn" onclick="switchTab('facilities')">設備</button>
+            <button id="tab-facilities" class="tab-btn" onclick="switchTab('facilities')">孔位</button>
         </div>
         <div id="detail-grid" class="grid-nav"></div>
     </div>
@@ -518,6 +518,20 @@
             if(currentOffice.includes('ABS')) return key.startsWith('C-');
             return false;
         });
+
+        // === 新增：動態計算並更新標籤計數器 ===
+        let assetCount = (officeAssets[currentOffice] || []).length; // 先計算辦公室公用資產
+        memberKeys.forEach(key => {
+            if (memberData[key].assets) {
+                assetCount += memberData[key].assets.length; // 加上每個人的個人資產數量
+            }
+        });
+        
+        // 將計算結果寫入標籤按鈕中
+        document.getElementById('tab-staff').innerText = `人員 (${memberKeys.length})`;
+        document.getElementById('tab-assets').innerText = `資產 (${assetCount})`;
+        document.getElementById('tab-facilities').innerText = `孔位`;
+        // =======================================
 
         if (currentTab === 'staff') {
             if(memberKeys.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';

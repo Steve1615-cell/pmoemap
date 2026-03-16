@@ -58,11 +58,12 @@
         /* 標題容器與跑馬燈設定 */
         .title-container {
             flex: 1;
-            min-width: 0; /* 確保不會因為內容過長而撐破 Flex 容器 */
+            min-width: 0; 
             overflow: hidden; 
             text-align: center;
             display: flex;
             justify-content: center;
+            align-items: center;
         }
 
         /* 靜態標題 (夠短時顯示) */
@@ -73,23 +74,31 @@
             white-space: nowrap;
         }
 
-        /* 動態無縫循環跑馬燈 (過長時啟動) */
+        /* 動態無縫循環跑馬燈 (過長時啟動 - 修正 Safari Bug) */
         .marquee-wrapper {
-            display: flex;
-            width: max-content;
-            animation: scrollText 4s linear infinite; /* 4秒跑完一輪，速度加快 */
+            display: inline-block; /* 放棄 Flex，使用 inline-block 最穩定 */
+            white-space: nowrap;
+            animation: scrollText 4s linear infinite;
+            -webkit-transform: translate3d(0, 0, 0); /* 強制開啟 GPU 加速，防止 iOS 閃爍消失 */
+            transform: translate3d(0, 0, 0);
         }
 
         .marquee-text {
+            display: inline-block;
             margin: 0;
-            padding-right: 40px; /* 兩段文字之間的空白間距 */
+            padding-right: 40px; 
             font-size: clamp(18px, 4.5vw, 24px);
-            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        @-webkit-keyframes scrollText {
+            0% { -webkit-transform: translateX(0); }
+            100% { -webkit-transform: translateX(-50%); }
         }
 
         @keyframes scrollText {
             0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); } /* 完美位移一半的長度達成無縫銜接 */
+            100% { transform: translateX(-50%); } 
         }
 
         .btn-nav {
@@ -308,7 +317,7 @@
     </div>
 </div>
 
-<!-- 外部匯入資料庫 (這裡會直接讀取你的 data.js) -->
+<!-- 外部匯入資料庫 -->
 <script src="data.js"></script>
 <script>
     // === 補充原本直接寫在 HTML 的辦公室基礎資料 ===
@@ -366,15 +375,17 @@
     // ==== 動態變更標題與無縫循環跑馬燈 ====
     function updateMainTitle(text) {
         const titleContainer = document.getElementById('title-container');
-        // 先設定為靜態文字，用來測量真實寬度
+        // 先設定為靜態文字
         titleContainer.innerHTML = `<h1 id="main-title" class="static-title">${text}</h1>`;
         
-        // 延遲一下讓瀏覽器渲染完畢後再測量
+        // 強制 Safari 立即重繪 (Reflow)，避免取到暫時的 0 寬度
+        void titleContainer.offsetWidth;
+        
+        // 延遲檢測，確保排版完全穩定後判斷是否需要跑馬燈
         requestAnimationFrame(() => {
             setTimeout(() => {
                 const mainTitle = document.getElementById('main-title');
                 if (mainTitle && mainTitle.scrollWidth > titleContainer.clientWidth) {
-                    // 啟用無縫循環跑馬燈 (複製兩段文字，利用 -50% 位移)
                     titleContainer.innerHTML = `
                         <div class="marquee-wrapper">
                             <h1 class="marquee-text">${text}</h1><h1 class="marquee-text">${text}</h1>
@@ -389,8 +400,10 @@
     function syncHeaderLayout() {
         const left = document.getElementById('header-left');
         const right = document.getElementById('header-right');
-        // 強制讓右側的空白區塊，等同於左側按鈕區塊的寬度
-        right.style.width = left.offsetWidth + 'px';
+        if (left && right) {
+            // 強制讓右側的空白區塊，等同於左側按鈕區塊的寬度
+            right.style.width = left.offsetWidth + 'px';
+        }
     }
 
     // ==== 瀏覽器歷史紀錄 (History API) ====
@@ -421,16 +434,18 @@
         // 控制按鈕顯示
         if (currentLevel === 0) {
             btnHome.style.display = 'none'; btnBack.style.display = 'none';
-            updateMainTitle('ＰＭＯ電子圖資系統'); 
         } else {
             btnHome.style.display = 'inline-block'; btnBack.style.display = 'inline-block';
-            if (currentLevel === 1) updateMainTitle(currentFloor);
-            else if (currentLevel === 2) updateMainTitle(currentOffice);
-            else if (currentLevel === 3) updateMainTitle('辦公室分機總表');
         }
 
-        // 同步排版 (使用 setTimeout 確保按鈕顯示後再計算寬度)
-        setTimeout(syncHeaderLayout, 10);
+        // 同步排版 (改為立即執行，不再用 setTimeout，解決 Safari 的時序 Bug)
+        syncHeaderLayout();
+
+        // 此時按鈕與容器的寬度皆已固定，接著再放入文字
+        if (currentLevel === 0) updateMainTitle('ＰＭＯ電子圖資系統'); 
+        else if (currentLevel === 1) updateMainTitle(currentFloor);
+        else if (currentLevel === 2) updateMainTitle(currentOffice);
+        else if (currentLevel === 3) updateMainTitle('辦公室分機總表');
 
         let pathHtml = '';
         if (currentLevel === 0) pathHtml = `<span class="breadcrumb-item current">首頁</span>`;

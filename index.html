@@ -216,20 +216,47 @@
         .facility-table td { padding: 5px; border: 1px solid #e2e8f0; font-size: 12px; }
         .facility-label { background: #f1f5f9; font-weight: bold; width: 40%; }
 
+        /* ======== 表單與彈出視窗 (Modal) ======== */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5); z-index: 3000;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s ease;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: white; width: 90%; max-width: 400px; border-radius: 12px;
+            padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transform: translateY(-20px); transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; display: flex; justify-content: space-between;}
+        .form-group { margin-bottom: 12px; text-align: left; }
+        .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: bold;}
+        .form-group input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+        .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+        .modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .btn-secondary { background: #e2e8f0; color: var(--text-main); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s;}
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .btn-edit { background: none; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
+        .btn-edit:hover { background: var(--accent); color: var(--primary); border-color: var(--primary); }
+
+        /* ======== 懸浮操作按鈕 (FAB) ======== */
+        .fab-container { position: fixed; bottom: 30px; right: 30px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
+        .fab-menu { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; }
+        .fab-menu.active { opacity: 1; visibility: visible; transform: translateY(0); }
+        .fab-item { background: white; border: 1px solid #e2e8f0; padding: 10px 20px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.2s; white-space: nowrap; color: var(--text-main); }
+        .fab-item:hover { background: var(--accent); color: var(--primary); border-color: var(--primary); }
+        .fab-btn { width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: white; font-size: 30px; border: none; box-shadow: 0 4px 15px rgba(37,99,235,0.4); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: transform 0.3s ease; }
+        .fab-container.active .fab-btn { transform: rotate(45deg); background: var(--danger); }
+
         /* ======== 針對觸控設備 (手機/平板) 的專屬設定 ======== */
         @media (hover: none) {
             .app-container { padding: 10px 15px; }
             .btn-nav { padding: 6px 10px; }
-            .nav-card .preview-list, .nav-card .detail-info { 
-                max-height: none; opacity: 1; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; 
-            }
-            .nav-card .password-container { 
-                max-height: none; opacity: 1; margin-top: 10px; 
-            }
-            .nav-card:hover { transform: none; border-color: transparent; }
-            .nav-card { -webkit-user-select: none; user-select: none; }
-            .detail-info, .password-badge, h3, h2 { -webkit-user-select: text; user-select: text; }
-        }
+            .fab-container { bottom: 20px; right: 20px; } /* 手機版稍微靠邊緣 */
 
         /* 讀取中提示 */
         #loading-overlay {
@@ -316,10 +343,58 @@
     </div>
 </div>
 
+<!-- 懸浮操作按鈕 (FAB) -->
+<div class="fab-container" id="fab-container">
+    <div class="fab-menu" id="fab-menu">
+        <!-- 選單內容由 JS 動態生成 -->
+    </div>
+    <button class="fab-btn" onclick="toggleFabMenu()">＋</button>
+</div>
+
+<!-- 新增/編輯人員表單 (Modal) -->
+<div id="edit-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeEditModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span id="modal-title">✏️ 編輯人員資料</span>
+            <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeEditModal()">×</button>
+        </div>
+        <div class="form-group" id="group-member-id">
+            <label>人員編號 ID</label>
+            <input type="text" id="edit-id" placeholder="例如：A-13 (必填)">
+        </div>
+        <div class="form-group">
+            <label>姓名</label>
+            <input type="text" id="edit-name" placeholder="輸入姓名 (必填)">
+        </div>
+        <div class="form-group">
+            <label>分機</label>
+            <input type="text" id="edit-ext" placeholder="例如：6100 (無則填 N/A)">
+        </div>
+        <div class="form-group">
+            <label>電腦編號 (PC ID)</label>
+            <input type="text" id="edit-pc" placeholder="例如：9059145 (無則填 N/A)">
+        </div>
+        <div class="form-group" style="display:flex; gap: 10px;">
+            <div style="flex:1;">
+                <label>網路孔</label>
+                <input type="text" id="edit-net" placeholder="N/A">
+            </div>
+            <div style="flex:1;">
+                <label>電話孔</label>
+                <input type="text" id="edit-phone" placeholder="N/A">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeEditModal()">取消</button>
+            <button id="btn-save-member" class="btn-primary" onclick="saveMemberData()">儲存</button>
+        </div>
+    </div>
+</div>
+
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // 1. 初始化 Firebase
     const firebaseConfig = {
@@ -343,7 +418,9 @@
     let currentFloor = '';
     let currentOffice = '';
     let currentTab = 'staff';
-    let isInitialized = false; // 紀錄是否已經完成首次載入
+    let isInitialized = false; 
+    let currentEditMemberId = null; 
+    let isEditMode = false; // 紀錄表單狀態：true=編輯, false=新增
 
     // 3. 監聽 Firebase 資料庫變化 (Realtime Updates)
     function setupRealtimeListeners() {
@@ -451,6 +528,42 @@
         document.getElementById('sidebar-overlay').classList.remove('active');
     }
 
+    // ==== 懸浮按鈕 (FAB) 邏輯 ====
+    function toggleFabMenu() {
+        document.getElementById('fab-container').classList.toggle('active');
+        document.getElementById('fab-menu').classList.toggle('active');
+    }
+
+    function closeFabMenu() {
+        document.getElementById('fab-container').classList.remove('active');
+        document.getElementById('fab-menu').classList.remove('active');
+    }
+
+    // 根據當前頁面層級，動態更新 FAB 的選單內容
+    function updateFabMenu() {
+        const fabMenu = document.getElementById('fab-menu');
+        const fabContainer = document.getElementById('fab-container');
+        fabMenu.innerHTML = ''; 
+        closeFabMenu(); // 切換頁面時先收起選單
+
+        if (currentLevel === 0) {
+            fabContainer.style.display = 'flex';
+            fabMenu.innerHTML = `<button class="fab-item" onclick="alert('新增辦公室功能開發中！')">➕ 新增辦公室</button>`;
+        } else if (currentLevel === 1) {
+            fabContainer.style.display = 'flex';
+            fabMenu.innerHTML = `<button class="fab-item" onclick="alert('編輯樓層區域開發中！')">✏️ 編輯 ${currentFloor} 資訊</button>`;
+        } else if (currentLevel === 2) {
+            fabContainer.style.display = 'flex';
+            fabMenu.innerHTML = `
+                <button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>
+                <button class="fab-item" onclick="alert('新增/編輯資產功能開發中！')">📦 管理資產與孔位</button>
+                <button class="fab-item" onclick="alert('編輯辦公室資訊開發中！')">✏️ 編輯辦公室資訊</button>
+            `;
+        } else {
+            fabContainer.style.display = 'none'; // 第四層分機總表暫時不顯示 FAB
+        }
+    }
+
     function updateNavigationUI() {
         const btnHome = document.getElementById('btn-global-home');
         const btnBack = document.getElementById('btn-global-back');
@@ -485,6 +598,9 @@
             pathHtml += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">分機總表</span>`;
         }
         breadcrumb.innerHTML = pathHtml;
+        
+        // 每次 UI 更新時，順便更新右下角的懸浮按鈕內容
+        updateFabMenu();
     }
 
     function switchView(viewId) {
@@ -556,8 +672,19 @@
             if(officeMembers.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card';
-                // 這裡的 m.id 就是你在 Firestore 看到的人員編號 (如 A-01)
-                card.innerHTML = `<h3>${m.name}</h3><p style="color:#666;">${m.id}</p><div class="detail-info"><div><b>分機：</b>${m.ext}</div><div><b>入場日期：</b>${m.join_date || 'N/A'}</div><div><b>電腦編號：</b>${m.pc_id}</div></div>`;
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
+                        <div style="text-align: left;">
+                            <h3 style="margin:0 0 5px 0;">${m.name}</h3>
+                            <span style="font-size: 12px; color: var(--text-muted); background: var(--accent); padding: 2px 6px; border-radius: 4px;">${m.id}</span>
+                        </div>
+                        <button class="btn-edit" onclick="openMemberModal('${m.id}')">✏️ 編輯</button>
+                    </div>
+                    <div class="detail-info" style="border-top: none; padding-top: 0; margin-top: 5px;">
+                        <div><b>分機：</b>${m.ext}</div>
+                        <div><b>入場日期：</b>${m.join_date || 'N/A'}</div>
+                        <div><b>電腦編號：</b>${m.pc_id}</div>
+                    </div>`;
                 grid.appendChild(card);
             });
         } 
@@ -613,6 +740,111 @@
         switchView('view-extensions');
     }
 
+    // ==== 新增/編輯人員表單 (Modal) 邏輯 ====
+    function openMemberModal(memberId = null) {
+        closeFabMenu(); // 打開表單時收起右下角選單
+        const idInput = document.getElementById('edit-id');
+
+        if (memberId) {
+            // 編輯模式
+            isEditMode = true;
+            currentEditMemberId = memberId;
+            document.getElementById('modal-title').innerText = '✏️ 編輯人員資料';
+            idInput.value = memberId;
+            idInput.disabled = true; // 編輯模式不允許修改 ID
+            idInput.style.backgroundColor = '#f1f5f9';
+
+            const m = globalMembers.find(x => x.id === memberId);
+            if(m) {
+                document.getElementById('edit-name').value = m.name || '';
+                document.getElementById('edit-ext').value = m.ext || '';
+                document.getElementById('edit-pc').value = m.pc_id || '';
+                document.getElementById('edit-net').value = m.net_port || '';
+                document.getElementById('edit-phone').value = m.phone_port || '';
+            }
+        } else {
+            // 新增模式
+            isEditMode = false;
+            currentEditMemberId = null;
+            document.getElementById('modal-title').innerText = '➕ 新增人員資料';
+            
+            // 清空所有欄位
+            idInput.value = '';
+            idInput.disabled = false;
+            idInput.style.backgroundColor = '#ffffff';
+            document.getElementById('edit-name').value = '';
+            document.getElementById('edit-ext').value = '';
+            document.getElementById('edit-pc').value = '';
+            document.getElementById('edit-net').value = '';
+            document.getElementById('edit-phone').value = '';
+        }
+
+        document.getElementById('edit-modal-overlay').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('edit-modal-overlay').classList.remove('active');
+    }
+
+    async function saveMemberData() {
+        const idInput = document.getElementById('edit-id').value.trim();
+        const nameInput = document.getElementById('edit-name').value.trim();
+
+        if (!idInput || !nameInput) {
+            alert('人員編號與姓名為必填欄位！');
+            return;
+        }
+        
+        const btn = document.getElementById('btn-save-member');
+        btn.disabled = true;
+        btn.innerText = '儲存中...';
+
+        try {
+            // 建立要儲存的資料物件
+            const memberDataToSave = {
+                name: nameInput,
+                ext: document.getElementById('edit-ext').value || 'N/A',
+                pc_id: document.getElementById('edit-pc').value || 'N/A',
+                net_port: document.getElementById('edit-net').value || 'N/A',
+                phone_port: document.getElementById('edit-phone').value || 'N/A',
+                office_id: currentOffice // 綁定當前的辦公室
+                // 註：這裡你也可以補上 dept (部門) 的欄位，目前為了簡化先繼承舊設定或留空
+            };
+
+            const memberRef = doc(db, 'members', idInput);
+
+            if (isEditMode) {
+                // 編輯模式：更新現有文件
+                await updateDoc(memberRef, memberDataToSave);
+            } else {
+                // 新增模式：設定新文件 (setDoc 如果 ID 存在會覆寫，不存在會新增)
+                // 為了防呆，新增前可以先檢查 globalMembers 裡有沒有重複的 ID
+                const isIdExists = globalMembers.some(m => m.id === idInput);
+                if (isIdExists) {
+                    alert('這個人員編號已經存在了！請使用另一個編號。');
+                    btn.disabled = false;
+                    btn.innerText = '儲存';
+                    return;
+                }
+                
+                // 由於是新成員，手動指定部門預設值 (未來可再擴充為下拉選單)
+                if (currentOffice.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
+                else if (currentOffice.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
+                else memberDataToSave.dept = '其他部門';
+
+                await setDoc(memberRef, memberDataToSave);
+            }
+            
+            closeEditModal();
+        } catch(error) {
+            console.error("更新失敗: ", error);
+            alert("儲存失敗，請檢查網路連線。");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = '儲存';
+        }
+    }
+
     // 5. 將需要被 HTML inline onclick 呼叫的函式，綁定到全域 window 上
     window.toggleSidebar = toggleSidebar;
     window.closeSidebar = closeSidebar;
@@ -621,6 +853,10 @@
     window.goBack = goBack;
     window.showOffices = showOffices;
     window.switchTab = switchTab;
+    window.openMemberModal = openMemberModal;
+    window.closeEditModal = closeEditModal;
+    window.saveMemberData = saveMemberData;
+    window.toggleFabMenu = toggleFabMenu;
 
     // 監聽螢幕旋轉或視窗大小改變，自動修正標題佈局
     window.addEventListener('resize', syncHeaderLayout);

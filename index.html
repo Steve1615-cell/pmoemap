@@ -383,12 +383,6 @@
             <span id="modal-title">✏️ 編輯人員資料</span>
             <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeEditModal()">×</button>
         </div>
-        <div class="form-group" id="group-member-id">
-            <label>人員編號 ID</label>
-            <input type="text" id="edit-id" placeholder="例如：A-13 (必填)">
-            <!-- 新增：防呆警告訊息區塊 -->
-            <div id="id-warning" style="color: var(--danger); font-size: 13px; margin-top: 6px; display: none; font-weight: bold; padding: 6px 10px; background: #fee2e2; border-radius: 4px;"></div>
-        </div>
         <div class="form-group">
             <label>姓名</label>
             <input type="text" id="edit-name" placeholder="輸入姓名 (必填)">
@@ -433,7 +427,7 @@
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { collection, onSnapshot, doc, updateDoc, setDoc, initializeFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, initializeFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // 1. 初始化 Firebase
     const firebaseConfig = {
@@ -728,11 +722,11 @@
                 const card = document.createElement('div'); card.className = 'nav-card';
                 const displayJoinDate = m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A';
                 
+                // 移除 ID 顯示標籤，改為純顯示姓名與資料
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
                         <div style="text-align: left;">
                             <h3 style="margin:0 0 5px 0;">${m.name}</h3>
-                            <span style="font-size: 12px; color: var(--text-muted); background: var(--accent); padding: 2px 6px; border-radius: 4px;">${m.id}</span>
                         </div>
                         <button class="btn-edit" onclick="openMemberModal('${m.id}')">✏️ 編輯</button>
                     </div>
@@ -781,7 +775,6 @@
         const container = document.getElementById('ext-container');
         container.innerHTML = '';
 
-        // 修改：嚴格改用 office_id 作為分組依據，取代原本的 dept
         const officeMap = {};
         globalMembers.forEach(m => {
             const officeName = m.office_id || '未分配辦公室';
@@ -804,53 +797,16 @@
         switchView('view-extensions');
     }
 
-    // ==== 自動計算下一筆人員 ID ====
-    function getNextAutoId(officeName) {
-        let prefix = '';
-        if (officeName.includes('接艦')) prefix = 'A';
-        else if (officeName.includes('ABS')) prefix = 'C';
-        else if (officeName.includes('浮塢')) prefix = 'B';
-        else {
-            // 若為未定義的辦公室，則從該辦公室現有人員中反推字首
-            const officeMembers = globalMembers.filter(m => m.office_id === officeName);
-            if (officeMembers.length > 0) {
-                const match = officeMembers[0].id.match(/^([A-Z]+)-/i);
-                if (match) prefix = match[1].toUpperCase();
-            }
-        }
-
-        if (!prefix) return ''; // 無法判斷前綴，留空讓使用者自行定義第一人
-
-        // 找出該前綴在全域中使用的最大數字
-        const prefixMembers = globalMembers.filter(m => m.id.toUpperCase().startsWith(prefix + '-'));
-        let maxNum = 0;
-        prefixMembers.forEach(m => {
-            const numPart = parseInt(m.id.substring(prefix.length + 1), 10);
-            if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
-        });
-
-        // 格式化為 X-00 的形式
-        return `${prefix}-${(maxNum + 1).toString().padStart(2, '0')}`;
-    }
-
     // ==== 新增/編輯人員表單 (Modal) 邏輯 ====
     function openMemberModal(memberId = null) {
         closeFabMenu(); 
-        const idInput = document.getElementById('edit-id');
         const btnNext = document.getElementById('btn-save-next');
-        const warningEl = document.getElementById('id-warning');
-
-        // 每次打開表單時，隱藏警告文字
-        warningEl.style.display = 'none';
 
         if (memberId && typeof memberId === 'string') {
             // ==== 編輯模式 ====
             isEditMode = true;
             currentEditMemberId = memberId;
             document.getElementById('modal-title').innerText = '✏️ 編輯人員資料';
-            idInput.value = memberId;
-            idInput.disabled = true; 
-            idInput.style.backgroundColor = '#f1f5f9';
             btnNext.style.display = 'none'; 
 
             const m = globalMembers.find(x => x.id === memberId);
@@ -868,12 +824,8 @@
             isEditMode = false;
             currentEditMemberId = null;
             document.getElementById('modal-title').innerText = '➕ 新增人員資料';
-            
-            idInput.disabled = false;
-            idInput.style.backgroundColor = '#ffffff';
             btnNext.style.display = 'inline-block'; 
             
-            idInput.value = '';
             document.getElementById('edit-name').value = '';
             document.getElementById('edit-title').value = '';
             document.getElementById('edit-ext').value = '';
@@ -890,68 +842,13 @@
     }
 
     async function saveMemberData(continueNext = false) {
-        // 【防呆加強】強制將 ID 轉為全大寫並去空白，杜絕大小寫造成的判斷失誤
-        let idInput = document.getElementById('edit-id').value.trim().toUpperCase();
-        document.getElementById('edit-id').value = idInput; // 寫回輸入框讓使用者看見
-        
         const nameInput = document.getElementById('edit-name').value.trim();
-        const warningEl = document.getElementById('id-warning');
 
-        warningEl.style.display = 'none';
-
-        if (!idInput || !nameInput) {
-            customAlert('人員編號與姓名為必填欄位！', true);
+        if (!nameInput) {
+            customAlert('姓名為必填欄位！', true);
             return;
         }
 
-        // ================= 📍 強制防呆機制 (升級版) =================
-        
-        // 1. 取得該辦公室「預期」的字首 (若該辦公室已有成員，則繼承字首)
-        let expectedPrefix = '';
-        if (currentOffice.includes('接艦')) expectedPrefix = 'A-';
-        else if (currentOffice.includes('ABS')) expectedPrefix = 'C-';
-        else if (currentOffice.includes('浮塢')) expectedPrefix = 'B-';
-        else {
-            const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
-            if (officeMembers.length > 0) {
-                const match = officeMembers[0].id.match(/^([A-Z]+)-/i);
-                if (match) expectedPrefix = match[1].toUpperCase() + '-';
-            }
-        }
-
-        if (expectedPrefix && !idInput.startsWith(expectedPrefix)) {
-            warningEl.innerText = `辦公室編碼必須統一！此辦公室人員需以「${expectedPrefix}」開頭。`;
-            warningEl.style.display = 'block';
-            customAlert(`⚠️ ID 必須以 ${expectedPrefix} 開頭！`, true); 
-            return; // 終止儲存
-        }
-
-        // 2. 檢查是否偷用其他辦公室的編碼 (當輸入未定義辦公室的第一人時)
-        const inputMatch = idInput.match(/^([A-Z]+)-/i);
-        const inputPrefix = inputMatch ? inputMatch[1].toUpperCase() + '-' : '';
-
-        if (inputPrefix && expectedPrefix === '') {
-            const isPrefixTaken = globalMembers.some(m => m.office_id !== currentOffice && m.id.toUpperCase().startsWith(inputPrefix));
-            if (isPrefixTaken) {
-                warningEl.innerText = `辦公室編碼不可混用！「${inputPrefix}」已被其他辦公室佔用。`;
-                warningEl.style.display = 'block';
-                customAlert(`⚠️ 此編碼系列已被其他辦公室使用！`, true);
-                return;
-            }
-        }
-
-        // 3. 檢查 ID 是否重複 (僅限新增模式時檢查)
-        if (!isEditMode) {
-            const isDuplicate = globalMembers.some(m => m.id.toUpperCase() === idInput);
-            if (isDuplicate) {
-                warningEl.innerText = '人員ID不可重複！此編號已有人使用。';
-                warningEl.style.display = 'block';
-                customAlert('⚠️ 此人員 ID 已經存在！', true); 
-                return; // 終止儲存
-            }
-        }
-        // ===================================================
-        
         const btnId = continueNext ? 'btn-save-next' : 'btn-save-member';
         const btn = document.getElementById(btnId);
         const originalText = btn.innerText;
@@ -971,29 +868,21 @@
                 office_id: currentOffice 
             };
 
-            const memberRef = doc(db, 'members', idInput);
-
             if (isEditMode) {
+                // 編輯模式：更新已存在的 Document
+                const memberRef = doc(db, 'members', currentEditMemberId);
                 await updateDoc(memberRef, memberDataToSave);
             } else {
+                // 新增模式：交給 Firebase 自動產生 Document ID，未來地圖開發時再寫入 seat_id
                 if (currentOffice.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOffice.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
                 else memberDataToSave.dept = currentOffice; // 預設以辦公室名稱作為部門
 
-                await setDoc(memberRef, memberDataToSave);
+                await addDoc(collection(db, 'members'), memberDataToSave);
             }
             
             if (continueNext && !isEditMode) {
                 btn.innerText = '已新增 ✔';
-                
-                // 自動將剛剛儲存的 ID 數值 +1，準備下一筆輸入
-                const match = idInput.match(/^([A-Z]+)-(\d+)$/i);
-                if (match) {
-                    const nextNum = parseInt(match[2], 10) + 1;
-                    document.getElementById('edit-id').value = `${match[1].toUpperCase()}-${nextNum.toString().padStart(2, '0')}`;
-                } else {
-                    document.getElementById('edit-id').value = ''; 
-                }
                 
                 document.getElementById('edit-name').value = '';
                 document.getElementById('edit-title').value = '';
@@ -1002,7 +891,8 @@
                 document.getElementById('edit-net').value = '';
                 document.getElementById('edit-phone').value = '';
                 
-                document.getElementById('edit-id').focus();
+                // 將輸入焦點移回姓名欄位
+                document.getElementById('edit-name').focus();
                 
                 setTimeout(() => {
                     btn.innerText = originalText;

@@ -286,6 +286,7 @@
             opacity: 0; visibility: hidden; transition: all 0.3s ease;
         }
         #custom-toast.show { opacity: 1; visibility: visible; top: 40px; }
+        #custom-toast.danger { background: #ef4444; } /* 警告專用紅色背景 */
     </style>
 </head>
 <body>
@@ -386,20 +387,18 @@
             <label>人員編號 ID</label>
             <input type="text" id="edit-id" placeholder="例如：A-13 (必填)">
             <!-- 新增：防呆警告訊息區塊 -->
-            <div id="id-warning" style="color: var(--danger); font-size: 13px; margin-top: 6px; display: none; font-weight: bold;"></div>
+            <div id="id-warning" style="color: var(--danger); font-size: 13px; margin-top: 6px; display: none; font-weight: bold; padding: 6px 10px; background: #fee2e2; border-radius: 4px;"></div>
         </div>
         <div class="form-group">
             <label>姓名</label>
             <input type="text" id="edit-name" placeholder="輸入姓名 (必填)">
         </div>
         
-        <!-- 新增：職稱 (頭銜) 欄位 -->
         <div class="form-group">
             <label>職稱 (頭銜)</label>
             <input type="text" id="edit-title" placeholder="例如：專案經理 (無則填 N/A)">
         </div>
         
-        <!-- 新增：入廠日欄位 (原生 Date Picker) -->
         <div class="form-group">
             <label>入廠日</label>
             <input type="date" id="edit-join-date">
@@ -448,12 +447,11 @@
 
     const app = initializeApp(firebaseConfig);
     
-    // 使用 initializeFirestore 並強制開啟長輪詢 (Long Polling) 以解決連線逾時問題
+    // 使用 initializeFirestore 並強制開啟長輪詢 (Long Polling)
     const db = initializeFirestore(app, {
         experimentalForceLongPolling: true
     });
 
-    // 2. 建立全域變數來儲存來自 Firebase 的資料
     let globalOffices = [];
     let globalMembers = [];
     let globalAssets = [];
@@ -464,17 +462,20 @@
     let currentTab = 'staff';
     let isInitialized = false; 
     let currentEditMemberId = null; 
-    let isEditMode = false; // 紀錄表單狀態：true=編輯, false=新增
+    let isEditMode = false; // true=編輯, false=新增
 
-    // 自訂提示訊息功能
-    function customAlert(msg) {
+    // 自訂提示訊息功能 (支援 isDanger 紅色警告樣式)
+    function customAlert(msg, isDanger = false) {
         const toast = document.getElementById('custom-toast');
         toast.innerText = msg;
+        if (isDanger) toast.classList.add('danger');
+        else toast.classList.remove('danger');
+        
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    // 3. 監聽 Firebase 資料庫變化 (Realtime Updates)
+    // 3. 監聽 Firebase 資料庫變化
     function setupRealtimeListeners() {
         let loadedCount = 0;
         const checkAllLoaded = () => {
@@ -483,48 +484,41 @@
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
-                initView(); // 資料到齊後，開始渲染畫面
+                initView(); 
             } else if (isInitialized) {
-                // 如果已經初始化過了（代表是後續的資料更新），直接重繪當前畫面
                 refreshCurrentView();
             }
         };
 
-        // 監聽辦公室資料
         onSnapshot(collection(db, "offices"), (snapshot) => {
             globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             checkAllLoaded();
         });
 
-        // 監聽人員資料
         onSnapshot(collection(db, "members"), (snapshot) => {
             globalMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             checkAllLoaded();
         });
 
-        // 監聽資產資料
         onSnapshot(collection(db, "assets"), (snapshot) => {
             globalAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             checkAllLoaded();
         });
     }
 
-    // 當 Firebase 資料變動時，重新刷新目前所在的畫面
     function refreshCurrentView() {
-        if (currentLevel === 0) initView(); // 更新首頁預覽
+        if (currentLevel === 0) initView(); 
         else if (currentLevel === 1) showOffices(currentFloor, false);
         else if (currentLevel === 2) updateDetailContent();
         else if (currentLevel === 3) showExtensionsView(false);
     }
 
-    // 4. 系統初始化畫面
     function initView() {
         ['修船大樓３Ｆ', '修船大樓４Ｆ'].forEach(f => {
             const floorId = f === '修船大樓３Ｆ' ? '3F' : '4F';
             const list = document.getElementById(`preview-floor-${floorId}`);
-            list.innerHTML = ''; // 清空重新渲染
+            list.innerHTML = ''; 
             
-            // 從 Firebase 資料中過濾出屬於該樓層的辦公室
             const floorOffices = globalOffices.filter(o => o.floor === f);
             floorOffices.forEach(o => {
                 const li = document.createElement('li');
@@ -536,11 +530,10 @@
         if (!history.state) history.replaceState({ level: 0 }, "");
     }
 
-    // ==== 動態變更標題與無縫循環跑馬燈 ====
     function updateMainTitle(text) {
         const titleContainer = document.getElementById('title-container');
         titleContainer.innerHTML = `<h1 id="main-title" class="static-title">${text}</h1>`;
-        void titleContainer.offsetWidth; // 強制 Reflow
+        void titleContainer.offsetWidth; 
         requestAnimationFrame(() => {
             setTimeout(() => {
                 const mainTitle = document.getElementById('main-title');
@@ -561,7 +554,6 @@
         if (left && right) right.style.width = left.offsetWidth + 'px';
     }
 
-    // ==== 瀏覽器歷史紀錄 (History API) ====
     window.addEventListener('popstate', (event) => {
         const state = event.state;
         if (!state) { goHome(false); return; }
@@ -580,10 +572,8 @@
         document.getElementById('sidebar-overlay').classList.remove('active');
     }
 
-    // ==== 全域事件監聽 (ESC 與點擊空白處關閉) ====
     document.addEventListener('click', (e) => {
         const fabContainer = document.getElementById('fab-container');
-        // 如果點擊的位置不在 FAB 容器內，且選單目前是開啟的，就自動關閉它
         if (fabContainer && !fabContainer.contains(e.target) && document.getElementById('fab-menu').classList.contains('active')) {
             closeFabMenu();
         }
@@ -597,9 +587,8 @@
         }
     });
 
-    // ==== 懸浮按鈕 (FAB) 邏輯 ====
     function toggleFabMenu(event) {
-        if(event) event.stopPropagation(); // 阻止事件冒泡，避免剛打開就被 document click 關閉
+        if(event) event.stopPropagation(); 
         document.getElementById('fab-container').classList.toggle('active');
         document.getElementById('fab-menu').classList.toggle('active');
     }
@@ -609,12 +598,11 @@
         document.getElementById('fab-menu').classList.remove('active');
     }
 
-    // 根據當前頁面層級，動態更新 FAB 的選單內容
     function updateFabMenu() {
         const fabMenu = document.getElementById('fab-menu');
         const fabContainer = document.getElementById('fab-container');
         fabMenu.innerHTML = ''; 
-        closeFabMenu(); // 切換頁面時先收起選單
+        closeFabMenu(); 
 
         if (currentLevel === 0) {
             fabContainer.style.display = 'flex';
@@ -630,7 +618,7 @@
                 <button class="fab-item" onclick="customAlert('編輯辦公室資訊開發中！')">✏️ 編輯辦公室資訊</button>
             `;
         } else {
-            fabContainer.style.display = 'none'; // 第四層分機總表暫時不顯示 FAB
+            fabContainer.style.display = 'none';
         }
     }
 
@@ -669,7 +657,6 @@
         }
         breadcrumb.innerHTML = pathHtml;
         
-        // 每次 UI 更新時，順便更新右下角的懸浮按鈕內容
         updateFabMenu();
     }
 
@@ -693,9 +680,7 @@
         const list = document.getElementById('office-list');
         list.innerHTML = '';
         
-        // 從 Firebase 獲取該樓層的辦公室
         const floorOffices = globalOffices.filter(o => o.floor === floor);
-        
         floorOffices.forEach(off => {
             const card = document.createElement('div'); card.className = 'nav-card';
             card.innerHTML = `<h2>${off.name}</h2><div class="password-container"><span class="password-badge">${off.pwd}</span></div><div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>`;
@@ -725,7 +710,6 @@
         const grid = document.getElementById('detail-grid');
         grid.innerHTML = '';
         
-        // 改為從 Firebase 的陣列過濾出該辦公室的人員與資產
         const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
         const officeAssetsList = globalAssets.filter(a => a.office_id === currentOffice);
 
@@ -742,7 +726,6 @@
             if(officeMembers.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card';
-                // 處理日期格式顯示 (將 YYYY-MM-DD 轉為 YYYY/MM/DD)
                 const displayJoinDate = m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A';
                 
                 card.innerHTML = `
@@ -779,7 +762,6 @@
         else if (currentTab === 'facilities') {
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card'; card.style.textAlign = 'left';
-                // 孔位頁面：加入粗體置中的 PC ID
                 const pcDisplay = m.pc_id && m.pc_id !== 'N/A' ? m.pc_id : '無';
                 card.innerHTML = `
                     <h3 style="text-align:center; margin-bottom: 4px;">${m.name}</h3>
@@ -800,7 +782,6 @@
         container.innerHTML = '';
 
         const deptMap = {};
-        // 改用 globalMembers 來跑迴圈
         globalMembers.forEach(m => {
             const deptName = m.dept || '其他部門';
             if (!deptMap[deptName]) deptMap[deptName] = [];
@@ -824,7 +805,7 @@
 
     // ==== 新增/編輯人員表單 (Modal) 邏輯 ====
     function openMemberModal(memberId = null) {
-        closeFabMenu(); // 打開表單時收起右下角選單
+        closeFabMenu(); 
         const idInput = document.getElementById('edit-id');
         const btnNext = document.getElementById('btn-save-next');
         const warningEl = document.getElementById('id-warning');
@@ -832,15 +813,15 @@
         // 每次打開表單時，隱藏警告文字
         warningEl.style.display = 'none';
 
-        if (memberId) {
+        if (memberId && typeof memberId === 'string') {
             // ==== 編輯模式 ====
             isEditMode = true;
             currentEditMemberId = memberId;
             document.getElementById('modal-title').innerText = '✏️ 編輯人員資料';
             idInput.value = memberId;
-            idInput.disabled = true; // 編輯模式不允許修改 ID
+            idInput.disabled = true; 
             idInput.style.backgroundColor = '#f1f5f9';
-            btnNext.style.display = 'none'; // 隱藏「下一筆」按鈕
+            btnNext.style.display = 'none'; 
 
             const m = globalMembers.find(x => x.id === memberId);
             if(m) {
@@ -860,10 +841,8 @@
             
             idInput.disabled = false;
             idInput.style.backgroundColor = '#ffffff';
-            btnNext.style.display = 'inline-block'; // 顯示「下一筆」按鈕
+            btnNext.style.display = 'inline-block'; 
             
-            // 注意：我們在打開新增模式時「不主動清空」日期欄位
-            // 這樣如果使用者剛按了「下一筆」，或者連續點擊新增，入廠日就會自然保留上一筆的值
             idInput.value = '';
             document.getElementById('edit-name').value = '';
             document.getElementById('edit-title').value = '';
@@ -880,41 +859,48 @@
         document.getElementById('edit-modal-overlay').classList.remove('active');
     }
 
-    // saveMemberData 增加參數 continueNext，判斷是否為點擊「下一筆」
     async function saveMemberData(continueNext = false) {
-        const idInput = document.getElementById('edit-id').value.trim();
+        // 【防呆加強】強制將 ID 轉為全大寫並去空白，杜絕大小寫造成的判斷失誤
+        let idInput = document.getElementById('edit-id').value.trim().toUpperCase();
+        document.getElementById('edit-id').value = idInput; // 寫回輸入框讓使用者看見
+        
         const nameInput = document.getElementById('edit-name').value.trim();
         const warningEl = document.getElementById('id-warning');
 
-        // 每次點擊儲存前，先重置警告狀態
         warningEl.style.display = 'none';
 
         if (!idInput || !nameInput) {
-            customAlert('人員編號與姓名為必填欄位！');
+            customAlert('人員編號與姓名為必填欄位！', true);
             return;
         }
 
-        // ================= 📍 新增防呆機制 =================
-        // 1. 檢查 ID 是否重複 (僅限新增模式時檢查)
-        if (!isEditMode && globalMembers.some(m => m.id === idInput)) {
-            warningEl.innerText = '人員ID不可重複！此編號已有人使用。';
-            warningEl.style.display = 'block';
-            return; // 終止儲存，不鎖定按鈕
-        }
-
-        // 2. 檢查 ID 開頭是否與辦公室匹配
+        // ================= 📍 強制防呆機制 =================
+        
+        // 1. 檢查 ID 開頭是否與辦公室匹配 (所有模式都檢查，並補齊浮塢辦公室)
         let expectedPrefix = '';
         if (currentOffice.includes('接艦')) expectedPrefix = 'A-';
         else if (currentOffice.includes('ABS')) expectedPrefix = 'C-';
+        else if (currentOffice.includes('浮塢')) expectedPrefix = 'B-';
 
         if (expectedPrefix && !idInput.startsWith(expectedPrefix)) {
             warningEl.innerText = `辦公室編號必須統一！此辦公室人員需以「${expectedPrefix}」開頭。`;
             warningEl.style.display = 'block';
-            return; // 終止儲存，不鎖定按鈕
+            customAlert(`⚠️ ID 必須以 ${expectedPrefix} 開頭！`, true); // 雙重顯示
+            return; // 終止儲存
+        }
+
+        // 2. 檢查 ID 是否重複 (僅限新增模式時檢查，且無懼大小寫)
+        if (!isEditMode) {
+            const isDuplicate = globalMembers.some(m => m.id.toUpperCase() === idInput);
+            if (isDuplicate) {
+                warningEl.innerText = '人員ID不可重複！此編號已有人使用。';
+                warningEl.style.display = 'block';
+                customAlert('⚠️ 此人員 ID 已經存在！', true); // 雙重顯示
+                return; // 終止儲存
+            }
         }
         // ===================================================
         
-        // 判斷當下點擊的是哪一顆按鈕，以便做狀態改變
         const btnId = continueNext ? 'btn-save-next' : 'btn-save-member';
         const btn = document.getElementById(btnId);
         const originalText = btn.innerText;
@@ -923,27 +909,22 @@
         btn.innerText = '儲存中...';
 
         try {
-            // 建立要儲存的資料物件
             const memberDataToSave = {
                 name: nameInput,
                 title: document.getElementById('edit-title').value || 'N/A',
-                join_date: document.getElementById('edit-join-date').value || '', // 取得入廠日，空值則存空字串
+                join_date: document.getElementById('edit-join-date').value || '', 
                 ext: document.getElementById('edit-ext').value || 'N/A',
                 pc_id: document.getElementById('edit-pc').value || 'N/A',
                 net_port: document.getElementById('edit-net').value || 'N/A',
                 phone_port: document.getElementById('edit-phone').value || 'N/A',
-                office_id: currentOffice // 綁定當前的辦公室
-                // 註：這裡你也可以補上 dept (部門) 的欄位，目前為了簡化先繼承舊設定或留空
+                office_id: currentOffice 
             };
 
             const memberRef = doc(db, 'members', idInput);
 
             if (isEditMode) {
-                // 編輯模式：更新現有文件
                 await updateDoc(memberRef, memberDataToSave);
             } else {
-                // 新增模式：設定新文件
-                // 由於是新成員，手動指定部門預設值
                 if (currentOffice.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOffice.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
                 else memberDataToSave.dept = '其他部門';
@@ -951,9 +932,7 @@
                 await setDoc(memberRef, memberDataToSave);
             }
             
-            // 根據是否點擊「下一筆」決定後續動作
             if (continueNext && !isEditMode) {
-                // 顯示短暫提示，不清空入廠日，僅清空其他欄位
                 btn.innerText = '已新增 ✔';
                 
                 document.getElementById('edit-id').value = '';
@@ -964,7 +943,6 @@
                 document.getElementById('edit-net').value = '';
                 document.getElementById('edit-phone').value = '';
                 
-                // 將輸入焦點移回 ID 欄位，方便雙手不離開鍵盤繼續輸入
                 document.getElementById('edit-id').focus();
                 
                 setTimeout(() => {
@@ -979,13 +957,12 @@
             
         } catch(error) {
             console.error("更新失敗: ", error);
-            customAlert("儲存失敗，請檢查網路連線。");
+            customAlert("儲存失敗，請檢查網路連線。", true);
             btn.disabled = false;
             btn.innerText = originalText;
         }
     }
 
-    // 5. 將需要被 HTML inline onclick 呼叫的函式，綁定到全域 window 上
     window.toggleSidebar = toggleSidebar;
     window.closeSidebar = closeSidebar;
     window.showExtensionsView = showExtensionsView;
@@ -999,10 +976,7 @@
     window.toggleFabMenu = toggleFabMenu;
     window.customAlert = customAlert;
 
-    // 監聽螢幕旋轉或視窗大小改變，自動修正標題佈局
     window.addEventListener('resize', syncHeaderLayout);
-
-    // 啟動 Firebase 監聽器
     setupRealtimeListeners();
 
 </script>

@@ -76,10 +76,10 @@
 
         /* 動態無縫循環跑馬燈 (過長時啟動 - 修正 Safari Bug) */
         .marquee-wrapper {
-            display: inline-block; /* 放棄 Flex，使用 inline-block 最穩定 */
+            display: inline-block;
             white-space: nowrap;
             animation: scrollText 4s linear infinite;
-            -webkit-transform: translate3d(0, 0, 0); /* 強制開啟 GPU 加速，防止 iOS 閃爍消失 */
+            -webkit-transform: translate3d(0, 0, 0); 
             transform: translate3d(0, 0, 0);
         }
 
@@ -220,30 +220,30 @@
         @media (hover: none) {
             .app-container { padding: 10px 15px; }
             .btn-nav { padding: 6px 10px; }
-
-            /* 手機版：一律展開隱藏區塊 */
             .nav-card .preview-list, .nav-card .detail-info { 
                 max-height: none; opacity: 1; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; 
             }
             .nav-card .password-container { 
                 max-height: none; opacity: 1; margin-top: 10px; 
             }
-            
-            /* 手機版：取消卡片上浮動畫並禁止長按選取 (防呆) */
             .nav-card:hover { transform: none; border-color: transparent; }
-            .nav-card {
-                -webkit-user-select: none;
-                user-select: none;
-            }
-            /* 但允許詳細資料內的文字可以被選取複製 */
-            .detail-info, .password-badge, h3, h2 {
-                -webkit-user-select: text;
-                user-select: text;
-            }
+            .nav-card { -webkit-user-select: none; user-select: none; }
+            .detail-info, .password-badge, h3, h2 { -webkit-user-select: text; user-select: text; }
+        }
+
+        /* 讀取中提示 */
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: var(--bg); display: flex; justify-content: center; align-items: center;
+            z-index: 2000; font-size: 20px; font-weight: bold; color: var(--primary);
+            transition: opacity 0.3s;
         }
     </style>
 </head>
 <body>
+
+<!-- 載入中遮罩 -->
+<div id="loading-overlay">資料讀取中...</div>
 
 <!-- 側邊欄與遮罩區域 -->
 <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -273,7 +273,6 @@
             <button class="btn-nav" id="btn-global-back" style="display:none;" onclick="goBack()">← 上一頁</button>
         </div>
         <div class="title-container" id="title-container">
-            <!-- 標題由 JS 動態生成 -->
             <h1 id="main-title" class="static-title">ＰＭＯ電子圖資系統</h1>
         </div>
         <div class="header-right" id="header-right"></div> 
@@ -317,71 +316,102 @@
     </div>
 </div>
 
-<!-- 外部匯入資料庫 -->
-<script src="data.js"></script>
-<script>
-    // === 補充原本直接寫在 HTML 的辦公室基礎資料 ===
-    const officeAssets = {
-        "高緯度遠洋巡護船接艦辦公室": [
-            { item: "冷氣機 A", sn: "AC-4F-A01", status: "正常" },
-            { item: "冰箱", sn: "REF-4F-A01", status: "正常" },
-            { item: "影印機", sn: "CP-4F-A01", status: "碳粉不足" }
-        ],
-        "海軍浮塢案監造辦公室": [
-            { item: "冷氣機 B", sn: "AC-4F-B01", status: "正常" }
-        ],
-        "高緯度遠洋巡護船監造辦公室 (ABS)": [
-            { item: "冷氣機 C", sn: "AC-4F-C01", status: "待修" },
-            { item: "公用電腦", sn: "PC-ABS-PUB", status: "正常" }
-        ]
+<!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // 1. 初始化 Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyDt7Z-QAG4C73K7f0RyItXMNQJc2NDxkzE",
+        authDomain: "pmoemap.firebaseapp.com",
+        projectId: "pmoemap",
+        storageBucket: "pmoemap.firebasestorage.app",
+        messagingSenderId: "151977340101",
+        appId: "1:151977340101:web:0cbfb47165d081152294ac"
     };
 
-    const officeData = {
-        '修船大樓３Ｆ': [
-            { name: '中科院', pwd: 'N/A' },
-            { name: '關務辦', pwd: 'N/A' },
-            { name: '國海院', pwd: '1205#' },
-            { name: '高緯度遠洋巡護船接艦辦公室', pwd: 'N/A' }
-        ],
-        '修船大樓４Ｆ': [
-            { name: '高緯度遠洋巡護船接艦辦公室', pwd: '0857#' },
-            { name: '海軍浮塢案監造辦公室', pwd: '1197#' },
-            { name: '高緯度遠洋巡護船監造辦公室 (ABS)', pwd: '1198#' }
-        ]
-    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
+    // 2. 建立全域變數來儲存來自 Firebase 的資料
+    let globalOffices = [];
+    let globalMembers = [];
+    let globalAssets = [];
+    
     let currentLevel = 0; 
     let currentFloor = '';
     let currentOffice = '';
     let currentTab = 'staff';
+    let isInitialized = false; // 紀錄是否已經完成首次載入
 
-    function init() {
+    // 3. 監聽 Firebase 資料庫變化 (Realtime Updates)
+    function setupRealtimeListeners() {
+        let loadedCount = 0;
+        const checkAllLoaded = () => {
+            loadedCount++;
+            if (loadedCount === 3 && !isInitialized) {
+                isInitialized = true;
+                document.getElementById('loading-overlay').style.opacity = '0';
+                setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
+                initView(); // 資料到齊後，開始渲染畫面
+            } else if (isInitialized) {
+                // 如果已經初始化過了（代表是後續的資料更新），直接重繪當前畫面
+                refreshCurrentView();
+            }
+        };
+
+        // 監聽辦公室資料
+        onSnapshot(collection(db, "offices"), (snapshot) => {
+            globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            checkAllLoaded();
+        });
+
+        // 監聽人員資料
+        onSnapshot(collection(db, "members"), (snapshot) => {
+            globalMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            checkAllLoaded();
+        });
+
+        // 監聽資產資料
+        onSnapshot(collection(db, "assets"), (snapshot) => {
+            globalAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            checkAllLoaded();
+        });
+    }
+
+    // 當 Firebase 資料變動時，重新刷新目前所在的畫面
+    function refreshCurrentView() {
+        if (currentLevel === 0) initView(); // 更新首頁預覽
+        else if (currentLevel === 1) showOffices(currentFloor, false);
+        else if (currentLevel === 2) updateDetailContent();
+        else if (currentLevel === 3) showExtensionsView(false);
+    }
+
+    // 4. 系統初始化畫面
+    function initView() {
         ['修船大樓３Ｆ', '修船大樓４Ｆ'].forEach(f => {
             const floorId = f === '修船大樓３Ｆ' ? '3F' : '4F';
             const list = document.getElementById(`preview-floor-${floorId}`);
-            officeData[f].forEach(o => {
+            list.innerHTML = ''; // 清空重新渲染
+            
+            // 從 Firebase 資料中過濾出屬於該樓層的辦公室
+            const floorOffices = globalOffices.filter(o => o.floor === f);
+            floorOffices.forEach(o => {
                 const li = document.createElement('li');
                 li.innerText = `• ${o.name}`;
                 list.appendChild(li);
             });
         });
         updateNavigationUI();
-        history.replaceState({ level: 0 }, "");
-        
-        // 監聽螢幕旋轉或視窗大小改變，自動修正標題佈局
-        window.addEventListener('resize', syncHeaderLayout);
+        if (!history.state) history.replaceState({ level: 0 }, "");
     }
 
     // ==== 動態變更標題與無縫循環跑馬燈 ====
     function updateMainTitle(text) {
         const titleContainer = document.getElementById('title-container');
-        // 先設定為靜態文字
         titleContainer.innerHTML = `<h1 id="main-title" class="static-title">${text}</h1>`;
-        
-        // 強制 Safari 立即重繪 (Reflow)，避免取到暫時的 0 寬度
-        void titleContainer.offsetWidth;
-        
-        // 延遲檢測，確保排版完全穩定後判斷是否需要跑馬燈
+        void titleContainer.offsetWidth; // 強制 Reflow
         requestAnimationFrame(() => {
             setTimeout(() => {
                 const mainTitle = document.getElementById('main-title');
@@ -396,21 +426,16 @@
         });
     }
 
-    // ==== 同步左右按鈕寬度，確保標題完美置中且不重疊 ====
     function syncHeaderLayout() {
         const left = document.getElementById('header-left');
         const right = document.getElementById('header-right');
-        if (left && right) {
-            // 強制讓右側的空白區塊，等同於左側按鈕區塊的寬度
-            right.style.width = left.offsetWidth + 'px';
-        }
+        if (left && right) right.style.width = left.offsetWidth + 'px';
     }
 
     // ==== 瀏覽器歷史紀錄 (History API) ====
     window.addEventListener('popstate', (event) => {
         const state = event.state;
         if (!state) { goHome(false); return; }
-
         if (state.level === 0) goHome(false);
         else if (state.level === 1) showOffices(state.floor, false);
         else if (state.level === 2) { currentFloor = state.floor; showDetail(state.office, false); }
@@ -431,17 +456,14 @@
         const btnBack = document.getElementById('btn-global-back');
         const breadcrumb = document.getElementById('breadcrumb');
 
-        // 控制按鈕顯示
         if (currentLevel === 0) {
             btnHome.style.display = 'none'; btnBack.style.display = 'none';
         } else {
             btnHome.style.display = 'inline-block'; btnBack.style.display = 'inline-block';
         }
 
-        // 同步排版 (改為立即執行，不再用 setTimeout，解決 Safari 的時序 Bug)
         syncHeaderLayout();
 
-        // 此時按鈕與容器的寬度皆已固定，接著再放入文字
         if (currentLevel === 0) updateMainTitle('ＰＭＯ電子圖資系統'); 
         else if (currentLevel === 1) updateMainTitle(currentFloor);
         else if (currentLevel === 2) updateMainTitle(currentOffice);
@@ -476,7 +498,6 @@
         if (push) history.pushState({ level: 0 }, "");
         switchView('view-floor');
     }
-
     function goBack() { history.back(); }
 
     function showOffices(floor, push = true) {
@@ -485,7 +506,11 @@
         
         const list = document.getElementById('office-list');
         list.innerHTML = '';
-        officeData[floor].forEach(off => {
+        
+        // 從 Firebase 獲取該樓層的辦公室
+        const floorOffices = globalOffices.filter(o => o.floor === floor);
+        
+        floorOffices.forEach(off => {
             const card = document.createElement('div'); card.className = 'nav-card';
             card.innerHTML = `<h2>${off.name}</h2><div class="password-container"><span class="password-badge">${off.pwd}</span></div><div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>`;
             card.onclick = () => showDetail(off.name);
@@ -513,44 +538,36 @@
     function updateDetailContent() {
         const grid = document.getElementById('detail-grid');
         grid.innerHTML = '';
-        const memberKeys = Object.keys(memberData).filter(key => {
-            if(currentOffice.includes('接艦')) return key.startsWith('A-');
-            if(currentOffice.includes('ABS')) return key.startsWith('C-');
-            return false;
-        });
+        
+        // 改為從 Firebase 的陣列過濾出該辦公室的人員與資產
+        const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
+        const officeAssetsList = globalAssets.filter(a => a.office_id === currentOffice);
 
-        // === 新增：動態計算並更新標籤計數器 ===
-        let assetCount = (officeAssets[currentOffice] || []).length; // 先計算辦公室公用資產
-        memberKeys.forEach(key => {
-            if (memberData[key].assets) {
-                assetCount += memberData[key].assets.length; // 加上每個人的個人資產數量
-            }
+        let assetCount = officeAssetsList.length;
+        officeMembers.forEach(m => {
+            if (m.assets && m.assets.length > 0) assetCount += m.assets.length;
         });
         
-        // 將計算結果寫入標籤按鈕中
-        document.getElementById('tab-staff').innerText = `人員 (${memberKeys.length})`;
+        document.getElementById('tab-staff').innerText = `人員 (${officeMembers.length})`;
         document.getElementById('tab-assets').innerText = `資產 (${assetCount})`;
         document.getElementById('tab-facilities').innerText = `孔位`;
-        // =======================================
 
         if (currentTab === 'staff') {
-            if(memberKeys.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
-            memberKeys.forEach(key => {
-                const m = memberData[key];
+            if(officeMembers.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
+            officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card';
-                card.innerHTML = `<h3>${m.name}</h3><p style="color:#666;">${key}</p><div class="detail-info"><div><b>分機：</b>${m.ext}</div><div><b>入場日期：</b>${m.join_date || 'N/A'}</div><div><b>電腦編號：</b>${m.pc_id}</div></div>`;
+                // 這裡的 m.id 就是你在 Firestore 看到的人員編號 (如 A-01)
+                card.innerHTML = `<h3>${m.name}</h3><p style="color:#666;">${m.id}</p><div class="detail-info"><div><b>分機：</b>${m.ext}</div><div><b>入場日期：</b>${m.join_date || 'N/A'}</div><div><b>電腦編號：</b>${m.pc_id}</div></div>`;
                 grid.appendChild(card);
             });
         } 
         else if (currentTab === 'assets') {
-            const assets = officeAssets[currentOffice] || [];
-            assets.forEach(a => {
+            officeAssetsList.forEach(a => {
                 const card = document.createElement('div'); card.className = 'nav-card';
                 card.innerHTML = `<h3>${a.item}</h3><div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn}</div><div style="font-size:12px;">狀態: ${a.status}</div>`;
                 grid.appendChild(card);
             });
-            memberKeys.forEach(key => {
-                const m = memberData[key];
+            officeMembers.forEach(m => {
                 if(m.assets && m.assets.length > 0) {
                     const card = document.createElement('div'); card.className = 'nav-card';
                     card.innerHTML = `<h3>${m.name} (個人資產)</h3><div class="detail-info" style="max-height:100px; opacity:1;">${m.assets.join('<br>')}</div>`;
@@ -559,8 +576,7 @@
             });
         }
         else if (currentTab === 'facilities') {
-            memberKeys.forEach(key => {
-                const m = memberData[key];
+            officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card'; card.style.textAlign = 'left';
                 card.innerHTML = `<h3 style="text-align:center;">${m.name}</h3><table class="facility-table"><tr><td class="facility-label">網路孔</td><td>${m.net_port}</td></tr><tr><td class="facility-label">電話孔</td><td>${m.phone_port}</td></tr></table>`;
                 grid.appendChild(card);
@@ -575,12 +591,12 @@
         container.innerHTML = '';
 
         const deptMap = {};
-        for (let key in memberData) {
-            const m = memberData[key];
+        // 改用 globalMembers 來跑迴圈
+        globalMembers.forEach(m => {
             const deptName = m.dept || '其他部門';
             if (!deptMap[deptName]) deptMap[deptName] = [];
             deptMap[deptName].push(m);
-        }
+        });
 
         for (let deptName in deptMap) {
             const groupDiv = document.createElement('div'); groupDiv.style.marginBottom = '30px';
@@ -597,7 +613,21 @@
         switchView('view-extensions');
     }
 
-    window.onload = init;
+    // 5. 將需要被 HTML inline onclick 呼叫的函式，綁定到全域 window 上
+    window.toggleSidebar = toggleSidebar;
+    window.closeSidebar = closeSidebar;
+    window.showExtensionsView = showExtensionsView;
+    window.goHome = goHome;
+    window.goBack = goBack;
+    window.showOffices = showOffices;
+    window.switchTab = switchTab;
+
+    // 監聽螢幕旋轉或視窗大小改變，自動修正標題佈局
+    window.addEventListener('resize', syncHeaderLayout);
+
+    // 啟動 Firebase 監聽器
+    setupRealtimeListeners();
+
 </script>
 </body>
 </html>

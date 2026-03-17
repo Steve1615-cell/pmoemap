@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase 資料轉移工具</title>
+    <style>
+        body { font-family: sans-serif; padding: 40px; text-align: center; }
+        button { padding: 15px 30px; font-size: 18px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        button:hover { background: #1d4ed8; }
+        #log { margin-top: 20px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto; background: #f1f5f9; padding: 20px; border-radius: 8px; font-family: monospace; white-space: pre-wrap;}
+    </style>
+</head>
+<body>
+
+    <h1>🚀 PMO 系統 - Firebase 資料轉移工具</h1>
+    <p>請開啟開發者工具 (F12) 的 Console 來查看詳細進度。</p>
+    <button id="start-btn">開始上傳資料到 Firebase</button>
+    <div id="log">等待操作...</div>
+
+    <!-- 使用 ES Module 載入 Firebase -->
+    <script type="module">
+        // 1. 匯入 Firebase 核心與 Firestore 功能 (使用 CDN 網址)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // 2. 貼上你的 Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDt7Z-QAG4C73K7f0RyItXMNQJc2NDxkzE",
+            authDomain: "pmoemap.firebaseapp.com",
+            projectId: "pmoemap",
+            storageBucket: "pmoemap.firebasestorage.app",
+            messagingSenderId: "151977340101",
+            appId: "1:151977340101:web:0cbfb47165d081152294ac"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- 以下為你原本的靜態資料 ---
+        const officeData = {
+            '修船大樓３Ｆ': [
+                { name: '中科院', pwd: 'N/A' },
+                { name: '關務辦', pwd: 'N/A' },
+                { name: '國海院', pwd: '1205#' },
+                { name: '高緯度遠洋巡護船接艦辦公室', pwd: 'N/A' }
+            ],
+            '修船大樓４Ｆ': [
+                { name: '高緯度遠洋巡護船接艦辦公室', pwd: '0857#' },
+                { name: '海軍浮塢案監造辦公室', pwd: '1197#' },
+                { name: '高緯度遠洋巡護船監造辦公室 (ABS)', pwd: '1198#' }
+            ]
+        };
+
+        const officeAssets = {
+            "高緯度遠洋巡護船接艦辦公室": [
+                { item: "冷氣機 A", sn: "AC-4F-A01", status: "正常" },
+                { item: "冰箱", sn: "REF-4F-A01", status: "正常" },
+                { item: "影印機", sn: "CP-4F-A01", status: "碳粉不足" }
+            ],
+            "海軍浮塢案監造辦公室": [
+                { item: "冷氣機 B", sn: "AC-4F-B01", status: "正常" }
+            ],
+            "高緯度遠洋巡護船監造辦公室 (ABS)": [
+                { item: "冷氣機 C", sn: "AC-4F-C01", status: "待修" },
+                { item: "公用電腦", sn: "PC-ABS-PUB", status: "正常" }
+            ]
+        };
+
+        const memberData = {
+            "A-01": { name: "王重文", ext: "6100", pc_id: "9059145", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員" },
+            "A-02": { name: "林筱融", ext: "6100", pc_id: "9069235", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船接艦人員" },
+            "C-01": { name: "曹璧蘭", ext: "6823", pc_id: "9059874", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)" },
+            "C-02": { name: "陳秀玟", ext: "6827", pc_id: "9059875", net_port: "N/A", phone_port: "N/A", dept: "高緯度遠洋巡護船監造人員 (ABS)" }
+            // 備註：為了示範腳本長度，這裡先縮減幾筆人員，你可以自行把 data.js 的完整名單貼進來替換這段
+        };
+
+        // UI 紀錄小工具
+        const logBox = document.getElementById('log');
+        function addLog(msg) {
+            console.log(msg);
+            logBox.innerText += msg + '\n';
+        }
+
+        // 綁定按鈕事件
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            addLog("開始轉移資料...");
+            document.getElementById('start-btn').disabled = true;
+
+            try {
+                // 1. 上傳辦公室資料 (Offices)
+                addLog("正在上傳辦公室資料...");
+                for (const floor in officeData) {
+                    for (const office of officeData[floor]) {
+                        // 使用辦公室名稱作為 Document ID
+                        const officeRef = doc(db, "offices", office.name);
+                        await setDoc(officeRef, {
+                            name: office.name,
+                            floor: floor,
+                            pwd: office.pwd
+                        });
+                    }
+                }
+
+                // 2. 上傳公用資產資料 (Assets)
+                addLog("正在上傳公用資產資料...");
+                for (const officeName in officeAssets) {
+                    for (const asset of officeAssets[officeName]) {
+                        // 資產不需要特定的 ID，讓 Firebase 自動生成
+                        const assetCollection = collection(db, "assets");
+                        await addDoc(assetCollection, {
+                            ...asset,
+                            office_id: officeName, // 建立關聯
+                            type: "public"
+                        });
+                    }
+                }
+
+                // 3. 上傳人員資料 (Members)
+                addLog("正在上傳人員資料...");
+                for (const memberId in memberData) {
+                    const m = memberData[memberId];
+                    
+                    // 根據你的原版邏輯，推斷辦公室歸屬
+                    let office_id = "未知辦公室";
+                    if (memberId.startsWith('A-')) office_id = "高緯度遠洋巡護船接艦辦公室";
+                    else if (memberId.startsWith('C-')) office_id = "高緯度遠洋巡護船監造辦公室 (ABS)";
+
+                    const memberRef = doc(db, "members", memberId);
+                    await setDoc(memberRef, {
+                        ...m,
+                        office_id: office_id // 建立關聯
+                    });
+                }
+
+                addLog("✅ 資料全部轉移完成！請前往 Firebase 控制台查看。");
+            } catch (error) {
+                addLog("❌ 發生錯誤：" + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -228,6 +228,7 @@
             background: white; width: 90%; max-width: 400px; border-radius: 12px;
             padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             transform: translateY(-20px); transition: transform 0.3s ease;
+            max-height: 90vh; overflow-y: auto; /* 避免表單過長在小螢幕被切斷 */
         }
         .modal-overlay.active .modal-content { transform: translateY(0); }
         .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; display: flex; justify-content: space-between;}
@@ -257,6 +258,17 @@
             .app-container { padding: 10px 15px; }
             .btn-nav { padding: 6px 10px; }
             .fab-container { bottom: 20px; right: 20px; } /* 手機版稍微靠邊緣 */
+            
+            .nav-card .preview-list, .nav-card .detail-info { 
+                max-height: none; opacity: 1; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; 
+            }
+            .nav-card .password-container { 
+                max-height: none; opacity: 1; margin-top: 10px; 
+            }
+            .nav-card:hover { transform: none; border-color: transparent; }
+            .nav-card { -webkit-user-select: none; user-select: none; }
+            .detail-info, .password-badge, h3, h2 { -webkit-user-select: text; user-select: text; }
+        }
 
         /* 讀取中提示 */
         #loading-overlay {
@@ -265,9 +277,21 @@
             z-index: 2000; font-size: 20px; font-weight: bold; color: var(--primary);
             transition: opacity 0.3s;
         }
+
+        /* 自訂提示框 (Toast) */
+        #custom-toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: #334155; color: white; padding: 12px 24px; border-radius: 8px;
+            z-index: 9999; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0; visibility: hidden; transition: all 0.3s ease;
+        }
+        #custom-toast.show { opacity: 1; visibility: visible; top: 40px; }
     </style>
 </head>
 <body>
+
+<!-- 自訂提示框 -->
+<div id="custom-toast"></div>
 
 <!-- 載入中遮罩 -->
 <div id="loading-overlay">資料讀取中...</div>
@@ -348,7 +372,7 @@
     <div class="fab-menu" id="fab-menu">
         <!-- 選單內容由 JS 動態生成 -->
     </div>
-    <button class="fab-btn" onclick="toggleFabMenu()">＋</button>
+    <button class="fab-btn" onclick="toggleFabMenu(event)">＋</button>
 </div>
 
 <!-- 新增/編輯人員表單 (Modal) -->
@@ -366,6 +390,13 @@
             <label>姓名</label>
             <input type="text" id="edit-name" placeholder="輸入姓名 (必填)">
         </div>
+        
+        <!-- 新增：入廠日欄位 (原生 Date Picker) -->
+        <div class="form-group">
+            <label>入廠日</label>
+            <input type="date" id="edit-join-date">
+        </div>
+
         <div class="form-group">
             <label>分機</label>
             <input type="text" id="edit-ext" placeholder="例如：6100 (無則填 N/A)">
@@ -385,8 +416,9 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeEditModal()">取消</button>
-            <button id="btn-save-member" class="btn-primary" onclick="saveMemberData()">儲存</button>
+            <button class="btn-secondary" onclick="closeEditModal()" style="margin-right: auto;">取消</button>
+            <button id="btn-save-next" class="btn-primary" onclick="saveMemberData(true)" style="display:none; background-color:#059669;">下一筆</button>
+            <button id="btn-save-member" class="btn-primary" onclick="saveMemberData(false)">儲存</button>
         </div>
     </div>
 </div>
@@ -394,7 +426,7 @@
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { collection, onSnapshot, doc, updateDoc, setDoc, initializeFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // 1. 初始化 Firebase
     const firebaseConfig = {
@@ -407,7 +439,11 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    
+    // 使用 initializeFirestore 並強制開啟長輪詢 (Long Polling) 以解決連線逾時問題
+    const db = initializeFirestore(app, {
+        experimentalForceLongPolling: true
+    });
 
     // 2. 建立全域變數來儲存來自 Firebase 的資料
     let globalOffices = [];
@@ -421,6 +457,14 @@
     let isInitialized = false; 
     let currentEditMemberId = null; 
     let isEditMode = false; // 紀錄表單狀態：true=編輯, false=新增
+
+    // 自訂提示訊息功能
+    function customAlert(msg) {
+        const toast = document.getElementById('custom-toast');
+        toast.innerText = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
 
     // 3. 監聽 Firebase 資料庫變化 (Realtime Updates)
     function setupRealtimeListeners() {
@@ -528,8 +572,26 @@
         document.getElementById('sidebar-overlay').classList.remove('active');
     }
 
+    // ==== 全域事件監聽 (ESC 與點擊空白處關閉) ====
+    document.addEventListener('click', (e) => {
+        const fabContainer = document.getElementById('fab-container');
+        // 如果點擊的位置不在 FAB 容器內，且選單目前是開啟的，就自動關閉它
+        if (fabContainer && !fabContainer.contains(e.target) && document.getElementById('fab-menu').classList.contains('active')) {
+            closeFabMenu();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeFabMenu();
+            closeEditModal();
+            closeSidebar();
+        }
+    });
+
     // ==== 懸浮按鈕 (FAB) 邏輯 ====
-    function toggleFabMenu() {
+    function toggleFabMenu(event) {
+        if(event) event.stopPropagation(); // 阻止事件冒泡，避免剛打開就被 document click 關閉
         document.getElementById('fab-container').classList.toggle('active');
         document.getElementById('fab-menu').classList.toggle('active');
     }
@@ -548,16 +610,16 @@
 
         if (currentLevel === 0) {
             fabContainer.style.display = 'flex';
-            fabMenu.innerHTML = `<button class="fab-item" onclick="alert('新增辦公室功能開發中！')">➕ 新增辦公室</button>`;
+            fabMenu.innerHTML = `<button class="fab-item" onclick="customAlert('新增辦公室功能開發中！')">➕ 新增辦公室</button>`;
         } else if (currentLevel === 1) {
             fabContainer.style.display = 'flex';
-            fabMenu.innerHTML = `<button class="fab-item" onclick="alert('編輯樓層區域開發中！')">✏️ 編輯 ${currentFloor} 資訊</button>`;
+            fabMenu.innerHTML = `<button class="fab-item" onclick="customAlert('編輯樓層區域開發中！')">✏️ 編輯 ${currentFloor} 資訊</button>`;
         } else if (currentLevel === 2) {
             fabContainer.style.display = 'flex';
             fabMenu.innerHTML = `
                 <button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>
-                <button class="fab-item" onclick="alert('新增/編輯資產功能開發中！')">📦 管理資產與孔位</button>
-                <button class="fab-item" onclick="alert('編輯辦公室資訊開發中！')">✏️ 編輯辦公室資訊</button>
+                <button class="fab-item" onclick="customAlert('新增/編輯資產功能開發中！')">📦 管理資產與孔位</button>
+                <button class="fab-item" onclick="customAlert('編輯辦公室資訊開發中！')">✏️ 編輯辦公室資訊</button>
             `;
         } else {
             fabContainer.style.display = 'none'; // 第四層分機總表暫時不顯示 FAB
@@ -672,6 +734,9 @@
             if(officeMembers.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card';
+                // 處理日期格式顯示 (將 YYYY-MM-DD 轉為 YYYY/MM/DD)
+                const displayJoinDate = m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A';
+                
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
                         <div style="text-align: left;">
@@ -682,7 +747,7 @@
                     </div>
                     <div class="detail-info" style="border-top: none; padding-top: 0; margin-top: 5px;">
                         <div><b>分機：</b>${m.ext}</div>
-                        <div><b>入場日期：</b>${m.join_date || 'N/A'}</div>
+                        <div><b>入廠日：</b>${displayJoinDate}</div>
                         <div><b>電腦編號：</b>${m.pc_id}</div>
                     </div>`;
                 grid.appendChild(card);
@@ -705,7 +770,15 @@
         else if (currentTab === 'facilities') {
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card'; card.style.textAlign = 'left';
-                card.innerHTML = `<h3 style="text-align:center;">${m.name}</h3><table class="facility-table"><tr><td class="facility-label">網路孔</td><td>${m.net_port}</td></tr><tr><td class="facility-label">電話孔</td><td>${m.phone_port}</td></tr></table>`;
+                // 孔位頁面：加入粗體置中的 PC ID
+                const pcDisplay = m.pc_id && m.pc_id !== 'N/A' ? m.pc_id : '無';
+                card.innerHTML = `
+                    <h3 style="text-align:center; margin-bottom: 4px;">${m.name}</h3>
+                    <div style="text-align:center; font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${pcDisplay}</div>
+                    <table class="facility-table">
+                        <tr><td class="facility-label">網路孔</td><td>${m.net_port}</td></tr>
+                        <tr><td class="facility-label">電話孔</td><td>${m.phone_port}</td></tr>
+                    </table>`;
                 grid.appendChild(card);
             });
         }
@@ -744,34 +817,40 @@
     function openMemberModal(memberId = null) {
         closeFabMenu(); // 打開表單時收起右下角選單
         const idInput = document.getElementById('edit-id');
+        const btnNext = document.getElementById('btn-save-next');
 
         if (memberId) {
-            // 編輯模式
+            // ==== 編輯模式 ====
             isEditMode = true;
             currentEditMemberId = memberId;
             document.getElementById('modal-title').innerText = '✏️ 編輯人員資料';
             idInput.value = memberId;
             idInput.disabled = true; // 編輯模式不允許修改 ID
             idInput.style.backgroundColor = '#f1f5f9';
+            btnNext.style.display = 'none'; // 隱藏「下一筆」按鈕
 
             const m = globalMembers.find(x => x.id === memberId);
             if(m) {
                 document.getElementById('edit-name').value = m.name || '';
+                document.getElementById('edit-join-date').value = m.join_date || '';
                 document.getElementById('edit-ext').value = m.ext || '';
                 document.getElementById('edit-pc').value = m.pc_id || '';
                 document.getElementById('edit-net').value = m.net_port || '';
                 document.getElementById('edit-phone').value = m.phone_port || '';
             }
         } else {
-            // 新增模式
+            // ==== 新增模式 ====
             isEditMode = false;
             currentEditMemberId = null;
             document.getElementById('modal-title').innerText = '➕ 新增人員資料';
             
-            // 清空所有欄位
-            idInput.value = '';
             idInput.disabled = false;
             idInput.style.backgroundColor = '#ffffff';
+            btnNext.style.display = 'inline-block'; // 顯示「下一筆」按鈕
+            
+            // 注意：我們在打開新增模式時「不主動清空」日期欄位
+            // 這樣如果使用者剛按了「下一筆」，或者連續點擊新增，入廠日就會自然保留上一筆的值
+            idInput.value = '';
             document.getElementById('edit-name').value = '';
             document.getElementById('edit-ext').value = '';
             document.getElementById('edit-pc').value = '';
@@ -786,16 +865,21 @@
         document.getElementById('edit-modal-overlay').classList.remove('active');
     }
 
-    async function saveMemberData() {
+    // saveMemberData 增加參數 continueNext，判斷是否為點擊「下一筆」
+    async function saveMemberData(continueNext = false) {
         const idInput = document.getElementById('edit-id').value.trim();
         const nameInput = document.getElementById('edit-name').value.trim();
 
         if (!idInput || !nameInput) {
-            alert('人員編號與姓名為必填欄位！');
+            customAlert('人員編號與姓名為必填欄位！');
             return;
         }
         
-        const btn = document.getElementById('btn-save-member');
+        // 判斷當下點擊的是哪一顆按鈕，以便做狀態改變
+        const btnId = continueNext ? 'btn-save-next' : 'btn-save-member';
+        const btn = document.getElementById(btnId);
+        const originalText = btn.innerText;
+        
         btn.disabled = true;
         btn.innerText = '儲存中...';
 
@@ -803,6 +887,7 @@
             // 建立要儲存的資料物件
             const memberDataToSave = {
                 name: nameInput,
+                join_date: document.getElementById('edit-join-date').value || '', // 取得入廠日，空值則存空字串
                 ext: document.getElementById('edit-ext').value || 'N/A',
                 pc_id: document.getElementById('edit-pc').value || 'N/A',
                 net_port: document.getElementById('edit-net').value || 'N/A',
@@ -821,13 +906,13 @@
                 // 為了防呆，新增前可以先檢查 globalMembers 裡有沒有重複的 ID
                 const isIdExists = globalMembers.some(m => m.id === idInput);
                 if (isIdExists) {
-                    alert('這個人員編號已經存在了！請使用另一個編號。');
+                    customAlert('這個人員編號已經存在了！請使用另一個編號。');
                     btn.disabled = false;
-                    btn.innerText = '儲存';
+                    btn.innerText = originalText;
                     return;
                 }
                 
-                // 由於是新成員，手動指定部門預設值 (未來可再擴充為下拉選單)
+                // 由於是新成員，手動指定部門預設值
                 if (currentOffice.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOffice.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
                 else memberDataToSave.dept = '其他部門';
@@ -835,13 +920,36 @@
                 await setDoc(memberRef, memberDataToSave);
             }
             
-            closeEditModal();
+            // 根據是否點擊「下一筆」決定後續動作
+            if (continueNext && !isEditMode) {
+                // 顯示短暫提示，不清空入廠日，僅清空其他欄位
+                btn.innerText = '已新增 ✔';
+                
+                document.getElementById('edit-id').value = '';
+                document.getElementById('edit-name').value = '';
+                document.getElementById('edit-ext').value = '';
+                document.getElementById('edit-pc').value = '';
+                document.getElementById('edit-net').value = '';
+                document.getElementById('edit-phone').value = '';
+                
+                // 將輸入焦點移回 ID 欄位，方便雙手不離開鍵盤繼續輸入
+                document.getElementById('edit-id').focus();
+                
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }, 800);
+            } else {
+                closeEditModal();
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+            
         } catch(error) {
             console.error("更新失敗: ", error);
-            alert("儲存失敗，請檢查網路連線。");
-        } finally {
+            customAlert("儲存失敗，請檢查網路連線。");
             btn.disabled = false;
-            btn.innerText = '儲存';
+            btn.innerText = originalText;
         }
     }
 
@@ -857,6 +965,7 @@
     window.closeEditModal = closeEditModal;
     window.saveMemberData = saveMemberData;
     window.toggleFabMenu = toggleFabMenu;
+    window.customAlert = customAlert;
 
     // 監聽螢幕旋轉或視窗大小改變，自動修正標題佈局
     window.addEventListener('resize', syncHeaderLayout);

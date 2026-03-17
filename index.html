@@ -781,26 +781,56 @@
         const container = document.getElementById('ext-container');
         container.innerHTML = '';
 
-        const deptMap = {};
+        // 修改：嚴格改用 office_id 作為分組依據，取代原本的 dept
+        const officeMap = {};
         globalMembers.forEach(m => {
-            const deptName = m.dept || '其他部門';
-            if (!deptMap[deptName]) deptMap[deptName] = [];
-            deptMap[deptName].push(m);
+            const officeName = m.office_id || '未分配辦公室';
+            if (!officeMap[officeName]) officeMap[officeName] = [];
+            officeMap[officeName].push(m);
         });
 
-        for (let deptName in deptMap) {
+        for (let officeName in officeMap) {
             const groupDiv = document.createElement('div'); groupDiv.style.marginBottom = '30px';
-            let html = `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">${deptName}</h2><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px;">`;
+            let html = `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">${officeName}</h2><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px;">`;
 
-            deptMap[deptName].forEach(m => {
+            officeMap[officeName].forEach(m => {
                 const hasExt = (m.ext && m.ext !== 'N/A');
                 const extText = hasExt ? m.ext : '無分機';
                 const extColor = hasExt ? 'var(--primary)' : 'var(--text-muted)';
-                html += `<div class="nav-card no-hover" style="padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center;"><div><div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${m.name}</div><div style="font-size: 12px; color: var(--text-muted);">${m.pc_id !== 'N/A' ? 'PC: ' + m.pc_id : ''}</div></div><div style="font-size: 24px; font-weight: bold; color: ${extColor}; font-family: monospace;">${extText}</div></div>`;
+                html += `<div class="nav-card no-hover" style="padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center;"><div><div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${m.name}</div><div style="font-size: 12px; color: var(--text-muted);">${m.title && m.title !== 'N/A' ? m.title : ''} ${m.pc_id !== 'N/A' ? 'PC:' + m.pc_id : ''}</div></div><div style="font-size: 24px; font-weight: bold; color: ${extColor}; font-family: monospace;">${extText}</div></div>`;
             });
             html += `</div>`; groupDiv.innerHTML = html; container.appendChild(groupDiv);
         }
         switchView('view-extensions');
+    }
+
+    // ==== 自動計算下一筆人員 ID ====
+    function getNextAutoId(officeName) {
+        let prefix = '';
+        if (officeName.includes('接艦')) prefix = 'A';
+        else if (officeName.includes('ABS')) prefix = 'C';
+        else if (officeName.includes('浮塢')) prefix = 'B';
+        else {
+            // 若為未定義的辦公室，則從該辦公室現有人員中反推字首
+            const officeMembers = globalMembers.filter(m => m.office_id === officeName);
+            if (officeMembers.length > 0) {
+                const match = officeMembers[0].id.match(/^([A-Z]+)-/i);
+                if (match) prefix = match[1].toUpperCase();
+            }
+        }
+
+        if (!prefix) return ''; // 無法判斷前綴，留空讓使用者自行定義第一人
+
+        // 找出該前綴在全域中使用的最大數字
+        const prefixMembers = globalMembers.filter(m => m.id.toUpperCase().startsWith(prefix + '-'));
+        let maxNum = 0;
+        prefixMembers.forEach(m => {
+            const numPart = parseInt(m.id.substring(prefix.length + 1), 10);
+            if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+        });
+
+        // 格式化為 X-00 的形式
+        return `${prefix}-${(maxNum + 1).toString().padStart(2, '0')}`;
     }
 
     // ==== 新增/編輯人員表單 (Modal) 邏輯 ====
@@ -874,28 +904,49 @@
             return;
         }
 
-        // ================= 📍 強制防呆機制 =================
+        // ================= 📍 強制防呆機制 (升級版) =================
         
-        // 1. 檢查 ID 開頭是否與辦公室匹配 (所有模式都檢查，並補齊浮塢辦公室)
+        // 1. 取得該辦公室「預期」的字首 (若該辦公室已有成員，則繼承字首)
         let expectedPrefix = '';
         if (currentOffice.includes('接艦')) expectedPrefix = 'A-';
         else if (currentOffice.includes('ABS')) expectedPrefix = 'C-';
         else if (currentOffice.includes('浮塢')) expectedPrefix = 'B-';
+        else {
+            const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
+            if (officeMembers.length > 0) {
+                const match = officeMembers[0].id.match(/^([A-Z]+)-/i);
+                if (match) expectedPrefix = match[1].toUpperCase() + '-';
+            }
+        }
 
         if (expectedPrefix && !idInput.startsWith(expectedPrefix)) {
-            warningEl.innerText = `辦公室編號必須統一！此辦公室人員需以「${expectedPrefix}」開頭。`;
+            warningEl.innerText = `辦公室編碼必須統一！此辦公室人員需以「${expectedPrefix}」開頭。`;
             warningEl.style.display = 'block';
-            customAlert(`⚠️ ID 必須以 ${expectedPrefix} 開頭！`, true); // 雙重顯示
+            customAlert(`⚠️ ID 必須以 ${expectedPrefix} 開頭！`, true); 
             return; // 終止儲存
         }
 
-        // 2. 檢查 ID 是否重複 (僅限新增模式時檢查，且無懼大小寫)
+        // 2. 檢查是否偷用其他辦公室的編碼 (當輸入未定義辦公室的第一人時)
+        const inputMatch = idInput.match(/^([A-Z]+)-/i);
+        const inputPrefix = inputMatch ? inputMatch[1].toUpperCase() + '-' : '';
+
+        if (inputPrefix && expectedPrefix === '') {
+            const isPrefixTaken = globalMembers.some(m => m.office_id !== currentOffice && m.id.toUpperCase().startsWith(inputPrefix));
+            if (isPrefixTaken) {
+                warningEl.innerText = `辦公室編碼不可混用！「${inputPrefix}」已被其他辦公室佔用。`;
+                warningEl.style.display = 'block';
+                customAlert(`⚠️ 此編碼系列已被其他辦公室使用！`, true);
+                return;
+            }
+        }
+
+        // 3. 檢查 ID 是否重複 (僅限新增模式時檢查)
         if (!isEditMode) {
             const isDuplicate = globalMembers.some(m => m.id.toUpperCase() === idInput);
             if (isDuplicate) {
                 warningEl.innerText = '人員ID不可重複！此編號已有人使用。';
                 warningEl.style.display = 'block';
-                customAlert('⚠️ 此人員 ID 已經存在！', true); // 雙重顯示
+                customAlert('⚠️ 此人員 ID 已經存在！', true); 
                 return; // 終止儲存
             }
         }
@@ -927,7 +978,7 @@
             } else {
                 if (currentOffice.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOffice.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
-                else memberDataToSave.dept = '其他部門';
+                else memberDataToSave.dept = currentOffice; // 預設以辦公室名稱作為部門
 
                 await setDoc(memberRef, memberDataToSave);
             }
@@ -935,7 +986,15 @@
             if (continueNext && !isEditMode) {
                 btn.innerText = '已新增 ✔';
                 
-                document.getElementById('edit-id').value = '';
+                // 自動將剛剛儲存的 ID 數值 +1，準備下一筆輸入
+                const match = idInput.match(/^([A-Z]+)-(\d+)$/i);
+                if (match) {
+                    const nextNum = parseInt(match[2], 10) + 1;
+                    document.getElementById('edit-id').value = `${match[1].toUpperCase()}-${nextNum.toString().padStart(2, '0')}`;
+                } else {
+                    document.getElementById('edit-id').value = ''; 
+                }
+                
                 document.getElementById('edit-name').value = '';
                 document.getElementById('edit-title').value = '';
                 document.getElementById('edit-ext').value = '';

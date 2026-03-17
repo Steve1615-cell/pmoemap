@@ -385,6 +385,8 @@
         <div class="form-group" id="group-member-id">
             <label>人員編號 ID</label>
             <input type="text" id="edit-id" placeholder="例如：A-13 (必填)">
+            <!-- 新增：防呆警告訊息區塊 -->
+            <div id="id-warning" style="color: var(--danger); font-size: 13px; margin-top: 6px; display: none; font-weight: bold;"></div>
         </div>
         <div class="form-group">
             <label>姓名</label>
@@ -825,6 +827,10 @@
         closeFabMenu(); // 打開表單時收起右下角選單
         const idInput = document.getElementById('edit-id');
         const btnNext = document.getElementById('btn-save-next');
+        const warningEl = document.getElementById('id-warning');
+
+        // 每次打開表單時，隱藏警告文字
+        warningEl.style.display = 'none';
 
         if (memberId) {
             // ==== 編輯模式 ====
@@ -878,11 +884,35 @@
     async function saveMemberData(continueNext = false) {
         const idInput = document.getElementById('edit-id').value.trim();
         const nameInput = document.getElementById('edit-name').value.trim();
+        const warningEl = document.getElementById('id-warning');
+
+        // 每次點擊儲存前，先重置警告狀態
+        warningEl.style.display = 'none';
 
         if (!idInput || !nameInput) {
             customAlert('人員編號與姓名為必填欄位！');
             return;
         }
+
+        // ================= 📍 新增防呆機制 =================
+        // 1. 檢查 ID 是否重複 (僅限新增模式時檢查)
+        if (!isEditMode && globalMembers.some(m => m.id === idInput)) {
+            warningEl.innerText = '人員ID不可重複！此編號已有人使用。';
+            warningEl.style.display = 'block';
+            return; // 終止儲存，不鎖定按鈕
+        }
+
+        // 2. 檢查 ID 開頭是否與辦公室匹配
+        let expectedPrefix = '';
+        if (currentOffice.includes('接艦')) expectedPrefix = 'A-';
+        else if (currentOffice.includes('ABS')) expectedPrefix = 'C-';
+
+        if (expectedPrefix && !idInput.startsWith(expectedPrefix)) {
+            warningEl.innerText = `辦公室編號必須統一！此辦公室人員需以「${expectedPrefix}」開頭。`;
+            warningEl.style.display = 'block';
+            return; // 終止儲存，不鎖定按鈕
+        }
+        // ===================================================
         
         // 判斷當下點擊的是哪一顆按鈕，以便做狀態改變
         const btnId = continueNext ? 'btn-save-next' : 'btn-save-member';
@@ -912,16 +942,7 @@
                 // 編輯模式：更新現有文件
                 await updateDoc(memberRef, memberDataToSave);
             } else {
-                // 新增模式：設定新文件 (setDoc 如果 ID 存在會覆寫，不存在會新增)
-                // 為了防呆，新增前可以先檢查 globalMembers 裡有沒有重複的 ID
-                const isIdExists = globalMembers.some(m => m.id === idInput);
-                if (isIdExists) {
-                    customAlert('這個人員編號已經存在了！請使用另一個編號。');
-                    btn.disabled = false;
-                    btn.innerText = originalText;
-                    return;
-                }
-                
+                // 新增模式：設定新文件
                 // 由於是新成員，手動指定部門預設值
                 if (currentOffice.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOffice.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';

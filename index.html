@@ -234,8 +234,8 @@
         .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; display: flex; justify-content: space-between;}
         .form-group { margin-bottom: 12px; text-align: left; }
         .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: bold;}
-        .form-group input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
-        .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+        .form-group input, .form-group select { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
         .modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
         .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         .btn-secondary { background: #e2e8f0; color: var(--text-main); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s;}
@@ -376,7 +376,9 @@
     <button class="fab-btn" onclick="toggleFabMenu(event)">＋</button>
 </div>
 
-<!-- 新增/編輯人員表單 (Modal) -->
+<!-- ================= Modal 表單區域 ================= -->
+
+<!-- 1. 新增/編輯人員表單 (Modal) -->
 <div id="edit-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeEditModal()">
     <div class="modal-content">
         <div class="modal-header">
@@ -387,17 +389,14 @@
             <label>姓名</label>
             <input type="text" id="edit-name" placeholder="輸入姓名 (必填)">
         </div>
-        
         <div class="form-group">
             <label>職稱 (頭銜)</label>
             <input type="text" id="edit-title" placeholder="例如：專案經理 (無則填 N/A)">
         </div>
-        
         <div class="form-group">
             <label>入廠日</label>
             <input type="date" id="edit-join-date">
         </div>
-
         <div class="form-group">
             <label>分機</label>
             <input type="text" id="edit-ext" placeholder="例如：6100 (無則填 N/A)">
@@ -420,6 +419,61 @@
             <button class="btn-secondary" onclick="closeEditModal()" style="margin-right: auto;">取消</button>
             <button id="btn-save-next" class="btn-primary" onclick="saveMemberData(true)" style="display:none; background-color:#059669;">下一筆</button>
             <button id="btn-save-member" class="btn-primary" onclick="saveMemberData(false)">儲存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 2. 新增/編輯資產表單 (Modal) -->
+<div id="asset-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeAssetModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span id="asset-modal-title">📦 新增/編輯資產</span>
+            <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeAssetModal()">×</button>
+        </div>
+        <div class="form-group">
+            <label>資產名稱</label>
+            <input type="text" id="asset-item" placeholder="例如：印表機 A (必填)">
+        </div>
+        <div class="form-group">
+            <label>財產序號 / SN</label>
+            <input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)">
+        </div>
+        <div class="form-group">
+            <label>設備狀態</label>
+            <select id="asset-status">
+                <option value="正常">🟢 正常</option>
+                <option value="碳粉不足">🟡 碳粉不足</option>
+                <option value="待修">🔴 待修</option>
+                <option value="報廢">⚫ 報廢</option>
+                <option value="其他">⚪ 其他</option>
+            </select>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeAssetModal()">取消</button>
+            <button id="btn-save-asset" class="btn-primary" onclick="saveAssetData()">儲存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 3. 編輯辦公室資訊表單 (Modal) -->
+<div id="office-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeOfficeModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>✏️ 編輯辦公室資訊</span>
+            <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeOfficeModal()">×</button>
+        </div>
+        <!-- 備註技術債：因為目前 office_id 綁死名稱，為了系統穩定暫不開放修改名稱 -->
+        <div class="form-group">
+            <label>辦公室名稱 (為防資料遺失，暫不可修改)</label>
+            <input type="text" id="office-name" disabled style="background-color: #f1f5f9; color: #94a3b8;">
+        </div>
+        <div class="form-group">
+            <label>門禁密碼</label>
+            <input type="text" id="office-pwd" placeholder="例如：0857# (無則填 N/A)">
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeOfficeModal()">取消</button>
+            <button id="btn-save-office" class="btn-primary" onclick="saveOfficeData()">儲存</button>
         </div>
     </div>
 </div>
@@ -455,8 +509,11 @@
     let currentOffice = '';
     let currentTab = 'staff';
     let isInitialized = false; 
+    
+    // 狀態管理：紀錄各表單目前編輯的 ID (若為 null 則代表新增)
     let currentEditMemberId = null; 
-    let isEditMode = false; // true=編輯, false=新增
+    let currentEditAssetId = null;
+    let isEditMode = false; // 人員專用
 
     // 自訂提示訊息功能 (支援 isDanger 紅色警告樣式)
     function customAlert(msg, isDanger = false) {
@@ -577,6 +634,8 @@
         if (e.key === 'Escape') {
             closeFabMenu();
             closeEditModal();
+            closeAssetModal();
+            closeOfficeModal();
             closeSidebar();
         }
     });
@@ -606,10 +665,17 @@
             fabMenu.innerHTML = `<button class="fab-item" onclick="customAlert('編輯樓層區域開發中！')">✏️ 編輯 ${currentFloor} 資訊</button>`;
         } else if (currentLevel === 2) {
             fabContainer.style.display = 'flex';
+            // 動態依照當前標籤切換對應的功能，體驗更直覺
+            let specificAction = '';
+            if (currentTab === 'staff' || currentTab === 'facilities') {
+                specificAction = `<button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>`;
+            } else if (currentTab === 'assets') {
+                specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增公用資產</button>`;
+            }
+
             fabMenu.innerHTML = `
-                <button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>
-                <button class="fab-item" onclick="customAlert('新增/編輯資產功能開發中！')">📦 管理資產與孔位</button>
-                <button class="fab-item" onclick="customAlert('編輯辦公室資訊開發中！')">✏️ 編輯辦公室資訊</button>
+                ${specificAction}
+                <button class="fab-item" onclick="openOfficeModal()">✏️ 編輯辦公室密碼</button>
             `;
         } else {
             fabContainer.style.display = 'none';
@@ -698,6 +764,7 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`tab-${tab}`).classList.add('active');
         updateDetailContent();
+        updateFabMenu(); // 切換分頁時，右下角按鈕也會跟著變更功能
     }
 
     function updateDetailContent() {
@@ -705,6 +772,7 @@
         grid.innerHTML = '';
         
         const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
+        // 針對辦公室公用資產過濾
         const officeAssetsList = globalAssets.filter(a => a.office_id === currentOffice);
 
         let assetCount = officeAssetsList.length;
@@ -722,7 +790,6 @@
                 const card = document.createElement('div'); card.className = 'nav-card';
                 const displayJoinDate = m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A';
                 
-                // 移除 ID 顯示標籤，改為純顯示姓名與資料
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
                         <div style="text-align: left;">
@@ -740,26 +807,49 @@
             });
         } 
         else if (currentTab === 'assets') {
+            if(assetCount === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無資產資料</div>';
+            
+            // 渲染辦公室公用資產
             officeAssetsList.forEach(a => {
                 const card = document.createElement('div'); card.className = 'nav-card';
-                card.innerHTML = `<h3>${a.item}</h3><div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn}</div><div style="font-size:12px;">狀態: ${a.status}</div>`;
+                // 依照狀態給予不同顏色的圓點提示
+                let statusIcon = '⚪';
+                if(a.status === '正常') statusIcon = '🟢';
+                else if(a.status === '待修') statusIcon = '🔴';
+                else if(a.status === '報廢') statusIcon = '⚫';
+                else if(a.status === '碳粉不足') statusIcon = '🟡';
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <h3 style="margin:0;">${a.item}</h3>
+                        <button class="btn-edit" onclick="openAssetModal('${a.id}')">✏️ 編輯</button>
+                    </div>
+                    <div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div>
+                    <div style="font-size:12px; font-weight:bold; color: var(--text-main);">${statusIcon} ${a.status || '未登記'}</div>
+                `;
                 grid.appendChild(card);
             });
+
+            // 渲染人員的個人資產 (這部分牽涉陣列修改較複雜，目前暫維持唯讀展示，未來可視需求拆分)
             officeMembers.forEach(m => {
                 if(m.assets && m.assets.length > 0) {
                     const card = document.createElement('div'); card.className = 'nav-card';
-                    card.innerHTML = `<h3>${m.name} (個人資產)</h3><div class="detail-info" style="max-height:100px; opacity:1;">${m.assets.join('<br>')}</div>`;
+                    card.innerHTML = `<h3>${m.name} (個人資產)</h3><div class="detail-info" style="max-height:100px; opacity:1; border-top: none;">${m.assets.join('<br>')}</div>`;
                     grid.appendChild(card);
                 }
             });
         }
         else if (currentTab === 'facilities') {
+            if(officeMembers.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無孔位配置</div>';
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card'; card.style.textAlign = 'left';
                 const pcDisplay = m.pc_id && m.pc_id !== 'N/A' ? m.pc_id : '無';
                 card.innerHTML = `
-                    <h3 style="text-align:center; margin-bottom: 4px;">${m.name}</h3>
-                    <div style="text-align:center; font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${pcDisplay}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <h3 style="margin:0; margin-bottom: 4px;">${m.name}</h3>
+                        <button class="btn-edit" onclick="openMemberModal('${m.id}')">✏️ 編輯</button>
+                    </div>
+                    <div style="font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${pcDisplay}</div>
                     <table class="facility-table">
                         <tr><td class="facility-label">網路孔</td><td>${m.net_port}</td></tr>
                         <tr><td class="facility-label">電話孔</td><td>${m.phone_port}</td></tr>
@@ -797,13 +887,12 @@
         switchView('view-extensions');
     }
 
-    // ==== 新增/編輯人員表單 (Modal) 邏輯 ====
+    // ================= 1. 人員表單邏輯 =================
     function openMemberModal(memberId = null) {
         closeFabMenu(); 
         const btnNext = document.getElementById('btn-save-next');
 
         if (memberId && typeof memberId === 'string') {
-            // ==== 編輯模式 ====
             isEditMode = true;
             currentEditMemberId = memberId;
             document.getElementById('modal-title').innerText = '✏️ 編輯人員資料';
@@ -820,7 +909,6 @@
                 document.getElementById('edit-phone').value = m.phone_port || '';
             }
         } else {
-            // ==== 新增模式 ====
             isEditMode = false;
             currentEditMemberId = null;
             document.getElementById('modal-title').innerText = '➕ 新增人員資料';
@@ -869,29 +957,24 @@
             };
 
             if (isEditMode) {
-                // 編輯模式：更新已存在的 Document
                 const memberRef = doc(db, 'members', currentEditMemberId);
                 await updateDoc(memberRef, memberDataToSave);
             } else {
-                // 新增模式：交給 Firebase 自動產生 Document ID，未來地圖開發時再寫入 seat_id
                 if (currentOffice.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOffice.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
-                else memberDataToSave.dept = currentOffice; // 預設以辦公室名稱作為部門
+                else memberDataToSave.dept = currentOffice; 
 
                 await addDoc(collection(db, 'members'), memberDataToSave);
             }
             
             if (continueNext && !isEditMode) {
                 btn.innerText = '已新增 ✔';
-                
                 document.getElementById('edit-name').value = '';
                 document.getElementById('edit-title').value = '';
                 document.getElementById('edit-ext').value = '';
                 document.getElementById('edit-pc').value = '';
                 document.getElementById('edit-net').value = '';
                 document.getElementById('edit-phone').value = '';
-                
-                // 將輸入焦點移回姓名欄位
                 document.getElementById('edit-name').focus();
                 
                 setTimeout(() => {
@@ -903,7 +986,6 @@
                 btn.disabled = false;
                 btn.innerText = originalText;
             }
-            
         } catch(error) {
             console.error("更新失敗: ", error);
             customAlert("儲存失敗，請檢查網路連線。", true);
@@ -912,6 +994,113 @@
         }
     }
 
+    // ================= 2. 資產表單邏輯 =================
+    function openAssetModal(assetId = null) {
+        closeFabMenu();
+        if (assetId && typeof assetId === 'string') {
+            currentEditAssetId = assetId;
+            document.getElementById('asset-modal-title').innerText = '📦 編輯資產資料';
+            
+            const a = globalAssets.find(x => x.id === assetId);
+            if(a) {
+                document.getElementById('asset-item').value = a.item || '';
+                document.getElementById('asset-sn').value = a.sn || '';
+                document.getElementById('asset-status').value = a.status || '正常';
+            }
+        } else {
+            currentEditAssetId = null;
+            document.getElementById('asset-modal-title').innerText = '➕ 新增公用資產';
+            
+            document.getElementById('asset-item').value = '';
+            document.getElementById('asset-sn').value = '';
+            document.getElementById('asset-status').value = '正常';
+        }
+        document.getElementById('asset-modal-overlay').classList.add('active');
+    }
+
+    function closeAssetModal() {
+        document.getElementById('asset-modal-overlay').classList.remove('active');
+    }
+
+    async function saveAssetData() {
+        const itemInput = document.getElementById('asset-item').value.trim();
+        if (!itemInput) {
+            customAlert('資產名稱為必填欄位！', true);
+            return;
+        }
+
+        const btn = document.getElementById('btn-save-asset');
+        btn.disabled = true;
+        btn.innerText = '儲存中...';
+
+        try {
+            const assetDataToSave = {
+                item: itemInput,
+                sn: document.getElementById('asset-sn').value || 'N/A',
+                status: document.getElementById('asset-status').value,
+                office_id: currentOffice,
+                type: 'public' // 強制設定為公用辦公室資產
+            };
+
+            if (currentEditAssetId) {
+                const assetRef = doc(db, 'assets', currentEditAssetId);
+                await updateDoc(assetRef, assetDataToSave);
+            } else {
+                await addDoc(collection(db, 'assets'), assetDataToSave);
+            }
+            
+            closeAssetModal();
+        } catch(error) {
+            console.error("更新失敗: ", error);
+            customAlert("儲存失敗，請檢查網路連線。", true);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = '儲存';
+        }
+    }
+
+    // ================= 3. 辦公室資訊表單邏輯 =================
+    function openOfficeModal() {
+        closeFabMenu();
+        const officeData = globalOffices.find(o => o.name === currentOffice);
+        if (!officeData) {
+            customAlert('找不到辦公室資料！', true);
+            return;
+        }
+
+        document.getElementById('office-name').value = officeData.name;
+        document.getElementById('office-pwd').value = officeData.pwd || '';
+        document.getElementById('office-modal-overlay').classList.add('active');
+    }
+
+    function closeOfficeModal() {
+        document.getElementById('office-modal-overlay').classList.remove('active');
+    }
+
+    async function saveOfficeData() {
+        const btn = document.getElementById('btn-save-office');
+        btn.disabled = true;
+        btn.innerText = '儲存中...';
+
+        try {
+            // 目前 office_id 就是 name，所以我們利用 currentOffice 來抓取 Document 參考
+            const officeRef = doc(db, 'offices', currentOffice);
+            await updateDoc(officeRef, {
+                pwd: document.getElementById('office-pwd').value || 'N/A'
+            });
+            
+            closeOfficeModal();
+            customAlert("辦公室密碼已更新！");
+        } catch(error) {
+            console.error("更新失敗: ", error);
+            customAlert("儲存失敗，請確認這筆辦公室資料是否存在於資料庫。", true);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = '儲存';
+        }
+    }
+
+    // 匯出全域函數
     window.toggleSidebar = toggleSidebar;
     window.closeSidebar = closeSidebar;
     window.showExtensionsView = showExtensionsView;
@@ -919,9 +1108,20 @@
     window.goBack = goBack;
     window.showOffices = showOffices;
     window.switchTab = switchTab;
+    
+    // 表單功能
     window.openMemberModal = openMemberModal;
     window.closeEditModal = closeEditModal;
     window.saveMemberData = saveMemberData;
+    
+    window.openAssetModal = openAssetModal;
+    window.closeAssetModal = closeAssetModal;
+    window.saveAssetData = saveAssetData;
+    
+    window.openOfficeModal = openOfficeModal;
+    window.closeOfficeModal = closeOfficeModal;
+    window.saveOfficeData = saveOfficeData;
+    
     window.toggleFabMenu = toggleFabMenu;
     window.customAlert = customAlert;
 

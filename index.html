@@ -391,6 +391,12 @@
             <input type="text" id="edit-name" placeholder="輸入姓名 (必填)">
         </div>
         
+        <!-- 新增：職稱 (頭銜) 欄位 -->
+        <div class="form-group">
+            <label>職稱 (頭銜)</label>
+            <input type="text" id="edit-title" placeholder="例如：專案經理 (無則填 N/A)">
+        </div>
+        
         <!-- 新增：入廠日欄位 (原生 Date Picker) -->
         <div class="form-group">
             <label>入廠日</label>
@@ -746,6 +752,7 @@
                         <button class="btn-edit" onclick="openMemberModal('${m.id}')">✏️ 編輯</button>
                     </div>
                     <div class="detail-info" style="border-top: none; padding-top: 0; margin-top: 5px;">
+                        <div><b>職稱：</b>${m.title || 'N/A'}</div>
                         <div><b>分機：</b>${m.ext}</div>
                         <div><b>入廠日：</b>${displayJoinDate}</div>
                         <div><b>電腦編號：</b>${m.pc_id}</div>
@@ -832,6 +839,7 @@
             const m = globalMembers.find(x => x.id === memberId);
             if(m) {
                 document.getElementById('edit-name').value = m.name || '';
+                document.getElementById('edit-title').value = m.title || '';
                 document.getElementById('edit-join-date').value = m.join_date || '';
                 document.getElementById('edit-ext').value = m.ext || '';
                 document.getElementById('edit-pc').value = m.pc_id || '';
@@ -852,6 +860,7 @@
             // 這樣如果使用者剛按了「下一筆」，或者連續點擊新增，入廠日就會自然保留上一筆的值
             idInput.value = '';
             document.getElementById('edit-name').value = '';
+            document.getElementById('edit-title').value = '';
             document.getElementById('edit-ext').value = '';
             document.getElementById('edit-pc').value = '';
             document.getElementById('edit-net').value = '';
@@ -887,6 +896,7 @@
             // 建立要儲存的資料物件
             const memberDataToSave = {
                 name: nameInput,
+                title: document.getElementById('edit-title').value || 'N/A',
                 join_date: document.getElementById('edit-join-date').value || '', // 取得入廠日，空值則存空字串
                 ext: document.getElementById('edit-ext').value || 'N/A',
                 pc_id: document.getElementById('edit-pc').value || 'N/A',
@@ -927,6 +937,7 @@
                 
                 document.getElementById('edit-id').value = '';
                 document.getElementById('edit-name').value = '';
+                document.getElementById('edit-title').value = '';
                 document.getElementById('edit-ext').value = '';
                 document.getElementById('edit-pc').value = '';
                 document.getElementById('edit-net').value = '';

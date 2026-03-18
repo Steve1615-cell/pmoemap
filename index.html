@@ -164,30 +164,41 @@
         }
         .modal-overlay.active .modal-content { transform: translateY(0); }
         .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; display: flex; justify-content: space-between;}
-        .form-group { margin-bottom: 12px; text-align: left; }
+        .form-group { margin-bottom: 12px; text-align: left; position: relative; }
         .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: bold;}
         .form-group input, .form-group select { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
         .modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
         .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         .btn-secondary { background: #e2e8f0; color: var(--text-main); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s;}
+        .btn-danger { background: var(--danger); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s;}
         .btn-primary:hover { background: #1d4ed8; }
         .btn-secondary:hover { background: #cbd5e1; }
+        .btn-danger:hover { background: #b91c1c; }
         .btn-edit { background: none; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
         .btn-edit:hover { background: var(--accent); color: var(--primary); border-color: var(--primary); }
 
-        /* ======== 資產分類標籤 (Asset Modal Tabs) ======== */
-        .asset-tabs-container {
-            display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px;
-            /* 隱藏捲動條但保留滑動功能 */
-            -ms-overflow-style: none; scrollbar-width: none;
+        /* ======== 自訂資產分類下拉選單 ======== */
+        .custom-dropdown-btn {
+            width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;
+            background: white; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
         }
-        .asset-tabs-container::-webkit-scrollbar { display: none; }
-        .asset-tab-btn {
-            padding: 6px 12px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 20px;
-            cursor: pointer; font-size: 13px; font-weight: bold; color: var(--text-main); white-space: nowrap; transition: all 0.2s ease;
+        .custom-dropdown-panel {
+            position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #cbd5e1;
+            border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 3100;
+            display: none; flex-direction: column; margin-top: 4px; overflow: hidden;
         }
-        .asset-tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
+        .custom-dropdown-panel.active { display: flex; }
+        .dropdown-search-row { display: flex; gap: 5px; padding: 10px; border-bottom: 1px solid #eee; background: #f8fafc; }
+        .dropdown-search-row input { flex: 1; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; }
+        .dropdown-list { max-height: 180px; overflow-y: auto; }
+        .dropdown-item {
+            padding: 10px; font-size: 14px; display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.2s;
+        }
+        .dropdown-item:hover { background: var(--accent); }
+        .dropdown-item-delete { background: none; border: none; cursor: pointer; opacity: 0.5; font-size: 14px; padding: 4px; border-radius: 4px; }
+        .dropdown-item-delete:hover { opacity: 1; background: #fee2e2; color: var(--danger); }
 
         /* ======== 懸浮操作按鈕 (FAB) ======== */
         .fab-container { position: fixed; bottom: 30px; right: 30px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
@@ -208,6 +219,7 @@
             .nav-card:hover { transform: none; border-color: transparent; }
             .nav-card { -webkit-user-select: none; user-select: none; }
             .detail-info, .password-badge, h3, h2 { -webkit-user-select: text; user-select: text; }
+            .dropdown-item-delete { opacity: 1; } /* 手機端直接顯示刪除按鈕 */
         }
 
         /* 讀取與提示 */
@@ -230,6 +242,20 @@
 
 <!-- 自訂提示框 -->
 <div id="custom-toast"></div>
+
+<!-- 自訂防呆警告對話框 (刪除資產類別專用) -->
+<div id="confirm-modal-overlay" class="modal-overlay" style="z-index: 4000;">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header" style="color: var(--danger);">
+            <span>⚠️ 刪除警告</span>
+        </div>
+        <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeConfirmModal()">取消</button>
+            <button id="btn-confirm-delete" class="btn-danger" onclick="executeDeleteCategory()">確定刪除</button>
+        </div>
+    </div>
+</div>
 
 <!-- 載入中遮罩 -->
 <div id="loading-overlay">資料讀取中...</div>
@@ -291,7 +317,7 @@
 
 <!-- ================= Modal 表單區域 ================= -->
 
-<!-- 1. 新增/編輯人員表單 (Modal) -->
+<!-- 1. 新增/編輯人員表單 (Modal) - 移除 PC/網路等硬體屬性 -->
 <div id="edit-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeEditModal()">
     <div class="modal-content">
         <div class="modal-header">
@@ -302,11 +328,7 @@
         <div class="form-group"><label>職稱 (頭銜)</label><input type="text" id="edit-title" placeholder="例如：專案經理 (無則填 N/A)"></div>
         <div class="form-group"><label>入廠日</label><input type="date" id="edit-join-date"></div>
         <div class="form-group"><label>分機</label><input type="text" id="edit-ext" placeholder="例如：6100 (無則填 N/A)"></div>
-        <div class="form-group"><label>電腦編號 (PC ID)</label><input type="text" id="edit-pc" placeholder="例如：9059145 (無則填 N/A)"></div>
-        <div class="form-group" style="display:flex; gap: 10px;">
-            <div style="flex:1;"><label>網路孔</label><input type="text" id="edit-net" placeholder="N/A"></div>
-            <div style="flex:1;"><label>電話孔</label><input type="text" id="edit-phone" placeholder="N/A"></div>
-        </div>
+        
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeEditModal()" style="margin-right: auto;">取消</button>
             <button id="btn-save-next" class="btn-primary" onclick="saveMemberData(true)" style="display:none; background-color:#059669;">下一筆</button>
@@ -317,20 +339,28 @@
 
 <!-- 2. 新增/編輯資產表單 (Modal) -->
 <div id="asset-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeAssetModal()">
-    <div class="modal-content">
+    <div class="modal-content" style="overflow: visible;"> <!-- 確保下拉選單不被截斷 -->
         <div class="modal-header">
             <span id="asset-modal-title">📦 新增/編輯資產</span>
             <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeAssetModal()">×</button>
         </div>
         
-        <!-- 資產分類標籤區塊 -->
-        <div class="asset-tabs-container">
-            <button class="asset-tab-btn active" data-type="電腦" onclick="switchAssetCategory('電腦')">💻 電腦</button>
-            <button class="asset-tab-btn" data-type="影印機" onclick="switchAssetCategory('影印機')">🖨️ 影印機</button>
-            <button class="asset-tab-btn" data-type="冰箱" onclick="switchAssetCategory('冰箱')">❄️ 冰箱</button>
-            <button class="asset-tab-btn" data-type="洗衣機" onclick="switchAssetCategory('洗衣機')">👕 洗衣機</button>
-            <button class="asset-tab-btn" data-type="冷氣機" onclick="switchAssetCategory('冷氣機')">💨 冷氣機</button>
-            <button class="asset-tab-btn" data-type="其他" onclick="switchAssetCategory('其他')">📦 其他</button>
+        <!-- 自訂下拉選單 (取代原本的 Emoji 標籤頁) -->
+        <div class="form-group">
+            <label>資產類型</label>
+            <div class="custom-dropdown-btn" onclick="toggleCategoryDropdown(event)">
+                <span id="selected-category-text">選擇類型...</span>
+                <span style="font-size: 12px; color: var(--text-muted);">▼</span>
+            </div>
+            <div class="custom-dropdown-panel" id="category-panel">
+                <div class="dropdown-search-row">
+                    <input type="text" id="category-search-input" placeholder="搜尋或輸入新類型..." oninput="filterCategories()" onclick="event.stopPropagation()">
+                    <button class="btn-primary" onclick="addCategory(event)" style="padding: 4px 8px; flex-shrink: 0;">➕</button>
+                </div>
+                <div class="dropdown-list" id="category-list">
+                    <!-- 選單項目將由 JS 動態生成 -->
+                </div>
+            </div>
         </div>
 
         <div class="form-group">
@@ -355,13 +385,22 @@
             </select>
         </div>
         
-        <!-- 電腦專屬欄位區塊 (預設顯示) -->
-        <div id="asset-computer-fields" style="border-top: 1px dashed #cbd5e1; margin: 20px 0 10px 0; padding-top: 15px;">
+        <!-- 電腦專屬欄位區塊 (含使用者、網域等) -->
+        <div id="asset-computer-fields" style="border-top: 1px dashed #cbd5e1; margin: 20px 0 10px 0; padding-top: 15px; display:none;">
+            <!-- 使用者下拉選單 (利用 native datalist 支援搜尋) -->
+            <div class="form-group">
+                <label>使用者 <span style="font-weight:normal; font-size:12px; color:#94a3b8;">(限定本辦公室人員)</span></label>
+                <input list="office-members-list" id="asset-owner-input" placeholder="搜尋或選擇人員 (留空為公用)">
+                <datalist id="office-members-list">
+                    <!-- 將由 JS 動態填入該辦公室人員 -->
+                </datalist>
+            </div>
+            
             <div class="form-group">
                 <label>電腦編號 (PC ID)</label>
                 <input type="text" id="asset-pc" placeholder="例如：9059145 (無則填 N/A)">
             </div>
-            <!-- 新增的網域選項 -->
+            
             <div class="form-group">
                 <label>網域</label>
                 <select id="asset-domain">
@@ -370,6 +409,7 @@
                     <option value="混合">🔄 混合</option>
                 </select>
             </div>
+            
             <div class="form-group" style="display:flex; gap: 10px;">
                 <div style="flex:1;">
                     <label>網路孔</label>
@@ -414,9 +454,8 @@
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, initializeFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 1. 初始化 Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDt7Z-QAG4C73K7f0RyItXMNQJc2NDxkzE",
         authDomain: "pmoemap.firebaseapp.com",
@@ -433,16 +472,19 @@
     let globalMembers = [];
     let globalAssets = [];
     
+    // 自訂資產分類邏輯
+    let defaultCategories = ['電腦', '影印機', '冰箱', '洗衣機', '冷氣機'];
+    let globalCategories = [...defaultCategories]; 
+    let currentAssetCategory = '電腦';
+    
     let currentLevel = 0; 
     let currentFloor = '';
     let currentOffice = '';
     let currentTab = 'staff';
     let isInitialized = false; 
     
-    // 狀態管理
     let currentEditMemberId = null; 
     let currentEditAssetId = null;
-    let currentAssetCategory = '電腦'; // 預設資產標籤
     let isEditMode = false; 
 
     function customAlert(msg, isDanger = false) {
@@ -459,7 +501,7 @@
         let loadedCount = 0;
         const checkAllLoaded = () => {
             loadedCount++;
-            if (loadedCount === 3 && !isInitialized) {
+            if (loadedCount >= 3 && !isInitialized) {
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
@@ -470,18 +512,25 @@
         };
 
         onSnapshot(collection(db, "offices"), (snapshot) => {
-            globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            checkAllLoaded();
+            globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); checkAllLoaded();
         });
-
         onSnapshot(collection(db, "members"), (snapshot) => {
-            globalMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            checkAllLoaded();
+            globalMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); checkAllLoaded();
+        });
+        onSnapshot(collection(db, "assets"), (snapshot) => {
+            globalAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); checkAllLoaded();
         });
 
-        onSnapshot(collection(db, "assets"), (snapshot) => {
-            globalAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            checkAllLoaded();
+        // 監聽雲端儲存的資產分類設定
+        onSnapshot(doc(db, "settings", "categories"), (docSnap) => {
+            if(docSnap.exists()) {
+                globalCategories = docSnap.data().list;
+            } else {
+                // 若沒有則寫入預設值
+                setDoc(doc(db, "settings", "categories"), { list: defaultCategories });
+                globalCategories = [...defaultCategories];
+            }
+            if(document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
         });
     }
 
@@ -546,16 +595,25 @@
         document.getElementById('sidebar-overlay').classList.remove('active');
     }
 
+    // 全域點擊事件 (關閉各類彈出選單)
     document.addEventListener('click', (e) => {
         const fabContainer = document.getElementById('fab-container');
         if (fabContainer && !fabContainer.contains(e.target) && document.getElementById('fab-menu').classList.contains('active')) {
             closeFabMenu();
+        }
+        // 點擊空白處關閉資產類別下拉選單
+        const catBtn = document.querySelector('.custom-dropdown-btn');
+        const catPanel = document.getElementById('category-panel');
+        if (catPanel && catPanel.classList.contains('active') && !catPanel.contains(e.target) && !catBtn.contains(e.target)) {
+            catPanel.classList.remove('active');
         }
     });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeFabMenu(); closeEditModal(); closeAssetModal(); closeOfficeModal(); closeSidebar();
+            document.getElementById('category-panel').classList.remove('active');
+            closeConfirmModal();
         }
     });
 
@@ -587,7 +645,7 @@
             if (currentTab === 'staff' || currentTab === 'facilities') {
                 specificAction = `<button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>`;
             } else if (currentTab === 'assets') {
-                specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增公用資產</button>`;
+                specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增資產 (包含電腦)</button>`;
             }
             fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal()">✏️ 編輯辦公室密碼</button>`;
         } else {
@@ -683,9 +741,6 @@
         const officeAssetsList = globalAssets.filter(a => a.office_id === currentOffice);
 
         let assetCount = officeAssetsList.length;
-        officeMembers.forEach(m => {
-            if (m.assets && m.assets.length > 0) assetCount += m.assets.length;
-        });
         
         document.getElementById('tab-staff').innerText = `人員 (${officeMembers.length})`;
         document.getElementById('tab-assets').innerText = `資產 (${assetCount})`;
@@ -696,6 +751,11 @@
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card';
                 const displayJoinDate = m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A';
+                
+                // 【解耦後】反查此人員是否被指派了某台電腦
+                const myPc = officeAssetsList.find(a => a.category === '電腦' && a.owner_id === m.id);
+                const pcDisplay = myPc && myPc.pc_id && myPc.pc_id !== 'N/A' ? myPc.pc_id : '無設備';
+
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
                         <div style="text-align: left;"><h3 style="margin:0 0 5px 0;">${m.name}</h3></div>
@@ -705,7 +765,7 @@
                         <div><b>職稱：</b>${m.title || 'N/A'}</div>
                         <div><b>分機：</b>${m.ext}</div>
                         <div><b>入廠日：</b>${displayJoinDate}</div>
-                        <div><b>電腦編號：</b>${m.pc_id}</div>
+                        <div><b>電腦編號：</b>${pcDisplay}</div>
                     </div>`;
                 grid.appendChild(card);
             });
@@ -721,69 +781,51 @@
                 else if(a.status === '報廢') statusIcon = '⚫';
                 else if(a.status === '碳粉不足') statusIcon = '🟡';
 
-                // 標示分類小 icon
-                let iconMap = { '電腦': '💻', '影印機': '🖨️', '冰箱': '❄️', '洗衣機': '👕', '冷氣機': '💨', '其他': '📦' };
-                let catIcon = iconMap[a.category] || '📦';
+                // 若資產為電腦且有指派人員，順便標示出來
+                let userText = '';
+                if (a.category === '電腦' && a.owner_id) {
+                    const owner = globalMembers.find(m => m.id === a.owner_id);
+                    if (owner) userText = `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">👤 使用者: ${owner.name}</div>`;
+                }
 
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <h3 style="margin:0;">${catIcon} ${a.item}</h3>
+                        <h3 style="margin:0; text-align:left;">[${a.category}] ${a.item}</h3>
                         <button class="btn-edit" onclick="openAssetModal('${a.id}')">✏️ 編輯</button>
                     </div>
+                    ${userText}
                     <div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div>
                     <div style="font-size:12px; font-weight:bold; color: var(--text-main);">${statusIcon} ${a.status || '未登記'}</div>
                 `;
                 grid.appendChild(card);
             });
-
-            officeMembers.forEach(m => {
-                if(m.assets && m.assets.length > 0) {
-                    const card = document.createElement('div'); card.className = 'nav-card';
-                    card.innerHTML = `<h3>${m.name} (個人資產)</h3><div class="detail-info" style="max-height:100px; opacity:1; border-top: none;">${m.assets.join('<br>')}</div>`;
-                    grid.appendChild(card);
-                }
-            });
         }
         else if (currentTab === 'facilities') {
-            // 利用我們新增的 category 屬性或關鍵字來嚴謹判斷是否為電腦
-            const publicComputers = officeAssetsList.filter(a => a.category === '電腦' || (a.item && a.item.includes('電腦')));
+            // 【解耦後】孔位頁面專注於展示「電腦硬體」與其綁定的資訊
+            const computers = officeAssetsList.filter(a => a.category === '電腦');
 
-            if(officeMembers.length === 0 && publicComputers.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無孔位配置</div>';
+            if(computers.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無電腦或孔位配置</div>';
             }
 
-            officeMembers.forEach(m => {
+            computers.forEach(a => {
                 const card = document.createElement('div'); card.className = 'nav-card'; card.style.textAlign = 'left';
-                const pcDisplay = m.pc_id && m.pc_id !== 'N/A' ? m.pc_id : '無';
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <h3 style="margin:0; margin-bottom: 4px;">${m.name}</h3>
-                        <button class="btn-edit" onclick="openMemberModal('${m.id}')">✏️ 編輯</button>
-                    </div>
-                    <div style="font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${pcDisplay}</div>
-                    <table class="facility-table">
-                        <tr><td class="facility-label">網路孔</td><td>${m.net_port || 'N/A'}</td></tr>
-                        <tr><td class="facility-label">電話孔</td><td>${m.phone_port || 'N/A'}</td></tr>
-                    </table>`;
-                grid.appendChild(card);
-            });
+                const pcDisplay = a.pc_id && a.pc_id !== 'N/A' ? a.pc_id : '未編號';
+                const domainInfo = a.domain ? `<span style="color:#94a3b8; font-size:11px;">(${a.domain})</span>` : '';
+                
+                // 查找使用者
+                let ownerName = '💻 公用設備';
+                if (a.owner_id) {
+                    const owner = globalMembers.find(m => m.id === a.owner_id);
+                    if (owner) ownerName = `👤 ${owner.name}`;
+                }
 
-            // 渲染公用電腦孔位 (點擊編輯對接 Asset Modal)
-            publicComputers.forEach(a => {
-                const card = document.createElement('div'); card.className = 'nav-card'; card.style.textAlign = 'left';
-                card.style.border = '1px solid #cbd5e1'; 
-                card.style.backgroundColor = '#f8fafc'; // 稍微改變底色區分公用設備
-                
-                const snDisplay = a.sn && a.sn !== 'N/A' ? a.sn : '無';
-                // 顯示新的網域資訊
-                const domainInfo = a.domain ? `<span style="color:#94a3b8; font-size:10px;">(${a.domain})</span>` : '';
-                
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <h3 style="margin:0; margin-bottom: 4px; color: var(--primary);">💻 ${a.item}</h3>
+                        <h3 style="margin:0; margin-bottom: 4px; color: var(--primary);">${ownerName}</h3>
                         <button class="btn-edit" onclick="openAssetModal('${a.id}')">✏️ 編輯</button>
                     </div>
-                    <div style="font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${a.pc_id || 'N/A'} <span style="font-weight:normal; font-size:12px; color:#64748b;">(SN: ${snDisplay})</span></div>
+                    <div style="font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${pcDisplay}</div>
                     <table class="facility-table">
                         <tr><td class="facility-label">網路孔</td><td>${a.net_port || 'N/A'} ${domainInfo}</td></tr>
                         <tr><td class="facility-label">電話孔</td><td>${a.phone_port || 'N/A'}</td></tr>
@@ -793,6 +835,7 @@
         }
     }
 
+    // ================= 智慧排序邏輯 (分機總表) =================
     function showExtensionsView(push = true) {
         closeSidebar(); currentLevel = 3;
         if (push) history.pushState({ level: 3 }, "");
@@ -810,23 +853,23 @@
             const groupDiv = document.createElement('div'); groupDiv.style.marginBottom = '30px';
             let html = `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">${officeName}</h2><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px;">`;
 
-            // ================= 智慧排序邏輯 (相同分機排一起，無分機墊底) =================
+            // 自然排序 (Natural Sort)：先把非數字字元拔掉比數字，若數字相同才比字串
             const sortedMembers = officeMap[officeName].sort((a, b) => {
                 const extA = (a.ext && a.ext !== 'N/A' && a.ext.trim() !== '') ? a.ext.trim() : '999999';
                 const extB = (b.ext && b.ext !== 'N/A' && b.ext.trim() !== '') ? b.ext.trim() : '999999';
                 
-                if (extA !== extB) {
-                    // 嘗試提取純數字進行比對 (解決 '1205#' 和 '1197' 的字串排序錯亂問題)
-                    const numA = parseInt(extA.replace(/\D/g, ''), 10);
-                    const numB = parseInt(extB.replace(/\D/g, ''), 10);
-                    
-                    if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
-                        return numA - numB;
-                    }
-                    // 若無數字或數字相同，退回字串排序
-                    return extA.localeCompare(extB);
-                }
-                // 若分機完全相同，則依姓名排序以確保穩定並群聚
+                // 萃取純數字部分
+                const numA = parseInt(extA.replace(/\D/g, ''), 10) || 999999;
+                const numB = parseInt(extB.replace(/\D/g, ''), 10) || 999999;
+                
+                // 1. 若數字大小不同，依數字排 (如 1197 < 1205)
+                if (numA !== numB) return numA - numB;
+                
+                // 2. 數字相同 (如 1205# 與 1205)，則比對完整字串，群聚相同者
+                const strComp = extA.localeCompare(extB);
+                if (strComp !== 0) return strComp;
+                
+                // 3. 分機完全相同時，依姓名排序
                 return (a.name || '').localeCompare(b.name || '');
             });
 
@@ -834,14 +877,14 @@
                 const hasExt = (m.ext && m.ext !== 'N/A');
                 const extText = hasExt ? m.ext : '無分機';
                 const extColor = hasExt ? 'var(--primary)' : 'var(--text-muted)';
-                html += `<div class="nav-card no-hover" style="padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center;"><div><div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${m.name}</div><div style="font-size: 12px; color: var(--text-muted);">${m.title && m.title !== 'N/A' ? m.title : ''} ${m.pc_id !== 'N/A' ? 'PC:' + m.pc_id : ''}</div></div><div style="font-size: 24px; font-weight: bold; color: ${extColor}; font-family: monospace;">${extText}</div></div>`;
+                html += `<div class="nav-card no-hover" style="padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center;"><div><div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${m.name}</div><div style="font-size: 12px; color: var(--text-muted);">${m.title && m.title !== 'N/A' ? m.title : ''}</div></div><div style="font-size: 24px; font-weight: bold; color: ${extColor}; font-family: monospace;">${extText}</div></div>`;
             });
             html += `</div>`; groupDiv.innerHTML = html; container.appendChild(groupDiv);
         }
         switchView('view-extensions');
     }
 
-    // ================= 1. 人員表單邏輯 =================
+    // ================= 1. 人員表單邏輯 (精簡版) =================
     function openMemberModal(memberId = null) {
         closeFabMenu(); 
         const btnNext = document.getElementById('btn-save-next');
@@ -856,9 +899,6 @@
                 document.getElementById('edit-title').value = m.title || '';
                 document.getElementById('edit-join-date').value = m.join_date || '';
                 document.getElementById('edit-ext').value = m.ext || '';
-                document.getElementById('edit-pc').value = m.pc_id || '';
-                document.getElementById('edit-net').value = m.net_port || '';
-                document.getElementById('edit-phone').value = m.phone_port || '';
             }
         } else {
             isEditMode = false; currentEditMemberId = null;
@@ -867,9 +907,6 @@
             document.getElementById('edit-name').value = '';
             document.getElementById('edit-title').value = '';
             document.getElementById('edit-ext').value = '';
-            document.getElementById('edit-pc').value = '';
-            document.getElementById('edit-net').value = '';
-            document.getElementById('edit-phone').value = '';
         }
         document.getElementById('edit-modal-overlay').classList.add('active');
     }
@@ -891,9 +928,6 @@
                 title: document.getElementById('edit-title').value || 'N/A',
                 join_date: document.getElementById('edit-join-date').value || '', 
                 ext: document.getElementById('edit-ext').value || 'N/A',
-                pc_id: document.getElementById('edit-pc').value || 'N/A',
-                net_port: document.getElementById('edit-net').value || 'N/A',
-                phone_port: document.getElementById('edit-phone').value || 'N/A',
                 office_id: currentOffice 
             };
 
@@ -908,7 +942,7 @@
             
             if (continueNext && !isEditMode) {
                 btn.innerText = '已新增 ✔';
-                ['edit-name', 'edit-title', 'edit-ext', 'edit-pc', 'edit-net', 'edit-phone'].forEach(id => document.getElementById(id).value = '');
+                ['edit-name', 'edit-title', 'edit-ext'].forEach(id => document.getElementById(id).value = '');
                 document.getElementById('edit-name').focus();
                 setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 800);
             } else {
@@ -921,61 +955,197 @@
         }
     }
 
-    // ================= 2. 資產表單與分類邏輯 =================
+    // ================= 2. 自訂資產分類下拉選單邏輯 =================
     
-    // 切換資產分類標籤
-    function switchAssetCategory(category) {
-        currentAssetCategory = category;
-        
-        // 更新按鈕外觀
-        document.querySelectorAll('.asset-tab-btn').forEach(btn => {
-            if (btn.dataset.type === category) btn.classList.add('active');
-            else btn.classList.remove('active');
-        });
-
-        // 若資產名稱為空，或剛好等於舊分類名，就自動帶入新分類名方便使用者
-        const itemInput = document.getElementById('asset-item');
-        const defaultNames = ['電腦', '影印機', '冰箱', '洗衣機', '冷氣機', '其他'];
-        if (!itemInput.value || defaultNames.includes(itemInput.value) || itemInput.value === '公用電腦') {
-            itemInput.value = (category === '電腦') ? '公用電腦' : category;
+    function toggleCategoryDropdown(event) {
+        if(event) event.stopPropagation();
+        const panel = document.getElementById('category-panel');
+        panel.classList.toggle('active');
+        if(panel.classList.contains('active')) {
+            document.getElementById('category-search-input').value = '';
+            renderCategoryDropdown();
+            document.getElementById('category-search-input').focus();
         }
-
-        // 電腦專屬欄位顯示切換
-        document.getElementById('asset-computer-fields').style.display = (category === '電腦') ? 'block' : 'none';
     }
 
+    function renderCategoryDropdown(filterText = '') {
+        const listDiv = document.getElementById('category-list');
+        listDiv.innerHTML = '';
+        
+        const filtered = globalCategories.filter(c => c.toLowerCase().includes(filterText.toLowerCase()));
+        
+        if(filtered.length === 0) {
+            listDiv.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到結果，可點擊上方 ➕ 新增</div>';
+            return;
+        }
+
+        filtered.forEach(cat => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'dropdown-item';
+            
+            // 點擊左側文字選擇該分類
+            const textSpan = document.createElement('span');
+            textSpan.innerText = cat;
+            textSpan.style.flex = '1';
+            textSpan.onclick = () => selectCategory(cat);
+            
+            // 刪除按鈕
+            const delBtn = document.createElement('button');
+            delBtn.className = 'dropdown-item-delete';
+            delBtn.innerText = '🗑️';
+            delBtn.onclick = (e) => promptDeleteCategory(e, cat);
+
+            itemDiv.appendChild(textSpan);
+            itemDiv.appendChild(delBtn);
+            listDiv.appendChild(itemDiv);
+        });
+    }
+
+    function filterCategories() {
+        const text = document.getElementById('category-search-input').value;
+        renderCategoryDropdown(text);
+    }
+
+    function selectCategory(cat) {
+        currentAssetCategory = cat;
+        document.getElementById('selected-category-text').innerText = cat;
+        document.getElementById('category-panel').classList.remove('active');
+        
+        // 控制電腦專屬欄位顯示/隱藏
+        document.getElementById('asset-computer-fields').style.display = (cat === '電腦') ? 'block' : 'none';
+        
+        // 若資產名稱為空，自動帶入類型名
+        const itemInput = document.getElementById('asset-item');
+        if (!itemInput.value) {
+            itemInput.value = (cat === '電腦') ? '公用電腦' : cat;
+        }
+    }
+
+    async function addCategory(event) {
+        if(event) event.stopPropagation();
+        const input = document.getElementById('category-search-input');
+        const newCat = input.value.trim();
+        
+        if(!newCat) { customAlert('請輸入要新增的類型名稱！', true); return; }
+        if(globalCategories.includes(newCat)) { customAlert('此類型已存在！', true); return; }
+
+        try {
+            globalCategories.push(newCat);
+            await setDoc(doc(db, "settings", "categories"), { list: globalCategories });
+            input.value = '';
+            renderCategoryDropdown();
+            selectCategory(newCat); // 新增完自動選擇
+            customAlert(`成功新增類型：${newCat}`);
+        } catch(e) {
+            console.error(e); customAlert('新增失敗，請檢查網路。', true);
+        }
+    }
+
+    // ====== 刪除資產類別與防呆 ======
+    let categoryToDelete = null;
+
+    function promptDeleteCategory(event, catName) {
+        event.stopPropagation();
+        categoryToDelete = catName;
+        
+        // 檢查是否被使用
+        const usedAssets = globalAssets.filter(a => a.category === catName);
+        if (usedAssets.length > 0) {
+            const assetListText = usedAssets.map(a => `- ${a.office_id}: ${a.item}`).slice(0, 5).join('\n') + (usedAssets.length > 5 ? '\n...等' : '');
+            document.getElementById('confirm-msg').innerText = `曾以此類型「${catName}」登錄過的資產（共 ${usedAssets.length} 件）都會一併被永久刪除！\n\n包含：\n${assetListText}\n\n請問是否確定要刪除？`;
+        } else {
+            document.getElementById('confirm-msg').innerText = `確定要刪除類型「${catName}」嗎？`;
+        }
+        
+        document.getElementById('confirm-modal-overlay').classList.add('active');
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirm-modal-overlay').classList.remove('active');
+        categoryToDelete = null;
+    }
+
+    async function executeDeleteCategory() {
+        if (!categoryToDelete) return;
+        const btn = document.getElementById('btn-confirm-delete');
+        btn.disabled = true; btn.innerText = '刪除中...';
+
+        try {
+            // 批次刪除所有相關資產
+            const usedAssets = globalAssets.filter(a => a.category === categoryToDelete);
+            for (const a of usedAssets) {
+                await deleteDoc(doc(db, 'assets', a.id));
+            }
+
+            // 自全域陣列移除並同步至 Firestore
+            globalCategories = globalCategories.filter(c => c !== categoryToDelete);
+            await setDoc(doc(db, "settings", "categories"), { list: globalCategories });
+
+            // 若刪除的是當下正在選擇的，重置為預設
+            if (currentAssetCategory === categoryToDelete) selectCategory('電腦');
+            
+            renderCategoryDropdown();
+            closeConfirmModal();
+            customAlert(`已刪除類型「${categoryToDelete}」及其相關資產！`);
+        } catch(e) {
+            console.error(e); customAlert('刪除失敗', true);
+        } finally {
+            btn.disabled = false; btn.innerText = '確定刪除';
+        }
+    }
+
+    // ================= 3. 升級版資產表單邏輯 (含電腦專屬欄位) =================
+    
     function openAssetModal(assetId = null) {
         closeFabMenu();
+        
+        // --- 準備本辦公室人員的下拉式選單 (Datalist) ---
+        const datalist = document.getElementById('office-members-list');
+        datalist.innerHTML = '';
+        const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
+        officeMembers.forEach(m => {
+            const option = document.createElement('option');
+            option.value = `${m.name} (${m.id})`; // 格式：姓名 (ID) 方便後續擷取
+            datalist.appendChild(option);
+        });
+
         if (assetId && typeof assetId === 'string') {
             currentEditAssetId = assetId;
             document.getElementById('asset-modal-title').innerText = '📦 編輯資產資料';
             
             const a = globalAssets.find(x => x.id === assetId);
             if(a) {
-                // 自動跳轉到對應的分類標籤
-                switchAssetCategory(a.category || '其他');
+                selectCategory(a.category || '其他');
                 
                 document.getElementById('asset-item').value = a.item || '';
                 document.getElementById('asset-sn').value = a.sn || '';
                 document.getElementById('asset-status').value = a.status || '正常';
                 
-                if (a.category === '電腦' || (a.item && a.item.includes('電腦'))) {
+                if (a.category === '電腦') {
                     document.getElementById('asset-domain').value = a.domain || '外網';
                     document.getElementById('asset-pc').value = a.pc_id || '';
                     document.getElementById('asset-net').value = a.net_port || '';
                     document.getElementById('asset-phone').value = a.phone_port || '';
+                    
+                    // 還原使用者顯示
+                    if (a.owner_id) {
+                        const owner = globalMembers.find(m => m.id === a.owner_id);
+                        document.getElementById('asset-owner-input').value = owner ? `${owner.name} (${owner.id})` : '';
+                    } else {
+                        document.getElementById('asset-owner-input').value = '';
+                    }
                 }
             }
         } else {
             currentEditAssetId = null;
-            document.getElementById('asset-modal-title').innerText = '➕ 新增公用資產';
+            document.getElementById('asset-modal-title').innerText = '➕ 新增資產';
             
-            // 預設回到電腦標籤
-            switchAssetCategory('電腦');
+            selectCategory('電腦');
+            document.getElementById('asset-item').value = '公用電腦';
             document.getElementById('asset-sn').value = '';
             document.getElementById('asset-status').value = '正常';
             
-            // 清空電腦相關
+            document.getElementById('asset-owner-input').value = '';
             document.getElementById('asset-domain').value = '外網';
             document.getElementById('asset-pc').value = '';
             document.getElementById('asset-net').value = '';
@@ -996,19 +1166,23 @@
         try {
             const assetDataToSave = {
                 item: itemInput,
-                category: currentAssetCategory, // 紀錄所選的標籤分類
+                category: currentAssetCategory, 
                 sn: document.getElementById('asset-sn').value || 'N/A',
                 status: document.getElementById('asset-status').value,
-                office_id: currentOffice,
-                type: 'public' 
+                office_id: currentOffice
             };
 
-            // 如果是電腦分類，才一併儲存這幾項專屬欄位
+            // 解析並儲存電腦的專屬欄位
             if (currentAssetCategory === '電腦') {
                 assetDataToSave.domain = document.getElementById('asset-domain').value;
                 assetDataToSave.pc_id = document.getElementById('asset-pc').value || 'N/A';
                 assetDataToSave.net_port = document.getElementById('asset-net').value || 'N/A';
                 assetDataToSave.phone_port = document.getElementById('asset-phone').value || 'N/A';
+                
+                // 解析使用者 input 取得 owner_id
+                const ownerRaw = document.getElementById('asset-owner-input').value;
+                const match = ownerRaw.match(/\((.+)\)$/);
+                assetDataToSave.owner_id = match ? match[1] : null; // 若沒配對到括號內的 ID，視為公用電腦
             }
 
             if (currentEditAssetId) {
@@ -1063,9 +1237,12 @@
     // 表單切換與儲存
     window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal; window.saveMemberData = saveMemberData;
     window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal; window.saveAssetData = saveAssetData;
-    window.switchAssetCategory = switchAssetCategory; 
-    window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal; window.saveOfficeData = saveOfficeData;
     
+    window.toggleCategoryDropdown = toggleCategoryDropdown;
+    window.filterCategories = filterCategories; window.addCategory = addCategory;
+    window.promptDeleteCategory = promptDeleteCategory; window.executeDeleteCategory = executeDeleteCategory; window.closeConfirmModal = closeConfirmModal;
+    
+    window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal; window.saveOfficeData = saveOfficeData;
     window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
 
     window.addEventListener('resize', syncHeaderLayout);

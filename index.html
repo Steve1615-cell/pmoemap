@@ -42,58 +42,28 @@
             gap: 10px;
         }
 
-        /* 左側按鈕區塊 */
-        .header-left {
-            display: flex;
-            gap: 8px;
-            flex-shrink: 0;
-            align-items: center;
-        }
+        .header-left { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+        .header-right { flex-shrink: 0; }
 
-        /* 右側佔位區塊 (由 JS 動態控制寬度以確保標題置中) */
-        .header-right {
-            flex-shrink: 0;
-        }
-
-        /* 標題容器與跑馬燈設定 */
         .title-container {
-            flex: 1;
-            min-width: 0; 
-            overflow: hidden; 
-            text-align: center;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            flex: 1; min-width: 0; overflow: hidden; text-align: center;
+            display: flex; justify-content: center; align-items: center;
         }
 
-        /* 靜態標題 (夠短時顯示) */
         .static-title {
-            margin: 0;
-            font-size: clamp(18px, 4.5vw, 24px);
-            display: inline-block;
-            white-space: nowrap;
+            margin: 0; font-size: clamp(18px, 4.5vw, 24px);
+            display: inline-block; white-space: nowrap;
         }
 
-        /* 動態無縫循環跑馬燈 (過長時啟動 - 修正 Safari Bug) */
         .marquee-wrapper {
-            display: inline-block;
-            white-space: nowrap;
+            display: inline-block; white-space: nowrap;
             animation: scrollText 4s linear infinite;
-            -webkit-transform: translate3d(0, 0, 0); 
-            transform: translate3d(0, 0, 0);
+            -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0);
         }
 
         .marquee-text {
-            display: inline-block;
-            margin: 0;
-            padding-right: 40px; 
-            font-size: clamp(18px, 4.5vw, 24px);
-            vertical-align: middle;
-        }
-
-        @-webkit-keyframes scrollText {
-            0% { -webkit-transform: translateX(0); }
-            100% { -webkit-transform: translateX(-50%); }
+            display: inline-block; margin: 0; padding-right: 40px; 
+            font-size: clamp(18px, 4.5vw, 24px); vertical-align: middle;
         }
 
         @keyframes scrollText {
@@ -102,91 +72,55 @@
         }
 
         .btn-nav {
-            padding: 8px 16px;
-            background: #e2e8f0;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            color: var(--text-main);
-            transition: background 0.2s;
-            font-size: clamp(12px, 3vw, 15px);
-            white-space: nowrap;
+            padding: 8px 16px; background: #e2e8f0; border: none; border-radius: 6px;
+            cursor: pointer; font-weight: bold; color: var(--text-main);
+            transition: background 0.2s; font-size: clamp(12px, 3vw, 15px); white-space: nowrap;
         }
 
-        .btn-menu {
-            padding: 8px 12px;
-            font-size: 16px;
-            background: var(--primary);
-            color: white;
-        }
+        .btn-menu { padding: 8px 12px; font-size: 16px; background: var(--primary); color: white; }
         .btn-menu:hover { background: #1d4ed8; color: white; }
         .btn-nav:hover { background: #cbd5e1; }
 
-        /* 路徑紀錄 (麵包屑) */
+        /* 路徑紀錄 */
         .breadcrumb {
-            font-size: clamp(13px, 3.5vw, 15px);
-            color: var(--text-muted);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: bold;
-            flex-wrap: wrap;
+            font-size: clamp(13px, 3.5vw, 15px); color: var(--text-muted);
+            margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-weight: bold; flex-wrap: wrap;
         }
-
         .breadcrumb-item { cursor: pointer; transition: color 0.2s; }
         .breadcrumb-item:hover { color: var(--primary); text-decoration: underline; }
         .breadcrumb-item.current { cursor: default; color: var(--text-main); text-decoration: none; }
         .breadcrumb-separator { color: #cbd5e1; font-size: 14px; }
 
-        /* ======== 側邊欄 (Sidebar) 樣式 ======== */
+        /* 側邊欄 */
         .sidebar-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.5); z-index: 998;
-            opacity: 0; visibility: hidden; transition: all 0.3s ease;
+            background: rgba(0,0,0,0.5); z-index: 998; opacity: 0; visibility: hidden; transition: all 0.3s ease;
         }
         .sidebar-overlay.active { opacity: 1; visibility: visible; }
-
         .sidebar {
             position: fixed; top: 0; left: -280px; width: 260px; height: 100vh;
-            background-color: var(--card); z-index: 999;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            background-color: var(--card); z-index: 999; box-shadow: 4px 0 15px rgba(0,0,0,0.1);
             transition: left 0.3s ease; display: flex; flex-direction: column;
         }
         .sidebar.active { left: 0; }
-
         .sidebar-header {
-            padding: 20px; font-size: 18px; font-weight: bold;
-            border-bottom: 1px solid #e2e8f0; color: var(--text-main);
-            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px; font-size: 18px; font-weight: bold; border-bottom: 1px solid #e2e8f0; 
+            color: var(--text-main); display: flex; justify-content: space-between; align-items: center;
         }
         .btn-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); }
-
         .sidebar-menu { flex: 1; padding: 10px 0; overflow-y: auto; }
         .menu-item {
             padding: 15px 25px; cursor: pointer; font-weight: bold; font-size: 16px;
             display: flex; align-items: center; gap: 15px; transition: background 0.2s;
         }
         .menu-item:hover { background: var(--accent); color: var(--primary); }
-        .menu-item.disabled { color: #94a3b8; cursor: not-allowed; position: relative; }
-        .menu-item.disabled:hover { background: transparent; color: #94a3b8; }
-        
-        .tooltip-container::after {
-            content: attr(data-tooltip); position: absolute; left: 60px; top: 100%;
-            background: #1e293b; color: white; padding: 6px 12px; border-radius: 6px;
-            font-size: 13px; white-space: nowrap; font-weight: normal;
-            pointer-events: none; opacity: 0; visibility: hidden; transition: all 0.2s; z-index: 1000;
-        }
-        .tooltip-container:hover::after { opacity: 1; visibility: visible; margin-top: 5px; }
+        .menu-item.disabled { color: #94a3b8; cursor: not-allowed; }
         .sidebar-footer { padding: 15px; text-align: center; color: var(--text-muted); font-size: 13px; border-top: 1px solid #e2e8f0; }
 
-        /* 視圖切換 */
+        /* 視圖切換與卡片 */
         .view { display: none; }
         .view.active { display: block; }
         .grid-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; }
-
-        /* 卡片設計 */
         .nav-card {
             background: var(--card); padding: 25px 20px; text-align: center;
             border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
@@ -204,7 +138,7 @@
         }
         .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-        /* 電腦版：懸浮預覽與密碼清單 */
+        /* 電腦版：懸浮預覽與詳情 */
         .preview-list { max-height: 0; opacity: 0; overflow: hidden; list-style: none; padding: 0; margin: 0; transition: all 0.3s ease; font-size: 14px; color: var(--text-muted); }
         .nav-card:hover .preview-list { max-height: 250px; opacity: 1; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; }
         .password-container { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease; }
@@ -219,16 +153,14 @@
         /* ======== 表單與彈出視窗 (Modal) ======== */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.5); z-index: 3000;
-            display: flex; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.5); z-index: 3000; display: flex; justify-content: center; align-items: center;
             opacity: 0; visibility: hidden; transition: all 0.3s ease;
         }
         .modal-overlay.active { opacity: 1; visibility: visible; }
         .modal-content {
             background: white; width: 90%; max-width: 400px; border-radius: 12px;
             padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            transform: translateY(-20px); transition: transform 0.3s ease;
-            max-height: 90vh; overflow-y: auto; /* 避免表單過長在小螢幕被切斷 */
+            transform: translateY(-20px); transition: transform 0.3s ease; max-height: 90vh; overflow-y: auto; 
         }
         .modal-overlay.active .modal-content { transform: translateY(0); }
         .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; display: flex; justify-content: space-between;}
@@ -244,6 +176,19 @@
         .btn-edit { background: none; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
         .btn-edit:hover { background: var(--accent); color: var(--primary); border-color: var(--primary); }
 
+        /* ======== 資產分類標籤 (Asset Modal Tabs) ======== */
+        .asset-tabs-container {
+            display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px;
+            /* 隱藏捲動條但保留滑動功能 */
+            -ms-overflow-style: none; scrollbar-width: none;
+        }
+        .asset-tabs-container::-webkit-scrollbar { display: none; }
+        .asset-tab-btn {
+            padding: 6px 12px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 20px;
+            cursor: pointer; font-size: 13px; font-weight: bold; color: var(--text-main); white-space: nowrap; transition: all 0.2s ease;
+        }
+        .asset-tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
+
         /* ======== 懸浮操作按鈕 (FAB) ======== */
         .fab-container { position: fixed; bottom: 30px; right: 30px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .fab-menu { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; }
@@ -257,28 +202,20 @@
         @media (hover: none) {
             .app-container { padding: 10px 15px; }
             .btn-nav { padding: 6px 10px; }
-            .fab-container { bottom: 20px; right: 20px; } /* 手機版稍微靠邊緣 */
-            
-            .nav-card .preview-list, .nav-card .detail-info { 
-                max-height: none; opacity: 1; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; 
-            }
-            .nav-card .password-container { 
-                max-height: none; opacity: 1; margin-top: 10px; 
-            }
+            .fab-container { bottom: 20px; right: 20px; } 
+            .nav-card .preview-list, .nav-card .detail-info { max-height: none; opacity: 1; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; }
+            .nav-card .password-container { max-height: none; opacity: 1; margin-top: 10px; }
             .nav-card:hover { transform: none; border-color: transparent; }
             .nav-card { -webkit-user-select: none; user-select: none; }
             .detail-info, .password-badge, h3, h2 { -webkit-user-select: text; user-select: text; }
         }
 
-        /* 讀取中提示 */
+        /* 讀取與提示 */
         #loading-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: var(--bg); display: flex; justify-content: center; align-items: center;
-            z-index: 2000; font-size: 20px; font-weight: bold; color: var(--primary);
-            transition: opacity 0.3s;
+            z-index: 2000; font-size: 20px; font-weight: bold; color: var(--primary); transition: opacity 0.3s;
         }
-
-        /* 自訂提示框 (Toast) */
         #custom-toast {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
             background: #334155; color: white; padding: 12px 24px; border-radius: 8px;
@@ -286,7 +223,7 @@
             opacity: 0; visibility: hidden; transition: all 0.3s ease;
         }
         #custom-toast.show { opacity: 1; visibility: visible; top: 40px; }
-        #custom-toast.danger { background: #ef4444; } /* 警告專用紅色背景 */
+        #custom-toast.danger { background: #ef4444; } 
     </style>
 </head>
 <body>
@@ -305,16 +242,10 @@
         <button class="btn-close" onclick="closeSidebar()">×</button>
     </div>
     <div class="sidebar-menu">
-        <div class="menu-item disabled tooltip-container" data-tooltip="辦公室地圖視角開發中！">
-            🗺️ 地圖顯示
-        </div>
-        <div class="menu-item" onclick="showExtensionsView()">
-            📞 辦公室分機表
-        </div>
+        <div class="menu-item disabled">🗺️ 地圖顯示</div>
+        <div class="menu-item" onclick="showExtensionsView()">📞 辦公室分機表</div>
     </div>
-    <div class="sidebar-footer">
-        更多功能開發中！
-    </div>
+    <div class="sidebar-footer">更多功能開發中！</div>
 </div>
 
 <div class="app-container">
@@ -330,29 +261,17 @@
         <div class="header-right" id="header-right"></div> 
     </header>
 
-    <!-- 路徑紀錄 (Breadcrumb) -->
+    <!-- 路徑紀錄 -->
     <div id="breadcrumb" class="breadcrumb"></div>
 
-    <!-- 第一層：樓層 (首頁) -->
+    <!-- 視圖區塊 -->
     <div id="view-floor" class="view active">
         <div class="grid-nav">
-            <div class="nav-card" onclick="showOffices('修船大樓３Ｆ')">
-                <h2>修船大樓３Ｆ</h2>
-                <ul class="preview-list" id="preview-floor-3F"></ul>
-            </div>
-            <div class="nav-card" onclick="showOffices('修船大樓４Ｆ')">
-                <h2>修船大樓４Ｆ</h2>
-                <ul class="preview-list" id="preview-floor-4F"></ul>
-            </div>
+            <div class="nav-card" onclick="showOffices('修船大樓３Ｆ')"><h2>修船大樓３Ｆ</h2><ul class="preview-list" id="preview-floor-3F"></ul></div>
+            <div class="nav-card" onclick="showOffices('修船大樓４Ｆ')"><h2>修船大樓４Ｆ</h2><ul class="preview-list" id="preview-floor-4F"></ul></div>
         </div>
     </div>
-
-    <!-- 第二層：辦公室 -->
-    <div id="view-office" class="view">
-        <div class="grid-nav" id="office-list"></div>
-    </div>
-
-    <!-- 第三層：詳細資訊頁 -->
+    <div id="view-office" class="view"><div class="grid-nav" id="office-list"></div></div>
     <div id="view-detail" class="view">
         <div class="tabs">
             <button id="tab-staff" class="tab-btn active" onclick="switchTab('staff')">人員</button>
@@ -361,18 +280,12 @@
         </div>
         <div id="detail-grid" class="grid-nav"></div>
     </div>
-
-    <!-- 第四層：全辦公室分機總表 -->
-    <div id="view-extensions" class="view">
-        <div id="ext-container"></div>
-    </div>
+    <div id="view-extensions" class="view"><div id="ext-container"></div></div>
 </div>
 
 <!-- 懸浮操作按鈕 (FAB) -->
 <div class="fab-container" id="fab-container">
-    <div class="fab-menu" id="fab-menu">
-        <!-- 選單內容由 JS 動態生成 -->
-    </div>
+    <div class="fab-menu" id="fab-menu"></div>
     <button class="fab-btn" onclick="toggleFabMenu(event)">＋</button>
 </div>
 
@@ -385,35 +298,14 @@
             <span id="modal-title">✏️ 編輯人員資料</span>
             <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeEditModal()">×</button>
         </div>
-        <div class="form-group">
-            <label>姓名</label>
-            <input type="text" id="edit-name" placeholder="輸入姓名 (必填)">
-        </div>
-        <div class="form-group">
-            <label>職稱 (頭銜)</label>
-            <input type="text" id="edit-title" placeholder="例如：專案經理 (無則填 N/A)">
-        </div>
-        <div class="form-group">
-            <label>入廠日</label>
-            <input type="date" id="edit-join-date">
-        </div>
-        <div class="form-group">
-            <label>分機</label>
-            <input type="text" id="edit-ext" placeholder="例如：6100 (無則填 N/A)">
-        </div>
-        <div class="form-group">
-            <label>電腦編號 (PC ID)</label>
-            <input type="text" id="edit-pc" placeholder="例如：9059145 (無則填 N/A)">
-        </div>
+        <div class="form-group"><label>姓名</label><input type="text" id="edit-name" placeholder="輸入姓名 (必填)"></div>
+        <div class="form-group"><label>職稱 (頭銜)</label><input type="text" id="edit-title" placeholder="例如：專案經理 (無則填 N/A)"></div>
+        <div class="form-group"><label>入廠日</label><input type="date" id="edit-join-date"></div>
+        <div class="form-group"><label>分機</label><input type="text" id="edit-ext" placeholder="例如：6100 (無則填 N/A)"></div>
+        <div class="form-group"><label>電腦編號 (PC ID)</label><input type="text" id="edit-pc" placeholder="例如：9059145 (無則填 N/A)"></div>
         <div class="form-group" style="display:flex; gap: 10px;">
-            <div style="flex:1;">
-                <label>網路孔</label>
-                <input type="text" id="edit-net" placeholder="N/A">
-            </div>
-            <div style="flex:1;">
-                <label>電話孔</label>
-                <input type="text" id="edit-phone" placeholder="N/A">
-            </div>
+            <div style="flex:1;"><label>網路孔</label><input type="text" id="edit-net" placeholder="N/A"></div>
+            <div style="flex:1;"><label>電話孔</label><input type="text" id="edit-phone" placeholder="N/A"></div>
         </div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeEditModal()" style="margin-right: auto;">取消</button>
@@ -430,16 +322,30 @@
             <span id="asset-modal-title">📦 新增/編輯資產</span>
             <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeAssetModal()">×</button>
         </div>
+        
+        <!-- 資產分類標籤區塊 -->
+        <div class="asset-tabs-container">
+            <button class="asset-tab-btn active" data-type="電腦" onclick="switchAssetCategory('電腦')">💻 電腦</button>
+            <button class="asset-tab-btn" data-type="影印機" onclick="switchAssetCategory('影印機')">🖨️ 影印機</button>
+            <button class="asset-tab-btn" data-type="冰箱" onclick="switchAssetCategory('冰箱')">❄️ 冰箱</button>
+            <button class="asset-tab-btn" data-type="洗衣機" onclick="switchAssetCategory('洗衣機')">👕 洗衣機</button>
+            <button class="asset-tab-btn" data-type="冷氣機" onclick="switchAssetCategory('冷氣機')">💨 冷氣機</button>
+            <button class="asset-tab-btn" data-type="其他" onclick="switchAssetCategory('其他')">📦 其他</button>
+        </div>
+
         <div class="form-group">
             <label>資產名稱</label>
-            <input type="text" id="asset-item" placeholder="例如：印表機 A (必填)">
+            <input type="text" id="asset-item" placeholder="例如：公用電腦 (必填)">
         </div>
+        
+        <!-- 共同項：資產編號 (SN) 與狀態 -->
         <div class="form-group">
-            <label>財產序號 / SN</label>
+            <label>資產編號 / SN (共同項)</label>
             <input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)">
         </div>
+        
         <div class="form-group">
-            <label>設備狀態</label>
+            <label>設備狀態 (共同項)</label>
             <select id="asset-status">
                 <option value="正常">🟢 正常</option>
                 <option value="碳粉不足">🟡 碳粉不足</option>
@@ -448,6 +354,34 @@
                 <option value="其他">⚪ 其他</option>
             </select>
         </div>
+        
+        <!-- 電腦專屬欄位區塊 (預設顯示) -->
+        <div id="asset-computer-fields" style="border-top: 1px dashed #cbd5e1; margin: 20px 0 10px 0; padding-top: 15px;">
+            <div class="form-group">
+                <label>電腦編號 (PC ID)</label>
+                <input type="text" id="asset-pc" placeholder="例如：9059145 (無則填 N/A)">
+            </div>
+            <!-- 新增的網域選項 -->
+            <div class="form-group">
+                <label>網域</label>
+                <select id="asset-domain">
+                    <option value="外網">🌍 外網</option>
+                    <option value="內網">🏢 內網</option>
+                    <option value="混合">🔄 混合</option>
+                </select>
+            </div>
+            <div class="form-group" style="display:flex; gap: 10px;">
+                <div style="flex:1;">
+                    <label>網路孔</label>
+                    <input type="text" id="asset-net" placeholder="N/A">
+                </div>
+                <div style="flex:1;">
+                    <label>電話孔</label>
+                    <input type="text" id="asset-phone" placeholder="N/A">
+                </div>
+            </div>
+        </div>
+
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeAssetModal()">取消</button>
             <button id="btn-save-asset" class="btn-primary" onclick="saveAssetData()">儲存</button>
@@ -462,7 +396,6 @@
             <span>✏️ 編輯辦公室資訊</span>
             <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeOfficeModal()">×</button>
         </div>
-        <!-- 備註技術債：因為目前 office_id 綁死名稱，為了系統穩定暫不開放修改名稱 -->
         <div class="form-group">
             <label>辦公室名稱 (為防資料遺失，暫不可修改)</label>
             <input type="text" id="office-name" disabled style="background-color: #f1f5f9; color: #94a3b8;">
@@ -494,11 +427,7 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    
-    // 使用 initializeFirestore 並強制開啟長輪詢 (Long Polling)
-    const db = initializeFirestore(app, {
-        experimentalForceLongPolling: true
-    });
+    const db = initializeFirestore(app, { experimentalForceLongPolling: true });
 
     let globalOffices = [];
     let globalMembers = [];
@@ -510,18 +439,17 @@
     let currentTab = 'staff';
     let isInitialized = false; 
     
-    // 狀態管理：紀錄各表單目前編輯的 ID (若為 null 則代表新增)
+    // 狀態管理
     let currentEditMemberId = null; 
     let currentEditAssetId = null;
-    let isEditMode = false; // 人員專用
+    let currentAssetCategory = '電腦'; // 預設資產標籤
+    let isEditMode = false; 
 
-    // 自訂提示訊息功能 (支援 isDanger 紅色警告樣式)
     function customAlert(msg, isDanger = false) {
         const toast = document.getElementById('custom-toast');
         toast.innerText = msg;
         if (isDanger) toast.classList.add('danger');
         else toast.classList.remove('danger');
-        
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 3000);
     }
@@ -569,7 +497,6 @@
             const floorId = f === '修船大樓３Ｆ' ? '3F' : '4F';
             const list = document.getElementById(`preview-floor-${floorId}`);
             list.innerHTML = ''; 
-            
             const floorOffices = globalOffices.filter(o => o.floor === f);
             floorOffices.forEach(o => {
                 const li = document.createElement('li');
@@ -589,11 +516,7 @@
             setTimeout(() => {
                 const mainTitle = document.getElementById('main-title');
                 if (mainTitle && mainTitle.scrollWidth > titleContainer.clientWidth) {
-                    titleContainer.innerHTML = `
-                        <div class="marquee-wrapper">
-                            <h1 class="marquee-text">${text}</h1><h1 class="marquee-text">${text}</h1>
-                        </div>
-                    `;
+                    titleContainer.innerHTML = `<div class="marquee-wrapper"><h1 class="marquee-text">${text}</h1><h1 class="marquee-text">${text}</h1></div>`;
                 }
             }, 50);
         });
@@ -632,11 +555,7 @@
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            closeFabMenu();
-            closeEditModal();
-            closeAssetModal();
-            closeOfficeModal();
-            closeSidebar();
+            closeFabMenu(); closeEditModal(); closeAssetModal(); closeOfficeModal(); closeSidebar();
         }
     });
 
@@ -654,8 +573,7 @@
     function updateFabMenu() {
         const fabMenu = document.getElementById('fab-menu');
         const fabContainer = document.getElementById('fab-container');
-        fabMenu.innerHTML = ''; 
-        closeFabMenu(); 
+        fabMenu.innerHTML = ''; closeFabMenu(); 
 
         if (currentLevel === 0) {
             fabContainer.style.display = 'flex';
@@ -665,18 +583,13 @@
             fabMenu.innerHTML = `<button class="fab-item" onclick="customAlert('編輯樓層區域開發中！')">✏️ 編輯 ${currentFloor} 資訊</button>`;
         } else if (currentLevel === 2) {
             fabContainer.style.display = 'flex';
-            // 動態依照當前標籤切換對應的功能，體驗更直覺
             let specificAction = '';
             if (currentTab === 'staff' || currentTab === 'facilities') {
                 specificAction = `<button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>`;
             } else if (currentTab === 'assets') {
                 specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增公用資產</button>`;
             }
-
-            fabMenu.innerHTML = `
-                ${specificAction}
-                <button class="fab-item" onclick="openOfficeModal()">✏️ 編輯辦公室密碼</button>
-            `;
+            fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal()">✏️ 編輯辦公室密碼</button>`;
         } else {
             fabContainer.style.display = 'none';
         }
@@ -687,11 +600,8 @@
         const btnBack = document.getElementById('btn-global-back');
         const breadcrumb = document.getElementById('breadcrumb');
 
-        if (currentLevel === 0) {
-            btnHome.style.display = 'none'; btnBack.style.display = 'none';
-        } else {
-            btnHome.style.display = 'inline-block'; btnBack.style.display = 'inline-block';
-        }
+        if (currentLevel === 0) { btnHome.style.display = 'none'; btnBack.style.display = 'none'; } 
+        else { btnHome.style.display = 'inline-block'; btnBack.style.display = 'inline-block'; }
 
         syncHeaderLayout();
 
@@ -716,7 +626,6 @@
             pathHtml += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">分機總表</span>`;
         }
         breadcrumb.innerHTML = pathHtml;
-        
         updateFabMenu();
     }
 
@@ -739,7 +648,6 @@
         
         const list = document.getElementById('office-list');
         list.innerHTML = '';
-        
         const floorOffices = globalOffices.filter(o => o.floor === floor);
         floorOffices.forEach(off => {
             const card = document.createElement('div'); card.className = 'nav-card';
@@ -764,7 +672,7 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`tab-${tab}`).classList.add('active');
         updateDetailContent();
-        updateFabMenu(); // 切換分頁時，右下角按鈕也會跟著變更功能
+        updateFabMenu(); 
     }
 
     function updateDetailContent() {
@@ -772,7 +680,6 @@
         grid.innerHTML = '';
         
         const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
-        // 針對辦公室公用資產過濾
         const officeAssetsList = globalAssets.filter(a => a.office_id === currentOffice);
 
         let assetCount = officeAssetsList.length;
@@ -789,12 +696,9 @@
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card';
                 const displayJoinDate = m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A';
-                
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
-                        <div style="text-align: left;">
-                            <h3 style="margin:0 0 5px 0;">${m.name}</h3>
-                        </div>
+                        <div style="text-align: left;"><h3 style="margin:0 0 5px 0;">${m.name}</h3></div>
                         <button class="btn-edit" onclick="openMemberModal('${m.id}')">✏️ 編輯</button>
                     </div>
                     <div class="detail-info" style="border-top: none; padding-top: 0; margin-top: 5px;">
@@ -809,19 +713,21 @@
         else if (currentTab === 'assets') {
             if(assetCount === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無資產資料</div>';
             
-            // 渲染辦公室公用資產
             officeAssetsList.forEach(a => {
                 const card = document.createElement('div'); card.className = 'nav-card';
-                // 依照狀態給予不同顏色的圓點提示
                 let statusIcon = '⚪';
                 if(a.status === '正常') statusIcon = '🟢';
                 else if(a.status === '待修') statusIcon = '🔴';
                 else if(a.status === '報廢') statusIcon = '⚫';
                 else if(a.status === '碳粉不足') statusIcon = '🟡';
 
+                // 標示分類小 icon
+                let iconMap = { '電腦': '💻', '影印機': '🖨️', '冰箱': '❄️', '洗衣機': '👕', '冷氣機': '💨', '其他': '📦' };
+                let catIcon = iconMap[a.category] || '📦';
+
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <h3 style="margin:0;">${a.item}</h3>
+                        <h3 style="margin:0;">${catIcon} ${a.item}</h3>
                         <button class="btn-edit" onclick="openAssetModal('${a.id}')">✏️ 編輯</button>
                     </div>
                     <div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div>
@@ -830,7 +736,6 @@
                 grid.appendChild(card);
             });
 
-            // 渲染人員的個人資產 (這部分牽涉陣列修改較複雜，目前暫維持唯讀展示，未來可視需求拆分)
             officeMembers.forEach(m => {
                 if(m.assets && m.assets.length > 0) {
                     const card = document.createElement('div'); card.className = 'nav-card';
@@ -840,7 +745,13 @@
             });
         }
         else if (currentTab === 'facilities') {
-            if(officeMembers.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無孔位配置</div>';
+            // 利用我們新增的 category 屬性或關鍵字來嚴謹判斷是否為電腦
+            const publicComputers = officeAssetsList.filter(a => a.category === '電腦' || (a.item && a.item.includes('電腦')));
+
+            if(officeMembers.length === 0 && publicComputers.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無孔位配置</div>';
+            }
+
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card'; card.style.textAlign = 'left';
                 const pcDisplay = m.pc_id && m.pc_id !== 'N/A' ? m.pc_id : '無';
@@ -851,8 +762,31 @@
                     </div>
                     <div style="font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${pcDisplay}</div>
                     <table class="facility-table">
-                        <tr><td class="facility-label">網路孔</td><td>${m.net_port}</td></tr>
-                        <tr><td class="facility-label">電話孔</td><td>${m.phone_port}</td></tr>
+                        <tr><td class="facility-label">網路孔</td><td>${m.net_port || 'N/A'}</td></tr>
+                        <tr><td class="facility-label">電話孔</td><td>${m.phone_port || 'N/A'}</td></tr>
+                    </table>`;
+                grid.appendChild(card);
+            });
+
+            // 渲染公用電腦孔位 (點擊編輯對接 Asset Modal)
+            publicComputers.forEach(a => {
+                const card = document.createElement('div'); card.className = 'nav-card'; card.style.textAlign = 'left';
+                card.style.border = '1px solid #cbd5e1'; 
+                card.style.backgroundColor = '#f8fafc'; // 稍微改變底色區分公用設備
+                
+                const snDisplay = a.sn && a.sn !== 'N/A' ? a.sn : '無';
+                // 顯示新的網域資訊
+                const domainInfo = a.domain ? `<span style="color:#94a3b8; font-size:10px;">(${a.domain})</span>` : '';
+                
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <h3 style="margin:0; margin-bottom: 4px; color: var(--primary);">💻 ${a.item}</h3>
+                        <button class="btn-edit" onclick="openAssetModal('${a.id}')">✏️ 編輯</button>
+                    </div>
+                    <div style="font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${a.pc_id || 'N/A'} <span style="font-weight:normal; font-size:12px; color:#64748b;">(SN: ${snDisplay})</span></div>
+                    <table class="facility-table">
+                        <tr><td class="facility-label">網路孔</td><td>${a.net_port || 'N/A'} ${domainInfo}</td></tr>
+                        <tr><td class="facility-label">電話孔</td><td>${a.phone_port || 'N/A'}</td></tr>
                     </table>`;
                 grid.appendChild(card);
             });
@@ -876,7 +810,27 @@
             const groupDiv = document.createElement('div'); groupDiv.style.marginBottom = '30px';
             let html = `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">${officeName}</h2><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px;">`;
 
-            officeMap[officeName].forEach(m => {
+            // ================= 智慧排序邏輯 (相同分機排一起，無分機墊底) =================
+            const sortedMembers = officeMap[officeName].sort((a, b) => {
+                const extA = (a.ext && a.ext !== 'N/A' && a.ext.trim() !== '') ? a.ext.trim() : '999999';
+                const extB = (b.ext && b.ext !== 'N/A' && b.ext.trim() !== '') ? b.ext.trim() : '999999';
+                
+                if (extA !== extB) {
+                    // 嘗試提取純數字進行比對 (解決 '1205#' 和 '1197' 的字串排序錯亂問題)
+                    const numA = parseInt(extA.replace(/\D/g, ''), 10);
+                    const numB = parseInt(extB.replace(/\D/g, ''), 10);
+                    
+                    if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+                        return numA - numB;
+                    }
+                    // 若無數字或數字相同，退回字串排序
+                    return extA.localeCompare(extB);
+                }
+                // 若分機完全相同，則依姓名排序以確保穩定並群聚
+                return (a.name || '').localeCompare(b.name || '');
+            });
+
+            sortedMembers.forEach(m => {
                 const hasExt = (m.ext && m.ext !== 'N/A');
                 const extText = hasExt ? m.ext : '無分機';
                 const extColor = hasExt ? 'var(--primary)' : 'var(--text-muted)';
@@ -893,11 +847,9 @@
         const btnNext = document.getElementById('btn-save-next');
 
         if (memberId && typeof memberId === 'string') {
-            isEditMode = true;
-            currentEditMemberId = memberId;
+            isEditMode = true; currentEditMemberId = memberId;
             document.getElementById('modal-title').innerText = '✏️ 編輯人員資料';
             btnNext.style.display = 'none'; 
-
             const m = globalMembers.find(x => x.id === memberId);
             if(m) {
                 document.getElementById('edit-name').value = m.name || '';
@@ -909,11 +861,9 @@
                 document.getElementById('edit-phone').value = m.phone_port || '';
             }
         } else {
-            isEditMode = false;
-            currentEditMemberId = null;
+            isEditMode = false; currentEditMemberId = null;
             document.getElementById('modal-title').innerText = '➕ 新增人員資料';
             btnNext.style.display = 'inline-block'; 
-            
             document.getElementById('edit-name').value = '';
             document.getElementById('edit-title').value = '';
             document.getElementById('edit-ext').value = '';
@@ -921,28 +871,19 @@
             document.getElementById('edit-net').value = '';
             document.getElementById('edit-phone').value = '';
         }
-
         document.getElementById('edit-modal-overlay').classList.add('active');
     }
 
-    function closeEditModal() {
-        document.getElementById('edit-modal-overlay').classList.remove('active');
-    }
+    function closeEditModal() { document.getElementById('edit-modal-overlay').classList.remove('active'); }
 
     async function saveMemberData(continueNext = false) {
         const nameInput = document.getElementById('edit-name').value.trim();
-
-        if (!nameInput) {
-            customAlert('姓名為必填欄位！', true);
-            return;
-        }
+        if (!nameInput) { customAlert('姓名為必填欄位！', true); return; }
 
         const btnId = continueNext ? 'btn-save-next' : 'btn-save-member';
         const btn = document.getElementById(btnId);
         const originalText = btn.innerText;
-        
-        btn.disabled = true;
-        btn.innerText = '儲存中...';
+        btn.disabled = true; btn.innerText = '儲存中...';
 
         try {
             const memberDataToSave = {
@@ -957,44 +898,52 @@
             };
 
             if (isEditMode) {
-                const memberRef = doc(db, 'members', currentEditMemberId);
-                await updateDoc(memberRef, memberDataToSave);
+                await updateDoc(doc(db, 'members', currentEditMemberId), memberDataToSave);
             } else {
                 if (currentOffice.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOffice.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
                 else memberDataToSave.dept = currentOffice; 
-
                 await addDoc(collection(db, 'members'), memberDataToSave);
             }
             
             if (continueNext && !isEditMode) {
                 btn.innerText = '已新增 ✔';
-                document.getElementById('edit-name').value = '';
-                document.getElementById('edit-title').value = '';
-                document.getElementById('edit-ext').value = '';
-                document.getElementById('edit-pc').value = '';
-                document.getElementById('edit-net').value = '';
-                document.getElementById('edit-phone').value = '';
+                ['edit-name', 'edit-title', 'edit-ext', 'edit-pc', 'edit-net', 'edit-phone'].forEach(id => document.getElementById(id).value = '');
                 document.getElementById('edit-name').focus();
-                
-                setTimeout(() => {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                }, 800);
+                setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 800);
             } else {
-                closeEditModal();
-                btn.disabled = false;
-                btn.innerText = originalText;
+                closeEditModal(); btn.disabled = false; btn.innerText = originalText;
             }
         } catch(error) {
             console.error("更新失敗: ", error);
             customAlert("儲存失敗，請檢查網路連線。", true);
-            btn.disabled = false;
-            btn.innerText = originalText;
+            btn.disabled = false; btn.innerText = originalText;
         }
     }
 
-    // ================= 2. 資產表單邏輯 =================
+    // ================= 2. 資產表單與分類邏輯 =================
+    
+    // 切換資產分類標籤
+    function switchAssetCategory(category) {
+        currentAssetCategory = category;
+        
+        // 更新按鈕外觀
+        document.querySelectorAll('.asset-tab-btn').forEach(btn => {
+            if (btn.dataset.type === category) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+
+        // 若資產名稱為空，或剛好等於舊分類名，就自動帶入新分類名方便使用者
+        const itemInput = document.getElementById('asset-item');
+        const defaultNames = ['電腦', '影印機', '冰箱', '洗衣機', '冷氣機', '其他'];
+        if (!itemInput.value || defaultNames.includes(itemInput.value) || itemInput.value === '公用電腦') {
+            itemInput.value = (category === '電腦') ? '公用電腦' : category;
+        }
+
+        // 電腦專屬欄位顯示切換
+        document.getElementById('asset-computer-fields').style.display = (category === '電腦') ? 'block' : 'none';
+    }
+
     function openAssetModal(assetId = null) {
         closeFabMenu();
         if (assetId && typeof assetId === 'string') {
@@ -1003,59 +952,77 @@
             
             const a = globalAssets.find(x => x.id === assetId);
             if(a) {
+                // 自動跳轉到對應的分類標籤
+                switchAssetCategory(a.category || '其他');
+                
                 document.getElementById('asset-item').value = a.item || '';
                 document.getElementById('asset-sn').value = a.sn || '';
                 document.getElementById('asset-status').value = a.status || '正常';
+                
+                if (a.category === '電腦' || (a.item && a.item.includes('電腦'))) {
+                    document.getElementById('asset-domain').value = a.domain || '外網';
+                    document.getElementById('asset-pc').value = a.pc_id || '';
+                    document.getElementById('asset-net').value = a.net_port || '';
+                    document.getElementById('asset-phone').value = a.phone_port || '';
+                }
             }
         } else {
             currentEditAssetId = null;
             document.getElementById('asset-modal-title').innerText = '➕ 新增公用資產';
             
-            document.getElementById('asset-item').value = '';
+            // 預設回到電腦標籤
+            switchAssetCategory('電腦');
             document.getElementById('asset-sn').value = '';
             document.getElementById('asset-status').value = '正常';
+            
+            // 清空電腦相關
+            document.getElementById('asset-domain').value = '外網';
+            document.getElementById('asset-pc').value = '';
+            document.getElementById('asset-net').value = '';
+            document.getElementById('asset-phone').value = '';
         }
         document.getElementById('asset-modal-overlay').classList.add('active');
     }
 
-    function closeAssetModal() {
-        document.getElementById('asset-modal-overlay').classList.remove('active');
-    }
+    function closeAssetModal() { document.getElementById('asset-modal-overlay').classList.remove('active'); }
 
     async function saveAssetData() {
         const itemInput = document.getElementById('asset-item').value.trim();
-        if (!itemInput) {
-            customAlert('資產名稱為必填欄位！', true);
-            return;
-        }
+        if (!itemInput) { customAlert('資產名稱為必填欄位！', true); return; }
 
         const btn = document.getElementById('btn-save-asset');
-        btn.disabled = true;
-        btn.innerText = '儲存中...';
+        btn.disabled = true; btn.innerText = '儲存中...';
 
         try {
             const assetDataToSave = {
                 item: itemInput,
+                category: currentAssetCategory, // 紀錄所選的標籤分類
                 sn: document.getElementById('asset-sn').value || 'N/A',
                 status: document.getElementById('asset-status').value,
                 office_id: currentOffice,
-                type: 'public' // 強制設定為公用辦公室資產
+                type: 'public' 
             };
 
+            // 如果是電腦分類，才一併儲存這幾項專屬欄位
+            if (currentAssetCategory === '電腦') {
+                assetDataToSave.domain = document.getElementById('asset-domain').value;
+                assetDataToSave.pc_id = document.getElementById('asset-pc').value || 'N/A';
+                assetDataToSave.net_port = document.getElementById('asset-net').value || 'N/A';
+                assetDataToSave.phone_port = document.getElementById('asset-phone').value || 'N/A';
+            }
+
             if (currentEditAssetId) {
-                const assetRef = doc(db, 'assets', currentEditAssetId);
-                await updateDoc(assetRef, assetDataToSave);
+                await updateDoc(doc(db, 'assets', currentEditAssetId), assetDataToSave);
             } else {
                 await addDoc(collection(db, 'assets'), assetDataToSave);
             }
             
             closeAssetModal();
+            customAlert("資產已儲存！");
         } catch(error) {
-            console.error("更新失敗: ", error);
-            customAlert("儲存失敗，請檢查網路連線。", true);
+            console.error("更新失敗: ", error); customAlert("儲存失敗，請檢查網路連線。", true);
         } finally {
-            btn.disabled = false;
-            btn.innerText = '儲存';
+            btn.disabled = false; btn.innerText = '儲存';
         }
     }
 
@@ -1063,67 +1030,43 @@
     function openOfficeModal() {
         closeFabMenu();
         const officeData = globalOffices.find(o => o.name === currentOffice);
-        if (!officeData) {
-            customAlert('找不到辦公室資料！', true);
-            return;
-        }
+        if (!officeData) { customAlert('找不到辦公室資料！', true); return; }
 
         document.getElementById('office-name').value = officeData.name;
         document.getElementById('office-pwd').value = officeData.pwd || '';
         document.getElementById('office-modal-overlay').classList.add('active');
     }
 
-    function closeOfficeModal() {
-        document.getElementById('office-modal-overlay').classList.remove('active');
-    }
+    function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
 
     async function saveOfficeData() {
         const btn = document.getElementById('btn-save-office');
-        btn.disabled = true;
-        btn.innerText = '儲存中...';
+        btn.disabled = true; btn.innerText = '儲存中...';
 
         try {
-            // 目前 office_id 就是 name，所以我們利用 currentOffice 來抓取 Document 參考
-            const officeRef = doc(db, 'offices', currentOffice);
-            await updateDoc(officeRef, {
+            await updateDoc(doc(db, 'offices', currentOffice), {
                 pwd: document.getElementById('office-pwd').value || 'N/A'
             });
-            
-            closeOfficeModal();
-            customAlert("辦公室密碼已更新！");
+            closeOfficeModal(); customAlert("辦公室密碼已更新！");
         } catch(error) {
-            console.error("更新失敗: ", error);
-            customAlert("儲存失敗，請確認這筆辦公室資料是否存在於資料庫。", true);
+            console.error("更新失敗: ", error); customAlert("儲存失敗，請確認資料是否存在。", true);
         } finally {
-            btn.disabled = false;
-            btn.innerText = '儲存';
+            btn.disabled = false; btn.innerText = '儲存';
         }
     }
 
     // 匯出全域函數
-    window.toggleSidebar = toggleSidebar;
-    window.closeSidebar = closeSidebar;
-    window.showExtensionsView = showExtensionsView;
-    window.goHome = goHome;
-    window.goBack = goBack;
-    window.showOffices = showOffices;
-    window.switchTab = switchTab;
+    window.toggleSidebar = toggleSidebar; window.closeSidebar = closeSidebar;
+    window.showExtensionsView = showExtensionsView; window.goHome = goHome; window.goBack = goBack;
+    window.showOffices = showOffices; window.switchTab = switchTab;
     
-    // 表單功能
-    window.openMemberModal = openMemberModal;
-    window.closeEditModal = closeEditModal;
-    window.saveMemberData = saveMemberData;
+    // 表單切換與儲存
+    window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal; window.saveMemberData = saveMemberData;
+    window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal; window.saveAssetData = saveAssetData;
+    window.switchAssetCategory = switchAssetCategory; 
+    window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal; window.saveOfficeData = saveOfficeData;
     
-    window.openAssetModal = openAssetModal;
-    window.closeAssetModal = closeAssetModal;
-    window.saveAssetData = saveAssetData;
-    
-    window.openOfficeModal = openOfficeModal;
-    window.closeOfficeModal = closeOfficeModal;
-    window.saveOfficeData = saveOfficeData;
-    
-    window.toggleFabMenu = toggleFabMenu;
-    window.customAlert = customAlert;
+    window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
 
     window.addEventListener('resize', syncHeaderLayout);
     setupRealtimeListeners();

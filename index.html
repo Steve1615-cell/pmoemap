@@ -178,13 +178,13 @@
         .btn-edit { background: none; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
         .btn-edit:hover { background: var(--accent); color: var(--primary); border-color: var(--primary); }
 
-        /* ======== 自訂資產分類下拉選單 ======== */
+        /* ======== 自訂下拉選單元件 ======== */
         .custom-dropdown-btn {
             width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;
             background: white; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
         }
         .custom-dropdown-panel {
-            position: absolute; top: 100%; left: 0; width: 100%; box-sizing: border-box; /* 確保不凸出外框 */
+            position: absolute; top: 100%; left: 0; width: 100%; box-sizing: border-box;
             background: white; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 3100;
             display: none; flex-direction: column; margin-top: 4px; overflow: hidden;
         }
@@ -243,7 +243,7 @@
 <!-- 自訂提示框 -->
 <div id="custom-toast"></div>
 
-<!-- 自訂防呆警告對話框 (刪除資產類別專用) -->
+<!-- 共用防呆警告對話框 (刪除專用) -->
 <div id="confirm-modal-overlay" class="modal-overlay" style="z-index: 4000;">
     <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header" style="color: var(--danger);">
@@ -252,7 +252,7 @@
         <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeConfirmModal()">取消</button>
-            <button id="btn-confirm-delete" class="btn-danger" onclick="executeDeleteCategory()">確定刪除</button>
+            <button id="btn-confirm-delete" class="btn-danger" onclick="executeConfirmDelete()">確定刪除</button>
         </div>
     </div>
 </div>
@@ -365,12 +365,13 @@
 
         <div class="form-group">
             <label>資產名稱</label>
-            <input type="text" id="asset-item" placeholder="例如：公用電腦 (選填)">
+            <input type="text" id="asset-item" placeholder="未命名設備 (選填)">
         </div>
         
+        <!-- SN 加入了 oninput 雙向綁定邏輯 -->
         <div class="form-group">
             <label>資產編號 / SN (共同項)</label>
-            <input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)">
+            <input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)" oninput="syncSnPc('sn')">
         </div>
         
         <div class="form-group">
@@ -385,15 +386,28 @@
         </div>
         
         <div id="asset-computer-fields" style="border-top: 1px dashed #cbd5e1; margin: 20px 0 10px 0; padding-top: 15px; display:none;">
+            
+            <!-- 使用者改為自訂的獨立下拉選單 -->
             <div class="form-group">
                 <label>使用者 <span style="font-weight:normal; font-size:12px; color:#94a3b8;">(限定本辦公室人員)</span></label>
-                <input list="office-members-list" id="asset-owner-input" placeholder="搜尋或選擇人員 (留空為公用)">
-                <datalist id="office-members-list"></datalist>
+                <div class="custom-dropdown-btn" onclick="toggleOwnerDropdown(event)">
+                    <span id="selected-owner-text">💻 公用設備 (無指定)</span>
+                    <span style="font-size: 12px; color: var(--text-muted);">▼</span>
+                </div>
+                <input type="hidden" id="asset-owner-id" value="">
+                <div class="custom-dropdown-panel" id="owner-panel">
+                    <div class="dropdown-search-row">
+                        <input type="text" id="owner-search-input" placeholder="搜尋或新增人員姓名..." oninput="filterOwners()" onclick="event.stopPropagation()">
+                        <button class="btn-primary" onclick="addOwnerFromAsset(event)" style="padding: 4px 8px; flex-shrink: 0;">➕</button>
+                    </div>
+                    <div class="dropdown-list" id="owner-list"></div>
+                </div>
             </div>
             
+            <!-- PC ID 加入了 oninput 雙向綁定邏輯 -->
             <div class="form-group">
                 <label>電腦編號 (PC ID)</label>
-                <input type="text" id="asset-pc" placeholder="例如：9059145 (無則填 N/A)">
+                <input type="text" id="asset-pc" placeholder="例如：9059145 (無則填 N/A)" oninput="syncSnPc('pc')">
             </div>
             
             <div class="form-group">
@@ -503,6 +517,7 @@
         });
         onSnapshot(collection(db, "members"), (snapshot) => {
             globalMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); checkAllLoaded();
+            if(document.getElementById('owner-panel').classList.contains('active')) renderOwnerDropdown();
         });
         onSnapshot(collection(db, "assets"), (snapshot) => {
             globalAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); checkAllLoaded();
@@ -585,10 +600,16 @@
         if (fabContainer && !fabContainer.contains(e.target) && document.getElementById('fab-menu').classList.contains('active')) {
             closeFabMenu();
         }
-        const catBtn = document.querySelector('.custom-dropdown-btn');
+        
+        // 點擊空白處自動關閉分類與人員下拉選單
         const catPanel = document.getElementById('category-panel');
-        if (catPanel && catPanel.classList.contains('active') && !catPanel.contains(e.target) && !catBtn.contains(e.target)) {
+        if (catPanel && catPanel.classList.contains('active') && !e.target.closest('.form-group')) {
             catPanel.classList.remove('active');
+        }
+        
+        const ownerPanel = document.getElementById('owner-panel');
+        if (ownerPanel && ownerPanel.classList.contains('active') && !e.target.closest('.form-group')) {
+            ownerPanel.classList.remove('active');
         }
     });
 
@@ -596,6 +617,7 @@
         if (e.key === 'Escape') {
             closeFabMenu(); closeEditModal(); closeAssetModal(); closeOfficeModal(); closeSidebar();
             document.getElementById('category-panel').classList.remove('active');
+            document.getElementById('owner-panel').classList.remove('active');
             closeConfirmModal();
         }
     });
@@ -769,11 +791,16 @@
                     if (owner) userText = `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">👤 使用者: ${owner.name}</div>`;
                 }
 
-                const itemDisplay = a.item ? a.item : '未命名設備';
+                // 智慧消去重複前綴邏輯
+                const itemDisplay = a.item || '未命名設備';
+                let titleText = itemDisplay;
+                if (a.category && a.category !== itemDisplay && !itemDisplay.includes(a.category)) {
+                    titleText = `${a.category}：${itemDisplay}`;
+                }
 
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <h3 style="margin:0; text-align:left;">[${a.category}] ${itemDisplay}</h3>
+                        <h3 style="margin:0; text-align:left;">${titleText}</h3>
                         <button class="btn-edit" onclick="openAssetModal('${a.id}')">✏️ 編輯</button>
                     </div>
                     ${userText}
@@ -929,9 +956,23 @@
         }
     }
 
+    // ================= 2. 雙向同步 PC ID 與 SN =================
+    window.syncSnPc = function(source) {
+        if (currentAssetCategory !== '電腦') return;
+        if (source === 'sn') {
+            document.getElementById('asset-pc').value = document.getElementById('asset-sn').value;
+        } else if (source === 'pc') {
+            document.getElementById('asset-sn').value = document.getElementById('asset-pc').value;
+        }
+    }
+
+    // ================= 3. 自訂下拉選單 (共用防呆邏輯) =================
+    let pendingDeleteAction = null; 
+
     function toggleCategoryDropdown(event) {
         if(event) event.stopPropagation();
         const panel = document.getElementById('category-panel');
+        document.getElementById('owner-panel').classList.remove('active'); // 確保另一個關閉
         panel.classList.toggle('active');
         if(panel.classList.contains('active')) {
             document.getElementById('category-search-input').value = '';
@@ -954,7 +995,6 @@
         filtered.forEach(cat => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'dropdown-item';
-            
             const textSpan = document.createElement('span');
             textSpan.innerText = cat;
             textSpan.style.flex = '1';
@@ -971,29 +1011,21 @@
         });
     }
 
-    function filterCategories() {
-        const text = document.getElementById('category-search-input').value;
-        renderCategoryDropdown(text);
-    }
+    function filterCategories() { renderCategoryDropdown(document.getElementById('category-search-input').value); }
 
     function selectCategory(cat) {
         currentAssetCategory = cat;
         document.getElementById('selected-category-text').innerText = cat;
         document.getElementById('category-panel').classList.remove('active');
-        
         document.getElementById('asset-computer-fields').style.display = (cat === '電腦') ? 'block' : 'none';
         
-        const itemInput = document.getElementById('asset-item');
-        if (!itemInput.value || itemInput.value === '公用電腦') {
-            itemInput.value = (cat === '電腦') ? '公用電腦' : cat;
-        }
+        // 若名稱為空，留白即可，儲存時再寫入；避免提早覆寫使用者輸入
     }
 
     async function addCategory(event) {
         if(event) event.stopPropagation();
         const input = document.getElementById('category-search-input');
         const newCat = input.value.trim();
-        
         if(!newCat) { customAlert('請輸入要新增的類型名稱！', true); return; }
         if(globalCategories.includes(newCat)) { customAlert('此類型已存在！', true); return; }
 
@@ -1004,17 +1036,12 @@
             renderCategoryDropdown();
             selectCategory(newCat); 
             customAlert(`成功新增類型：${newCat}`);
-        } catch(e) {
-            console.error(e); customAlert('新增失敗，請檢查網路。', true);
-        }
+        } catch(e) { console.error(e); customAlert('新增失敗，請檢查網路。', true); }
     }
-
-    let categoryToDelete = null;
 
     function promptDeleteCategory(event, catName) {
         event.stopPropagation();
-        categoryToDelete = catName;
-        
+        pendingDeleteAction = { type: 'category', payload: catName };
         const usedAssets = globalAssets.filter(a => a.category === catName);
         if (usedAssets.length > 0) {
             const assetListText = usedAssets.map(a => `- ${a.office_id}: ${a.item || '未命名設備'}`).slice(0, 5).join('\n') + (usedAssets.length > 5 ? '\n...等' : '');
@@ -1022,53 +1049,154 @@
         } else {
             document.getElementById('confirm-msg').innerText = `確定要刪除類型「${catName}」嗎？`;
         }
-        
         document.getElementById('confirm-modal-overlay').classList.add('active');
     }
 
-    function closeConfirmModal() {
-        document.getElementById('confirm-modal-overlay').classList.remove('active');
-        categoryToDelete = null;
+    // ================= 4. 人員下拉選單邏輯 (對接資產表單) =================
+    function toggleOwnerDropdown(event) {
+        if(event) event.stopPropagation();
+        const panel = document.getElementById('owner-panel');
+        document.getElementById('category-panel').classList.remove('active'); // 確保另一個關閉
+        panel.classList.toggle('active');
+        if(panel.classList.contains('active')) {
+            document.getElementById('owner-search-input').value = '';
+            renderOwnerDropdown();
+            document.getElementById('owner-search-input').focus();
+        }
     }
 
-    async function executeDeleteCategory() {
-        if (!categoryToDelete) return;
-        const btn = document.getElementById('btn-confirm-delete');
-        btn.disabled = true; btn.innerText = '刪除中...';
+    function renderOwnerDropdown(filterText = '') {
+        const listDiv = document.getElementById('owner-list');
+        listDiv.innerHTML = '';
+        
+        const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
+        const filtered = officeMembers.filter(m => m.name.toLowerCase().includes(filterText.toLowerCase()));
+
+        // 永遠在頂部或是符合搜尋時顯示「公用設備」選項
+        if ("公用設備 (無指定)".includes(filterText) || filterText === '') {
+            const publicDiv = document.createElement('div');
+            publicDiv.className = 'dropdown-item';
+            publicDiv.innerHTML = `<span style="flex:1;">💻 公用設備 (無指定)</span>`;
+            publicDiv.onclick = () => selectOwner('', '公用設備 (無指定)');
+            listDiv.appendChild(publicDiv);
+        }
+
+        if(filtered.length === 0 && listDiv.innerHTML === '') {
+            listDiv.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到結果，可點擊上方 ➕ 新增人員</div>';
+            return;
+        }
+
+        filtered.forEach(m => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'dropdown-item';
+            const textSpan = document.createElement('span');
+            textSpan.innerText = `👤 ${m.name}`;
+            textSpan.style.flex = '1';
+            textSpan.onclick = () => selectOwner(m.id, m.name);
+            
+            const delBtn = document.createElement('button');
+            delBtn.className = 'dropdown-item-delete';
+            delBtn.innerText = '🗑️';
+            delBtn.onclick = (e) => promptDeleteOwner(e, m.id, m.name);
+
+            itemDiv.appendChild(textSpan);
+            itemDiv.appendChild(delBtn);
+            listDiv.appendChild(itemDiv);
+        });
+    }
+
+    function filterOwners() { renderOwnerDropdown(document.getElementById('owner-search-input').value); }
+
+    function selectOwner(id, name) {
+        document.getElementById('asset-owner-id').value = id;
+        document.getElementById('selected-owner-text').innerText = id ? `👤 ${name}` : '💻 公用設備 (無指定)';
+        document.getElementById('owner-panel').classList.remove('active');
+    }
+
+    async function addOwnerFromAsset(event) {
+        if(event) event.stopPropagation();
+        const input = document.getElementById('owner-search-input');
+        const newName = input.value.trim();
+        if(!newName) { customAlert('請輸入要新增的人員姓名！', true); return; }
 
         try {
-            const usedAssets = globalAssets.filter(a => a.category === categoryToDelete);
-            for (const a of usedAssets) {
-                await deleteDoc(doc(db, 'assets', a.id));
-            }
+            let dept = currentOffice;
+            if (currentOffice.includes('接艦')) dept = '高緯度遠洋巡護船接艦人員';
+            else if (currentOffice.includes('ABS')) dept = '高緯度遠洋巡護船監造人員 (ABS)';
 
-            globalCategories = globalCategories.filter(c => c !== categoryToDelete);
-            await setDoc(doc(db, "settings", "categories"), { list: globalCategories });
-
-            if (currentAssetCategory === categoryToDelete) selectCategory('電腦');
+            const memberDataToSave = {
+                name: newName, title: 'N/A', join_date: '', ext: 'N/A', office_id: currentOffice, dept: dept
+            };
+            const docRef = await addDoc(collection(db, 'members'), memberDataToSave);
+            input.value = '';
             
-            renderCategoryDropdown();
+            selectOwner(docRef.id, newName);
+            customAlert(`成功新增人員：${newName}`);
+        } catch(e) { console.error(e); customAlert('新增人員失敗，請檢查網路。', true); }
+    }
+
+    function promptDeleteOwner(event, id, name) {
+        event.stopPropagation();
+        pendingDeleteAction = { type: 'owner', id: id, name: name };
+        
+        const userAssets = globalAssets.filter(a => a.owner_id === id);
+        if (userAssets.length > 0) {
+            document.getElementById('confirm-msg').innerText = `確定要刪除人員「${name}」嗎？\n\n警告：該員名下綁定有 ${userAssets.length} 件設備。刪除此人員後，那些設備會自動轉退為「公用設備」。`;
+        } else {
+            document.getElementById('confirm-msg').innerText = `確定要刪除人員「${name}」嗎？此動作無法復原。`;
+        }
+        document.getElementById('confirm-modal-overlay').classList.add('active');
+    }
+
+    // ================= 共用刪除執行中樞 =================
+    function closeConfirmModal() {
+        document.getElementById('confirm-modal-overlay').classList.remove('active');
+        pendingDeleteAction = null;
+    }
+
+    async function executeConfirmDelete() {
+        if (!pendingDeleteAction) return;
+        const btn = document.getElementById('btn-confirm-delete');
+        btn.disabled = true; btn.innerText = '處理中...';
+
+        try {
+            if (pendingDeleteAction.type === 'category') {
+                const cat = pendingDeleteAction.payload;
+                const usedAssets = globalAssets.filter(a => a.category === cat);
+                for (const a of usedAssets) { await deleteDoc(doc(db, 'assets', a.id)); }
+                
+                globalCategories = globalCategories.filter(c => c !== cat);
+                await setDoc(doc(db, "settings", "categories"), { list: globalCategories });
+                
+                if (currentAssetCategory === cat) selectCategory('電腦');
+                if (document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
+                customAlert(`已刪除類型「${cat}」及其相關資產！`);
+
+            } else if (pendingDeleteAction.type === 'owner') {
+                const ownerId = pendingDeleteAction.id;
+                // 解除該員所有綁定的資產 (轉退公用)
+                const userAssets = globalAssets.filter(a => a.owner_id === ownerId);
+                for (const a of userAssets) { await updateDoc(doc(db, 'assets', a.id), { owner_id: null }); }
+                
+                // 刪除人員本身
+                await deleteDoc(doc(db, 'members', ownerId));
+                
+                // 如果刪掉的人正是目前表單裡選的人，自動切回公用
+                if (document.getElementById('asset-owner-id').value === ownerId) selectOwner('', '公用設備 (無指定)');
+                if (document.getElementById('owner-panel').classList.contains('active')) renderOwnerDropdown(document.getElementById('owner-search-input').value);
+                customAlert(`已刪除人員「${pendingDeleteAction.name}」！`);
+            }
             closeConfirmModal();
-            customAlert(`已刪除類型「${categoryToDelete}」及其相關資產！`);
         } catch(e) {
-            console.error(e); customAlert('刪除失敗', true);
+            console.error(e); customAlert('刪除操作失敗', true);
         } finally {
             btn.disabled = false; btn.innerText = '確定刪除';
         }
     }
-    
+
+    // ================= 5. 資產表單儲存邏輯 =================
     function openAssetModal(assetId = null) {
         closeFabMenu();
-        
-        const datalist = document.getElementById('office-members-list');
-        datalist.innerHTML = '';
-        const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
-        officeMembers.forEach(m => {
-            const option = document.createElement('option');
-            option.value = `${m.name} (${m.id})`; 
-            datalist.appendChild(option);
-        });
-
         if (assetId && typeof assetId === 'string') {
             currentEditAssetId = assetId;
             document.getElementById('asset-modal-title').innerText = '📦 編輯資產資料';
@@ -1076,7 +1204,6 @@
             const a = globalAssets.find(x => x.id === assetId);
             if(a) {
                 selectCategory(a.category || '其他');
-                
                 document.getElementById('asset-item').value = a.item || '';
                 document.getElementById('asset-sn').value = a.sn || '';
                 document.getElementById('asset-status').value = a.status || '正常';
@@ -1089,10 +1216,9 @@
                     
                     if (a.owner_id) {
                         const owner = globalMembers.find(m => m.id === a.owner_id);
-                        document.getElementById('asset-owner-input').value = owner ? `${owner.name} (${owner.id})` : '';
-                    } else {
-                        document.getElementById('asset-owner-input').value = '';
-                    }
+                        if(owner) selectOwner(owner.id, owner.name);
+                        else selectOwner('', '公用設備 (無指定)');
+                    } else selectOwner('', '公用設備 (無指定)');
                 }
             }
         } else {
@@ -1100,11 +1226,11 @@
             document.getElementById('asset-modal-title').innerText = '➕ 新增資產';
             
             selectCategory('電腦');
-            document.getElementById('asset-item').value = '公用電腦';
+            document.getElementById('asset-item').value = '';
             document.getElementById('asset-sn').value = '';
             document.getElementById('asset-status').value = '正常';
             
-            document.getElementById('asset-owner-input').value = '';
+            selectOwner('', '公用設備 (無指定)');
             document.getElementById('asset-domain').value = '外網';
             document.getElementById('asset-pc').value = '';
             document.getElementById('asset-net').value = '';
@@ -1116,14 +1242,16 @@
     function closeAssetModal() { document.getElementById('asset-modal-overlay').classList.remove('active'); }
 
     async function saveAssetData() {
-        const itemInput = document.getElementById('asset-item').value.trim(); // 移除必填檢查
+        let itemInput = document.getElementById('asset-item').value.trim();
+        // 智慧預設值：若留白，自動帶入類型名稱
+        if (!itemInput) { itemInput = currentAssetCategory; }
 
         const btn = document.getElementById('btn-save-asset');
         btn.disabled = true; btn.innerText = '儲存中...';
 
         try {
             const assetDataToSave = {
-                item: itemInput, // 如果為空，存入空字串即可
+                item: itemInput, 
                 category: currentAssetCategory, 
                 sn: document.getElementById('asset-sn').value || 'N/A',
                 status: document.getElementById('asset-status').value,
@@ -1135,10 +1263,7 @@
                 assetDataToSave.pc_id = document.getElementById('asset-pc').value || 'N/A';
                 assetDataToSave.net_port = document.getElementById('asset-net').value || 'N/A';
                 assetDataToSave.phone_port = document.getElementById('asset-phone').value || 'N/A';
-                
-                const ownerRaw = document.getElementById('asset-owner-input').value;
-                const match = ownerRaw.match(/\((.+)\)$/);
-                assetDataToSave.owner_id = match ? match[1] : null; 
+                assetDataToSave.owner_id = document.getElementById('asset-owner-id').value || null; 
             }
 
             if (currentEditAssetId) {
@@ -1184,7 +1309,6 @@
         }
     }
     
-    // ================= 一鍵復原測試資料邏輯 =================
     window.restoreLostComputers = async function() {
         if(confirm('這將會把預設的測試電腦與資產資料重新寫入資料庫，確定要執行嗎？')) {
             const defaultAssets = [
@@ -1193,11 +1317,9 @@
                 { item: "影印機", sn: "CP-4F-A01", status: "碳粉不足", office_id: "高緯度遠洋巡護船接艦辦公室", category: "影印機", type: "public" },
                 { item: "冷氣機 B", sn: "AC-4F-B01", status: "正常", office_id: "海軍浮塢案監造辦公室", category: "冷氣機", type: "public" },
                 { item: "冷氣機 C", sn: "AC-4F-C01", status: "待修", office_id: "高緯度遠洋巡護船監造辦公室 (ABS)", category: "冷氣機", type: "public" },
-                { item: "公用電腦", sn: "PC-ABS-PUB", status: "正常", office_id: "高緯度遠洋巡護船監造辦公室 (ABS)", category: "電腦", type: "public", pc_id: "905987X", domain: "外網", net_port: "N/A", phone_port: "N/A" }
+                { item: "公用電腦", sn: "PC-ABS-PUB", status: "正常", office_id: "高緯度遠洋巡護船監造辦公室 (ABS)", category: "電腦", type: "public", pc_id: "905987X", domain: "外網", net_port: "N/A", phone_port: "N/A", owner_id: null }
             ];
-            for(let a of defaultAssets) {
-                await addDoc(collection(db, 'assets'), a);
-            }
+            for(let a of defaultAssets) { await addDoc(collection(db, 'assets'), a); }
             customAlert('✅ 測試資產已成功復原！');
         }
     };
@@ -1211,7 +1333,12 @@
     
     window.toggleCategoryDropdown = toggleCategoryDropdown;
     window.filterCategories = filterCategories; window.addCategory = addCategory;
-    window.promptDeleteCategory = promptDeleteCategory; window.executeDeleteCategory = executeDeleteCategory; window.closeConfirmModal = closeConfirmModal;
+    
+    window.toggleOwnerDropdown = toggleOwnerDropdown;
+    window.filterOwners = filterOwners; window.addOwnerFromAsset = addOwnerFromAsset;
+    
+    window.promptDeleteCategory = promptDeleteCategory; window.promptDeleteOwner = promptDeleteOwner;
+    window.executeConfirmDelete = executeConfirmDelete; window.closeConfirmModal = closeConfirmModal;
     
     window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal; window.saveOfficeData = saveOfficeData;
     window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;

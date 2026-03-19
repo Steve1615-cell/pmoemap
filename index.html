@@ -112,11 +112,25 @@
         
         .menu-item {
             padding: 15px 25px; cursor: pointer; font-weight: bold; font-size: 16px;
-            display: flex; align-items: center; gap: 15px; transition: background 0.2s;
+            display: flex; align-items: center; gap: 15px; transition: background 0.2s; justify-content: space-between;
         }
         .menu-item:hover { background: var(--accent); color: var(--primary); }
         .menu-item.disabled { color: #94a3b8; cursor: not-allowed; }
         
+        /* iOS 風格開關 (Toggle Switch) */
+        .ios-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0;}
+        .ios-switch input { opacity: 0; width: 0; height: 0; }
+        .ios-switch .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1; transition: .3s; border-radius: 24px;
+        }
+        .ios-switch .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .ios-switch input:checked + .slider { background-color: var(--primary); }
+        .ios-switch input:checked + .slider:before { transform: translateX(20px); }
+
         /* 樹狀選單 CSS */
         .tree-floor { 
             padding: 12px 25px; cursor: pointer; font-weight: bold; font-size: 15px; color: var(--text-main); 
@@ -153,6 +167,18 @@
             font-size: clamp(14px, 3.5vw, 16px); flex: 1; min-width: 80px; max-width: 150px;
         }
         .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+        /* 首頁：開發人員標籤 (Dev Tabs) */
+        .dev-tabs {
+            display: none; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;
+            padding: 10px; background: #e2e8f0; border-radius: 8px;
+        }
+        .dev-tab-btn {
+            padding: 6px 15px; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px;
+            cursor: pointer; font-weight: bold; font-size: 13px; color: var(--text-main);
+        }
+        .dev-tab-btn:hover:not(.disabled) { background: var(--accent); color: var(--primary); border-color: var(--primary); }
+        .dev-tab-btn.disabled { color: #94a3b8; cursor: not-allowed; background: #f1f5f9; }
 
         /* 電腦版：懸浮預覽與詳情 */
         .preview-list { max-height: 0; opacity: 0; overflow: hidden; list-style: none; padding: 0; margin: 0; transition: all 0.3s ease; font-size: 14px; color: var(--text-muted); }
@@ -216,6 +242,18 @@
         .dropdown-item-delete { background: none; border: none; cursor: pointer; opacity: 0.5; font-size: 14px; padding: 4px; border-radius: 4px; }
         .dropdown-item-delete:hover { opacity: 1; background: #fee2e2; color: var(--danger); }
 
+        /* ======== 拖曳排序 (Drag & Drop) CSS ======== */
+        .draggable-item {
+            display: flex; justify-content: flex-start; align-items: center; gap: 10px;
+            padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: white;
+            cursor: grab; transition: background 0.2s, box-shadow 0.2s;
+        }
+        .draggable-item:active { cursor: grabbing; }
+        .draggable-item.dragging { opacity: 0.5; background: #f8fafc; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
+        .draggable-item.drag-over { border-top: 2px solid var(--primary); } /* 提示落點位置 */
+        .drag-handle { color: #cbd5e1; font-size: 18px; cursor: grab; padding-right: 5px; }
+        .draggable-item:hover .drag-handle { color: var(--text-muted); }
+
         /* ======== 懸浮操作按鈕 (FAB) ======== */
         .fab-container { position: fixed; bottom: 30px; right: 30px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .fab-menu { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; }
@@ -263,30 +301,38 @@
 <div id="confirm-modal-overlay" class="modal-overlay" style="z-index: 4000;">
     <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header" style="color: var(--danger);">
-            <span>⚠️ 刪除警告</span>
+            <span>⚠️ 刪除/套用 警告</span>
         </div>
         <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeConfirmModal()">取消</button>
-            <button id="btn-confirm-delete" class="btn-danger" onclick="executeConfirmDelete()">確定刪除</button>
+            <button id="btn-confirm-action" class="btn-danger" onclick="executeConfirmAction()">確定執行</button>
         </div>
     </div>
 </div>
 
-<!-- 職稱排序設定表單 (Modal) -->
+<!-- 職稱排序設定表單 (Modal) - 更新為拖曳版 -->
 <div id="title-rank-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeTitleRankModal()" style="z-index: 3500;">
     <div class="modal-content">
         <div class="modal-header">
-            <span>📊 設定全域職稱排序</span>
+            <span>📊 設定職稱排序</span>
             <button class="btn-close" onclick="closeTitleRankModal()" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;">×</button>
         </div>
-        <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">越上方的職稱排序越優先。系統會自動抓取所有出現過的職稱。</p>
-        <div id="title-rank-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px;">
-            <!-- JS 動態生成可上移/下移的清單 -->
+        
+        <div class="form-group">
+            <label>選擇套用範圍：</label>
+            <select id="title-rank-scope" onchange="changeTitleRankScope()">
+                <!-- JS 動態生成選項 -->
+            </select>
+        </div>
+
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">請按住 ☰ 拖曳項目來調整高低順序 (越上方排序越優先)。</p>
+        <div id="title-rank-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
+            <!-- JS 動態生成可拖曳的清單 -->
         </div>
         <div class="modal-footer" style="margin-top: 15px;">
             <button class="btn-secondary" onclick="closeTitleRankModal()">取消</button>
-            <button class="btn-primary" onclick="saveTitleRanks()">儲存設定</button>
+            <button class="btn-primary" onclick="promptSaveTitleRanks()">套用排序</button>
         </div>
     </div>
 </div>
@@ -302,20 +348,24 @@
         <button class="btn-close" onclick="closeSidebar()">×</button>
     </div>
     <div class="sidebar-menu">
-        <!-- 動態樹狀導覽 -->
         <div id="sidebar-nav-tree"></div>
 
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
+        
+        <!-- 新增：開發人員選項開關 -->
+        <div class="menu-item" style="cursor: default;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span>🛠️ 開發人員選項</span>
+            </div>
+            <label class="ios-switch">
+                <input type="checkbox" id="dev-options-toggle" onchange="toggleDevOptions(event)">
+                <span class="slider"></span>
+            </label>
+        </div>
 
-        <div class="menu-item disabled tooltip-container" data-tooltip="辦公室地圖視角開發中！">
-            🗺️ 地圖顯示
-        </div>
-        <div class="menu-item disabled tooltip-container" data-tooltip="在列資產總表開發中！">
-            📦 在列資產總表
-        </div>
-        <div class="menu-item" onclick="showExtensionsView()">
-            📞 辦公室分機表
-        </div>
+        <div class="menu-item disabled tooltip-container" data-tooltip="辦公室地圖視角開發中！">🗺️ 地圖顯示</div>
+        <div class="menu-item disabled tooltip-container" data-tooltip="在列資產總表開發中！">📦 在列資產總表</div>
+        <div class="menu-item" onclick="showExtensionsView()">📞 辦公室分機表</div>
     </div>
     <div class="sidebar-footer">
         <button onclick="restoreLostComputers()" style="background:none; border:1px solid #cbd5e1; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; color:var(--text-muted); margin-bottom:10px;">🚑 復原測試資產</button>
@@ -339,13 +389,21 @@
     <!-- 路徑紀錄 -->
     <div id="breadcrumb" class="breadcrumb"></div>
 
-    <!-- 視圖區塊 -->
+    <!-- 視圖區塊：第一層 首頁 -->
     <div id="view-floor" class="view active">
+        <!-- 開發人員專屬標籤列 (預設隱藏) -->
+        <div id="dev-tabs-container" class="dev-tabs">
+            <button class="dev-tab-btn" onclick="openTitleRankModal()">📊 設定職稱排序</button>
+            <button class="dev-tab-btn disabled">🔒 系統備份 (未開放)</button>
+            <button class="dev-tab-btn disabled">🔒 權限管理 (未開放)</button>
+        </div>
+
         <div class="grid-nav">
             <div class="nav-card" onclick="showOffices('修船大樓３Ｆ')"><h2>修船大樓３Ｆ</h2><ul class="preview-list" id="preview-floor-3F"></ul></div>
             <div class="nav-card" onclick="showOffices('修船大樓４Ｆ')"><h2>修船大樓４Ｆ</h2><ul class="preview-list" id="preview-floor-4F"></ul></div>
         </div>
     </div>
+    
     <div id="view-office" class="view"><div class="grid-nav" id="office-list"></div></div>
     
     <div id="view-detail" class="view">
@@ -357,9 +415,6 @@
         
         <!-- Filter 過濾/排序工具列 -->
         <div id="filter-container" style="display: none; justify-content: flex-end; margin-bottom: 15px; gap: 10px;">
-            <!-- 人員專用 -->
-            <button id="btn-set-title-rank" onclick="openTitleRankModal()" style="display: none; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 5px 15px; font-size: 13px; font-weight: bold; color: var(--text-muted); cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">📊 設定職稱排序</button>
-            
             <div style="background: white; padding: 5px 15px; border-radius: 8px; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <label style="font-size: 13px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
                 <!-- 人員排序 -->
@@ -443,6 +498,7 @@
             <input type="text" id="asset-item" placeholder="未命名設備 (選填)">
         </div>
         
+        <!-- SN 加入了 oninput 雙向綁定邏輯 -->
         <div class="form-group">
             <label>資產編號 / SN (共同項)</label>
             <input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)" oninput="syncSnPc('sn')">
@@ -461,6 +517,7 @@
         
         <div id="asset-computer-fields" style="border-top: 1px dashed #cbd5e1; margin: 20px 0 10px 0; padding-top: 15px; display:none;">
             
+            <!-- 使用者改為自訂的獨立下拉選單 -->
             <div class="form-group">
                 <label>使用者 <span style="font-weight:normal; font-size:12px; color:#94a3b8;">(限定本辦公室人員)</span></label>
                 <div class="custom-dropdown-btn" onclick="toggleOwnerDropdown(event)">
@@ -477,6 +534,7 @@
                 </div>
             </div>
             
+            <!-- PC ID 加入了 oninput 雙向綁定邏輯 -->
             <div class="form-group">
                 <label>電腦編號 (PC ID)</label>
                 <input type="text" id="asset-pc" placeholder="例如：9059145 (無則填 N/A)" oninput="syncSnPc('pc')">
@@ -515,7 +573,7 @@
             <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeOfficeModal()">×</button>
         </div>
         <div class="form-group">
-            <label>辦公室名稱 (支援更名，將連動更新所有所屬人員/資產)</label>
+            <label>辦公室名稱 (變更將連動所有人員與資產)</label>
             <input type="text" id="office-name" placeholder="輸入辦公室名稱">
         </div>
         <div class="form-group">
@@ -554,9 +612,11 @@
     let globalCategories = [...defaultCategories]; 
     let currentAssetCategory = '電腦';
     
-    // 職稱排序專用全域變數
-    let globalTitleRanks = [];
-    let tempTitleRanks = []; // 編輯 Modal 用的暫存陣列
+    // 開發人員模式與職稱設定
+    let devOptionsEnabled = false;
+    let globalTitleRankSettings = { global: [], offices: {} };
+    let tempTitleRanks = []; 
+    let currentTitleRankScope = 'global';
     
     let currentLevel = 0; 
     let currentFloor = '';
@@ -581,7 +641,7 @@
         let loadedCount = 0;
         const checkAllLoaded = () => {
             loadedCount++;
-            if (loadedCount >= 4 && !isInitialized) { // 加入 titleRanks 後共 4 個來源
+            if (loadedCount >= 4 && !isInitialized) { 
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
@@ -614,12 +674,13 @@
             if(document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
         });
         
-        // 監聽職稱排序設定
         onSnapshot(doc(db, "settings", "titleRanks"), (docSnap) => {
             if(docSnap.exists()) {
-                globalTitleRanks = docSnap.data().list || [];
+                globalTitleRankSettings = docSnap.data();
+                if(!globalTitleRankSettings.global) globalTitleRankSettings.global = [];
+                if(!globalTitleRankSettings.offices) globalTitleRankSettings.offices = {};
             } else {
-                globalTitleRanks = [];
+                globalTitleRankSettings = { global: [], offices: {} };
             }
             checkAllLoaded();
         });
@@ -630,6 +691,14 @@
         else if (currentLevel === 1) showOffices(currentFloor, false);
         else if (currentLevel === 2) updateDetailContent();
         else if (currentLevel === 3) showExtensionsView(false);
+    }
+
+    // ================= 開發人員模式 =================
+    window.toggleDevOptions = function(event) {
+        devOptionsEnabled = event.target.checked;
+        if (currentLevel === 0) {
+            document.getElementById('dev-tabs-container').style.display = devOptionsEnabled ? 'flex' : 'none';
+        }
     }
 
     function initView() {
@@ -644,6 +713,9 @@
                 list.appendChild(li);
             });
         });
+        
+        document.getElementById('dev-tabs-container').style.display = (devOptionsEnabled) ? 'flex' : 'none';
+        
         updateNavigationUI();
         if (!history.state) history.replaceState({ level: 0 }, "");
     }
@@ -731,17 +803,16 @@
         document.getElementById('sidebar-overlay').classList.remove('active');
     }
 
+    // 全域點擊與快捷鍵防呆
     document.addEventListener('click', (e) => {
         const fabContainer = document.getElementById('fab-container');
         if (fabContainer && !fabContainer.contains(e.target) && document.getElementById('fab-menu').classList.contains('active')) {
             closeFabMenu();
         }
-        
         const catPanel = document.getElementById('category-panel');
         if (catPanel && catPanel.classList.contains('active') && !e.target.closest('.form-group')) {
             catPanel.classList.remove('active');
         }
-        
         const ownerPanel = document.getElementById('owner-panel');
         if (ownerPanel && ownerPanel.classList.contains('active') && !e.target.closest('.form-group')) {
             ownerPanel.classList.remove('active');
@@ -801,6 +872,8 @@
 
         if (currentLevel === 0) { btnHome.style.display = 'none'; btnBack.style.display = 'none'; } 
         else { btnHome.style.display = 'inline-block'; btnBack.style.display = 'inline-block'; }
+        
+        document.getElementById('dev-tabs-container').style.display = (currentLevel === 0 && devOptionsEnabled) ? 'flex' : 'none';
 
         syncHeaderLayout();
 
@@ -891,7 +964,6 @@
         // 顯示對應的 Filter 區塊
         document.getElementById('filter-container').style.display = (currentTab === 'staff' || currentTab === 'assets') ? 'flex' : 'none';
         document.getElementById('staff-sort-select').style.display = (currentTab === 'staff') ? 'block' : 'none';
-        document.getElementById('btn-set-title-rank').style.display = (currentTab === 'staff') ? 'block' : 'none';
         document.getElementById('asset-sort-select').style.display = (currentTab === 'assets') ? 'block' : 'none';
 
         if (currentTab === 'staff') {
@@ -904,19 +976,18 @@
             const staffSortMode = document.getElementById('staff-sort-select').value;
             officeMembers.sort((a, b) => {
                 if (staffSortMode === 'name') {
-                    // 依姓氏筆畫/拼音 (繁體中文標準比較)
                     return (a.name || '').localeCompare(b.name || '', 'zh-TW');
                 } else if (staffSortMode === 'title') {
-                    // 依自訂職稱高低 (權重陣列 globalTitleRanks)
-                    const rankA = globalTitleRanks.indexOf(a.title);
-                    const rankB = globalTitleRanks.indexOf(b.title);
-                    const valA = rankA !== -1 ? rankA : 999; // 找不到的墊底
+                    // 優先尋找該辦公室專屬的排序，若無則退回全域設定
+                    const ranks = globalTitleRankSettings.offices[currentOffice] || globalTitleRankSettings.global || [];
+                    const rankA = ranks.indexOf(a.title);
+                    const rankB = ranks.indexOf(b.title);
+                    const valA = rankA !== -1 ? rankA : 999; 
                     const valB = rankB !== -1 ? rankB : 999;
                     if (valA !== valB) return valA - valB;
                     return (a.name || '').localeCompare(b.name || '', 'zh-TW');
                 } else if (staffSortMode === 'join_date') {
-                    // 依入廠日期
-                    const dateA = a.join_date || '9999-99-99'; // 沒日期的排最後
+                    const dateA = a.join_date || '9999-99-99'; 
                     const dateB = b.join_date || '9999-99-99';
                     if (dateA !== dateB) return dateA.localeCompare(dateB);
                     return (a.name || '').localeCompare(b.name || '', 'zh-TW');
@@ -957,17 +1028,14 @@
                     const owner = globalMembers.find(m => m.id === a.owner_id);
                     if (owner) ownerName = `👤 使用者: ${owner.name}`;
                 }
-                
                 let itemDisplay = a.item || '未命名設備';
                 let titleText = itemDisplay;
                 if (a.category && a.category !== itemDisplay && !itemDisplay.includes(a.category)) {
                     titleText = `${a.category}：${itemDisplay}`;
                 }
-
                 return { ...a, _ownerName: ownerName, _titleText: titleText };
             });
 
-            // 執行資產動態排序
             const sortMode = document.getElementById('asset-sort-select').value;
             displayAssets.sort((a, b) => {
                 if (sortMode === 'name') return a._titleText.localeCompare(b._titleText, 'zh-TW');
@@ -1088,23 +1156,21 @@
         switchView('view-extensions');
     }
 
-    // ================= 職稱全域排序 Modal 邏輯 =================
+    // ================= 動態拖曳排序 Modal 邏輯 =================
     window.openTitleRankModal = function() {
-        // 收集目前所有出現過的職稱
-        const allTitles = new Set();
-        globalMembers.forEach(m => {
-            if(m.title && m.title !== 'N/A' && m.title.trim() !== '') {
-                allTitles.add(m.title.trim());
-            }
+        closeSidebar();
+        
+        // 載入下拉選單 (所有辦公室選項)
+        const scopeSelect = document.getElementById('title-rank-scope');
+        scopeSelect.innerHTML = `<option value="global">🌍 套用至所有辦公室 (預設全域)</option>`;
+        const sortedOffices = globalOffices.map(o => o.name).sort();
+        sortedOffices.forEach(name => {
+            scopeSelect.innerHTML += `<option value="${name}">🏢 指定辦公室：${name}</option>`;
         });
         
-        // 組合出最新的暫存權重陣列 (保留舊權重排序，把新的放最後面)
-        tempTitleRanks = [...globalTitleRanks];
-        allTitles.forEach(t => {
-            if (!tempTitleRanks.includes(t)) tempTitleRanks.push(t);
-        });
-
-        renderTitleRankList();
+        scopeSelect.value = 'global';
+        changeTitleRankScope();
+        
         document.getElementById('title-rank-modal-overlay').classList.add('active');
     }
 
@@ -1112,73 +1178,110 @@
         document.getElementById('title-rank-modal-overlay').classList.remove('active');
     }
 
+    window.changeTitleRankScope = function() {
+        currentTitleRankScope = document.getElementById('title-rank-scope').value;
+        
+        // 收集該 Scope 內出現過的職稱
+        const allTitles = new Set();
+        let targetMembers = globalMembers;
+        if (currentTitleRankScope !== 'global') {
+            targetMembers = globalMembers.filter(m => m.office_id === currentTitleRankScope);
+        }
+        
+        targetMembers.forEach(m => {
+            if(m.title && m.title !== 'N/A' && m.title.trim() !== '') {
+                allTitles.add(m.title.trim());
+            }
+        });
+        
+        // 讀取既有設定
+        let existingRanks = [];
+        if (currentTitleRankScope === 'global') {
+            existingRanks = globalTitleRankSettings.global || [];
+        } else {
+            existingRanks = globalTitleRankSettings.offices[currentTitleRankScope] || [];
+            // 若該辦公室尚未自訂，先載入全域值當作參考
+            if (existingRanks.length === 0) existingRanks = globalTitleRankSettings.global || [];
+        }
+        
+        // 組合出暫存權重陣列 (保留舊權重排序，把新的放最後面)
+        tempTitleRanks = [...existingRanks];
+        allTitles.forEach(t => {
+            if (!tempTitleRanks.includes(t)) tempTitleRanks.push(t);
+        });
+
+        // 如果 Scope 切換後發現根本沒有資料，則清空舊有的多餘項目
+        tempTitleRanks = tempTitleRanks.filter(t => allTitles.has(t) || existingRanks.includes(t));
+
+        renderTitleRankList();
+    }
+
     function renderTitleRankList() {
         const listDiv = document.getElementById('title-rank-list');
         listDiv.innerHTML = '';
         
         if (tempTitleRanks.length === 0) {
-            listDiv.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">目前系統中尚未登錄任何職稱</div>';
+            listDiv.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">此範圍內尚未登錄任何職稱</div>';
             return;
         }
 
         tempTitleRanks.forEach((title, index) => {
             const itemDiv = document.createElement('div');
-            itemDiv.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #f1f5f9; background:white;';
+            itemDiv.className = 'draggable-item';
+            itemDiv.draggable = true;
+            itemDiv.dataset.index = index;
             
-            const badge = document.createElement('span');
-            badge.style.cssText = 'background:var(--accent); color:var(--text-muted); font-size:12px; padding:2px 6px; border-radius:4px; margin-right:10px; font-family:monospace;';
-            badge.innerText = index + 1;
+            itemDiv.innerHTML = `
+                <span class="drag-handle">☰</span>
+                <span style="background:var(--accent); color:var(--text-muted); font-size:12px; padding:2px 6px; border-radius:4px; font-family:monospace;">${index + 1}</span>
+                <span style="flex:1; font-weight:bold;">${title}</span>
+            `;
             
-            const nameSpan = document.createElement('span');
-            nameSpan.innerText = title;
-            nameSpan.style.flex = '1';
-            nameSpan.style.fontWeight = 'bold';
+            // 原生 HTML5 Drag and Drop 事件
+            itemDiv.addEventListener('dragstart', handleDragStart);
+            itemDiv.addEventListener('dragover', handleDragOver);
+            itemDiv.addEventListener('dragenter', handleDragEnter);
+            itemDiv.addEventListener('dragleave', handleDragLeave);
+            itemDiv.addEventListener('drop', handleDrop);
+            itemDiv.addEventListener('dragend', handleDragEnd);
 
-            const btnGroup = document.createElement('div');
-            btnGroup.style.display = 'flex'; btnGroup.style.gap = '5px';
-
-            const upBtn = document.createElement('button');
-            upBtn.innerHTML = '▲'; upBtn.style.cssText = 'background:none; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; color:var(--text-muted); padding:4px 8px;';
-            if (index === 0) upBtn.disabled = true;
-            else upBtn.onclick = () => moveTitle(index, -1);
-
-            const downBtn = document.createElement('button');
-            downBtn.innerHTML = '▼'; downBtn.style.cssText = 'background:none; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; color:var(--text-muted); padding:4px 8px;';
-            if (index === tempTitleRanks.length - 1) downBtn.disabled = true;
-            else downBtn.onclick = () => moveTitle(index, 1);
-
-            btnGroup.appendChild(upBtn); btnGroup.appendChild(downBtn);
-            itemDiv.appendChild(badge); itemDiv.appendChild(nameSpan); itemDiv.appendChild(btnGroup);
             listDiv.appendChild(itemDiv);
         });
     }
 
-    function moveTitle(index, direction) {
-        const targetIndex = index + direction;
-        if (targetIndex < 0 || targetIndex >= tempTitleRanks.length) return;
-        
-        // 交換陣列元素
-        const temp = tempTitleRanks[index];
-        tempTitleRanks[index] = tempTitleRanks[targetIndex];
-        tempTitleRanks[targetIndex] = temp;
-        
-        renderTitleRankList();
-    }
+    let dragSrcEl = null;
 
-    window.saveTitleRanks = async function() {
-        try {
-            await setDoc(doc(db, "settings", "titleRanks"), { list: tempTitleRanks });
-            globalTitleRanks = [...tempTitleRanks];
-            closeTitleRankModal();
-            customAlert("職稱排序設定已儲存！");
-            if (document.getElementById('staff-sort-select').value === 'title') {
-                updateDetailContent(); // 若目前是選職稱排序，立刻重繪畫面
-            }
-        } catch(error) {
-            console.error(error); customAlert("儲存失敗，請檢查網路連線。", true);
+    function handleDragStart(e) {
+        dragSrcEl = this;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', this.innerHTML);
+        this.classList.add('dragging');
+    }
+    function handleDragOver(e) { if (e.preventDefault) e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
+    function handleDragEnter(e) { this.classList.add('drag-over'); }
+    function handleDragLeave(e) { this.classList.remove('drag-over'); }
+    function handleDrop(e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (dragSrcEl !== this) {
+            const fromIndex = parseInt(dragSrcEl.dataset.index);
+            const toIndex = parseInt(this.dataset.index);
+            const item = tempTitleRanks.splice(fromIndex, 1)[0];
+            tempTitleRanks.splice(toIndex, 0, item);
+            renderTitleRankList();
         }
+        return false;
+    }
+    function handleDragEnd(e) {
+        this.classList.remove('dragging');
+        document.querySelectorAll('.draggable-item').forEach(col => col.classList.remove('drag-over'));
     }
 
+    window.promptSaveTitleRanks = function() {
+        const targetText = document.getElementById('title-rank-scope').options[document.getElementById('title-rank-scope').selectedIndex].text;
+        pendingDeleteAction = { type: 'titleRanks' };
+        document.getElementById('confirm-msg').innerText = `確定將此排序套用至\n「${targetText}」？`;
+        document.getElementById('confirm-modal-overlay').classList.add('active');
+    }
 
     // ================= 1. 人員表單邏輯 =================
     function openMemberModal(memberId = null) {
@@ -1190,7 +1293,7 @@
             isEditMode = true; currentEditMemberId = memberId;
             document.getElementById('modal-title').innerText = '✏️ 編輯人員資料';
             btnNext.style.display = 'none'; 
-            btnDel.style.display = 'inline-block'; // 顯示刪除按鈕
+            btnDel.style.display = 'inline-block'; 
 
             const m = globalMembers.find(x => x.id === memberId);
             if(m) {
@@ -1389,7 +1492,6 @@
             textSpan.style.flex = '1';
             textSpan.onclick = () => selectOwner(m.id, m.name);
             
-            // 下拉選單內的刪除按鈕
             const delBtn = document.createElement('button');
             delBtn.className = 'dropdown-item-delete';
             delBtn.innerText = '🗑️';
@@ -1448,7 +1550,7 @@
     window.executeDeleteFromModal = function(type) {
         if (type === 'member') {
             const m = globalMembers.find(x => x.id === currentEditMemberId);
-            if (m) promptDeleteOwner(new Event('click'), m.id, m.name); // 複用原有的刪除人員邏輯
+            if (m) promptDeleteOwner(new Event('click'), m.id, m.name);
         } else if (type === 'asset') {
             const a = globalAssets.find(x => x.id === currentEditAssetId);
             if (a) {
@@ -1464,19 +1566,36 @@
         }
     }
 
-    // ================= 共用刪除執行中樞 =================
+    // ================= 共用確認中樞 (包含刪除與排序設定) =================
     function closeConfirmModal() {
         document.getElementById('confirm-modal-overlay').classList.remove('active');
         pendingDeleteAction = null;
     }
 
-    async function executeConfirmDelete() {
+    async function executeConfirmAction() {
         if (!pendingDeleteAction) return;
-        const btn = document.getElementById('btn-confirm-delete');
+        const btn = document.getElementById('btn-confirm-action');
         btn.disabled = true; btn.innerText = '處理中...';
 
         try {
-            if (pendingDeleteAction.type === 'category') {
+            // ---- 處理儲存職稱排序 ----
+            if (pendingDeleteAction.type === 'titleRanks') {
+                if (currentTitleRankScope === 'global') {
+                    globalTitleRankSettings.global = [...tempTitleRanks];
+                } else {
+                    globalTitleRankSettings.offices[currentTitleRankScope] = [...tempTitleRanks];
+                }
+                
+                await setDoc(doc(db, "settings", "titleRanks"), globalTitleRankSettings);
+                
+                closeTitleRankModal();
+                closeConfirmModal();
+                customAlert("職稱排序設定已儲存！");
+                if (document.getElementById('staff-sort-select').value === 'title') updateDetailContent();
+                
+            } 
+            // ---- 處理刪除分類 ----
+            else if (pendingDeleteAction.type === 'category') {
                 const cat = pendingDeleteAction.payload;
                 const usedAssets = globalAssets.filter(a => a.category === cat);
                 for (const a of usedAssets) { await deleteDoc(doc(db, 'assets', a.id)); }
@@ -1486,32 +1605,35 @@
                 
                 if (currentAssetCategory === cat) selectCategory('電腦');
                 if (document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
+                closeConfirmModal();
                 customAlert(`已刪除類型「${cat}」及其相關資產！`);
 
-            } else if (pendingDeleteAction.type === 'owner') {
+            } 
+            // ---- 處理刪除人員 ----
+            else if (pendingDeleteAction.type === 'owner') {
                 const ownerId = pendingDeleteAction.id;
-                // 解除該員所有綁定的資產 (轉退公用)
                 const userAssets = globalAssets.filter(a => a.owner_id === ownerId);
                 for (const a of userAssets) { await updateDoc(doc(db, 'assets', a.id), { owner_id: null }); }
                 await deleteDoc(doc(db, 'members', ownerId));
                 
                 if (document.getElementById('asset-owner-id').value === ownerId) selectOwner('', '公用設備 (無指定)');
                 if (document.getElementById('owner-panel').classList.contains('active')) renderOwnerDropdown(document.getElementById('owner-search-input').value);
-                
-                // 如果是從編輯視窗按刪除的，一起關閉它
                 if (document.getElementById('edit-modal-overlay').classList.contains('active')) closeEditModal();
 
+                closeConfirmModal();
                 customAlert(`已刪除人員「${pendingDeleteAction.name}」！`);
-            } else if (pendingDeleteAction.type === 'asset') {
+            } 
+            // ---- 處理刪除資產 ----
+            else if (pendingDeleteAction.type === 'asset') {
                 await deleteDoc(doc(db, 'assets', pendingDeleteAction.id));
                 if (document.getElementById('asset-modal-overlay').classList.contains('active')) closeAssetModal();
+                closeConfirmModal();
                 customAlert(`已刪除該資產！`);
             }
-            closeConfirmModal();
         } catch(e) {
-            console.error(e); customAlert('刪除操作失敗', true);
+            console.error(e); customAlert('操作失敗', true);
         } finally {
-            btn.disabled = false; btn.innerText = '確定刪除';
+            btn.disabled = false; btn.innerText = '確定執行';
         }
     }
 
@@ -1617,7 +1739,7 @@
 
     function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
 
-    // ================= 辦公室連動更名演算法 =================
+    // ================= 辦公室連動更名演算法 (修復消失 Bug) =================
     async function saveOfficeData() {
         const newOfficeName = document.getElementById('office-name').value.trim();
         const newOfficePwd = document.getElementById('office-pwd').value || 'N/A';
@@ -1628,9 +1750,7 @@
         btn.disabled = true; btn.innerText = '儲存中...';
 
         try {
-            // 如果名稱有更改，需要執行連動轉移 (Cascading Update)
             if (newOfficeName !== currentOffice) {
-                // 防呆：確認新名稱是否已存在
                 if (globalOffices.find(o => o.name === newOfficeName)) {
                     customAlert('此辦公室名稱已經存在，請更換其他名稱！', true);
                     btn.disabled = false; btn.innerText = '儲存';
@@ -1640,34 +1760,27 @@
                 // 1. 建立新辦公室 Document
                 const oldOfficeData = globalOffices.find(o => o.name === currentOffice);
                 await setDoc(doc(db, 'offices', newOfficeName), {
-                    name: newOfficeName,
-                    floor: oldOfficeData.floor,
-                    pwd: newOfficePwd
+                    name: newOfficeName, floor: oldOfficeData.floor, pwd: newOfficePwd
                 });
-
-                // 2. 轉移所屬人員
-                const membersToUpdate = globalMembers.filter(m => m.office_id === currentOffice);
-                for (const m of membersToUpdate) {
-                    await updateDoc(doc(db, 'members', m.id), { office_id: newOfficeName });
-                }
-
-                // 3. 轉移所屬資產
-                const assetsToUpdate = globalAssets.filter(a => a.office_id === currentOffice);
-                for (const a of assetsToUpdate) {
-                    await updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeName });
-                }
-
-                // 4. 刪除舊辦公室 Document
-                await deleteDoc(doc(db, 'offices', currentOffice));
-
-                // 5. 更新當下前端狀態
+                
+                // 2. ★ 關鍵修復：立即在前端更新 currentOffice 與路徑，防止 Snapshot 重繪時產生空白
+                const oldOfficeName = currentOffice;
                 currentOffice = newOfficeName;
                 history.replaceState({ level: 2, floor: currentFloor, office: newOfficeName }, "");
                 updateMainTitle(newOfficeName);
-                
+
+                // 3. 轉移所屬人員與資產
+                const membersToUpdate = globalMembers.filter(m => m.office_id === oldOfficeName);
+                for (const m of membersToUpdate) { await updateDoc(doc(db, 'members', m.id), { office_id: newOfficeName }); }
+
+                const assetsToUpdate = globalAssets.filter(a => a.office_id === oldOfficeName);
+                for (const a of assetsToUpdate) { await updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeName }); }
+
+                // 4. 刪除舊辦公室 Document
+                await deleteDoc(doc(db, 'offices', oldOfficeName));
+
                 customAlert(`辦公室已成功更名為：${newOfficeName}`);
             } else {
-                // 若僅更改密碼
                 await updateDoc(doc(db, 'offices', currentOffice), { pwd: newOfficePwd });
                 customAlert("辦公室資訊已更新！");
             }
@@ -1709,10 +1822,14 @@
     window.filterOwners = filterOwners; window.addOwnerFromAsset = addOwnerFromAsset;
     
     window.promptDeleteCategory = promptDeleteCategory; window.promptDeleteOwner = promptDeleteOwner;
-    window.executeConfirmDelete = executeConfirmDelete; window.closeConfirmModal = closeConfirmModal;
+    window.executeConfirmAction = executeConfirmAction; window.closeConfirmModal = closeConfirmModal;
     
     window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal; window.saveOfficeData = saveOfficeData;
     window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
+
+    // 開發選項專用
+    window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal;
+    window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
 
     window.addEventListener('resize', syncHeaderLayout);
     setupRealtimeListeners();

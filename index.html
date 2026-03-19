@@ -293,13 +293,20 @@
         }
         #custom-toast.show { opacity: 1; visibility: visible; top: 60px; }
         #custom-toast.danger { background: #ef4444; } 
+
+        /* 版本更新與頁腳 */
+        .version-footer {
+            text-align: center; color: #9ca3af; font-size: 10px; padding: 20px 0 10px; 
+            margin-top: 20px; border-top: 1px dashed #e2e8f0; cursor: pointer; transition: color 0.2s;
+        }
+        .version-footer:hover { color: var(--primary); }
     </style>
 </head>
 <body>
 
-<!-- 全域離線提示橫幅 (修改 z-index 為 995 避免覆蓋 Modal 導致無法捲動) -->
+<!-- 全域離線提示橫幅 (更新警語) -->
 <div id="offline-banner" style="display:none; background:var(--danger); color:white; text-align:center; padding:10px; font-weight:bold; position:sticky; top:0; z-index:995; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-    ⚠️ 目前為離線模式，您可以繼續更新資料，恢復連線後請保持App開啟狀態，資料才會立即同步。
+    ⚠️ 目前為離線模式，您可以繼續更新資料。恢復連線後將自動同步，<span style="text-decoration:underline;">請勿重新整理頁面</span>以免遺失資料。
 </div>
 
 <!-- 自訂提示框 -->
@@ -313,34 +320,41 @@
         </div>
         <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
         <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeConfirmModal()">取消</button>
-            <button id="btn-confirm-action" class="btn-danger" onclick="executeConfirmAction()">確定執行</button>
+            <button class="btn-secondary" onclick="closeTitleRankModal()">取消</button>
+            <button class="btn-primary" onclick="promptSaveTitleRanks()">套用排序</button>
         </div>
     </div>
 </div>
 
-<!-- 職稱排序設定表單 (Modal) -->
-<div id="title-rank-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeTitleRankModal()" style="z-index: 3500;">
-    <div class="modal-content">
+<!-- 更新日誌 Modal -->
+<div id="update-log-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeUpdateLogModal()" style="z-index: 3500;">
+    <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
-            <span>📊 設定職稱排序</span>
-            <button class="btn-close" onclick="closeTitleRankModal()" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;">×</button>
+            <span>📝 系統更新日誌</span>
+            <button class="btn-close" onclick="closeUpdateLogModal()" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;">×</button>
         </div>
-        
-        <div class="form-group">
-            <label>選擇套用範圍：</label>
-            <select id="title-rank-scope" onchange="changeTitleRankScope()">
-                <!-- JS 動態生成選項 -->
-            </select>
+        <div style="max-height: 60vh; overflow-y: auto; text-align: left;">
+            <div style="margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                <h3 style="margin: 0 0 5px 0; color: var(--primary);">v1.0.0 (202603191428)</h3>
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-main); line-height: 1.6;">
+                    <li>新增離線存取功能與斷網防呆提示。</li>
+                    <li>首頁選單與次層選單按鈕重構 (新增區域 / 新增辦公室)。</li>
+                    <li>實作系統版本號紀錄與更新日誌檢視介面。</li>
+                    <li>修復設定職稱排序時，指定辦公室顯示多餘未登錄職稱之問題。</li>
+                    <li>優化手機版表單滑動體驗 (100dvh)。</li>
+                </ul>
+            </div>
+            <div style="margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                <h3 style="margin: 0 0 5px 0; color: var(--text-muted);">v0.9.0 (Beta)</h3>
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+                    <li>導入 Firebase Realtime 雲端資料庫同步。</li>
+                    <li>支援自訂資產類型與動態使用者下拉選單。</li>
+                    <li>辦公室名稱變更之連動更新演算法實裝。</li>
+                </ul>
+            </div>
         </div>
-
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">請按住 ☰ 拖曳項目來調整高低順序 (越上方排序越優先)。</p>
-        <div id="title-rank-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
-            <!-- JS 動態生成可拖曳的清單 -->
-        </div>
-        <div class="modal-footer" style="margin-top: 15px;">
-            <button class="btn-secondary" onclick="closeTitleRankModal()">取消</button>
-            <button class="btn-primary" onclick="promptSaveTitleRanks()">套用排序</button>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeUpdateLogModal()">關閉</button>
         </div>
     </div>
 </div>
@@ -445,6 +459,11 @@
     </div>
 
     <div id="view-extensions" class="view"><div id="ext-container"></div></div>
+
+    <!-- 頁腳版本號 -->
+    <div class="version-footer" onclick="openUpdateLogModal()">
+        v1.0.0 (202603191428)
+    </div>
 </div>
 
 <!-- 懸浮操作按鈕 (FAB) -->
@@ -846,7 +865,7 @@
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeFabMenu(); closeEditModal(); closeAssetModal(); closeOfficeModal(); closeSidebar();
-            closeTitleRankModal();
+            closeTitleRankModal(); closeUpdateLogModal();
             document.getElementById('category-panel').classList.remove('active');
             document.getElementById('owner-panel').classList.remove('active');
             closeConfirmModal();
@@ -871,10 +890,14 @@
 
         if (currentLevel === 0) {
             fabContainer.style.display = 'flex';
-            fabMenu.innerHTML = `<button class="fab-item" onclick="customAlert('新增辦公室功能開發中！')">➕ 新增辦公室</button>`;
+            fabMenu.innerHTML = `<button class="fab-item" onclick="customAlert('新增區域功能開發中！')">➕ 新增區域</button>`;
         } else if (currentLevel === 1) {
             fabContainer.style.display = 'flex';
-            fabMenu.innerHTML = `<button class="fab-item" onclick="customAlert('編輯樓層區域開發中！')">✏️ 編輯 ${currentFloor} 資訊</button>`;
+            fabMenu.innerHTML = `
+                <button class="fab-item" onclick="customAlert('新增辦公室功能開發中！')">➕ 新增辦公室</button>
+                <button class="fab-item" onclick="customAlert('編輯樓層區域開發中！')">✏️ 編輯 ${currentFloor} 資訊</button>
+                <button class="fab-item disabled" style="color: #94a3b8; cursor: not-allowed;">🗺️ 綁定地圖區塊 (未開放)</button>
+            `;
         } else if (currentLevel === 2) {
             fabContainer.style.display = 'flex';
             let specificAction = '';
@@ -1196,6 +1219,14 @@
         document.getElementById('title-rank-modal-overlay').classList.remove('active');
     }
 
+    window.openUpdateLogModal = function() {
+        document.getElementById('update-log-modal-overlay').classList.add('active');
+    }
+
+    window.closeUpdateLogModal = function() {
+        document.getElementById('update-log-modal-overlay').classList.remove('active');
+    }
+
     window.changeTitleRankScope = function() {
         currentTitleRankScope = document.getElementById('title-rank-scope').value;
         
@@ -1210,12 +1241,20 @@
                 allTitles.add(m.title.trim());
             }
         });
+
+        // 修復：如果指定辦公室內根本沒有登錄職稱，直接顯示空狀態，不提供任何選項
+        if (currentTitleRankScope !== 'global' && allTitles.size === 0) {
+            tempTitleRanks = [];
+            renderTitleRankList();
+            return;
+        }
         
         let existingRanks = [];
         if (currentTitleRankScope === 'global') {
             existingRanks = globalTitleRankSettings.global || [];
         } else {
             existingRanks = globalTitleRankSettings.offices[currentTitleRankScope] || [];
+            // 若該辦公室有職稱，但尚未自訂過排序，才載入全域當作預設排序基準
             if (existingRanks.length === 0) existingRanks = globalTitleRankSettings.global || [];
         }
         
@@ -1224,7 +1263,8 @@
             if (!tempTitleRanks.includes(t)) tempTitleRanks.push(t);
         });
 
-        tempTitleRanks = tempTitleRanks.filter(t => allTitles.has(t) || existingRanks.includes(t));
+        // 嚴格交集過濾：拔除那些在全域中有，但該辦公室「根本沒人使用」的冗餘職稱
+        tempTitleRanks = tempTitleRanks.filter(t => allTitles.has(t));
 
         renderTitleRankList();
     }
@@ -1843,6 +1883,7 @@
 
     window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal;
     window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
+    window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
 
     window.addEventListener('resize', syncHeaderLayout);
     setupRealtimeListeners();

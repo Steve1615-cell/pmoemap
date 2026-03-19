@@ -184,7 +184,7 @@
         .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: bold;}
         .form-group input, .form-group select { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
-        .modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; align-items: center; }
         .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         .btn-secondary { background: #e2e8f0; color: var(--text-main); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s;}
         .btn-danger { background: var(--danger); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s;}
@@ -273,6 +273,24 @@
     </div>
 </div>
 
+<!-- 職稱排序設定表單 (Modal) -->
+<div id="title-rank-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeTitleRankModal()" style="z-index: 3500;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>📊 設定全域職稱排序</span>
+            <button class="btn-close" onclick="closeTitleRankModal()" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;">×</button>
+        </div>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">越上方的職稱排序越優先。系統會自動抓取所有出現過的職稱。</p>
+        <div id="title-rank-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px;">
+            <!-- JS 動態生成可上移/下移的清單 -->
+        </div>
+        <div class="modal-footer" style="margin-top: 15px;">
+            <button class="btn-secondary" onclick="closeTitleRankModal()">取消</button>
+            <button class="btn-primary" onclick="saveTitleRanks()">儲存設定</button>
+        </div>
+    </div>
+</div>
+
 <!-- 載入中遮罩 -->
 <div id="loading-overlay">資料讀取中...</div>
 
@@ -337,11 +355,21 @@
             <button id="tab-facilities" class="tab-btn" onclick="switchTab('facilities')">孔位</button>
         </div>
         
-        <!-- 資產過濾/排序工具列 -->
-        <div id="asset-filter-container" style="display: none; justify-content: flex-end; margin-bottom: 15px;">
+        <!-- Filter 過濾/排序工具列 -->
+        <div id="filter-container" style="display: none; justify-content: flex-end; margin-bottom: 15px; gap: 10px;">
+            <!-- 人員專用 -->
+            <button id="btn-set-title-rank" onclick="openTitleRankModal()" style="display: none; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 5px 15px; font-size: 13px; font-weight: bold; color: var(--text-muted); cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">📊 設定職稱排序</button>
+            
             <div style="background: white; padding: 5px 15px; border-radius: 8px; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <label style="font-size: 13px; font-weight: bold; color: var(--text-muted); margin:0;">排序方式：</label>
-                <select id="asset-sort-select" onchange="updateDetailContent()" style="border: none; outline: none; font-size: 14px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
+                <label style="font-size: 13px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
+                <!-- 人員排序 -->
+                <select id="staff-sort-select" onchange="updateDetailContent()" style="display: none; border: none; outline: none; font-size: 14px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
+                    <option value="name">🖋️ 依姓氏筆畫</option>
+                    <option value="title">💼 依職稱高低</option>
+                    <option value="join_date">📅 依入廠日期</option>
+                </select>
+                <!-- 資產排序 -->
+                <select id="asset-sort-select" onchange="updateDetailContent()" style="display: none; border: none; outline: none; font-size: 14px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
                     <option value="name">📌 依資產名稱</option>
                     <option value="sn">🔢 依資產編號</option>
                     <option value="status">🚦 依設備狀態</option>
@@ -376,10 +404,13 @@
         <div class="form-group"><label>入廠日</label><input type="date" id="edit-join-date"></div>
         <div class="form-group"><label>分機</label><input type="text" id="edit-ext" placeholder="例如：6100 (無則填 N/A)"></div>
         
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeEditModal()" style="margin-right: auto;">取消</button>
-            <button id="btn-save-next" class="btn-primary" onclick="saveMemberData(true)" style="display:none; background-color:#059669;">下一筆</button>
-            <button id="btn-save-member" class="btn-primary" onclick="saveMemberData(false)">儲存</button>
+        <div class="modal-footer" style="justify-content: space-between;">
+            <button id="btn-delete-member" class="btn-danger" style="display:none;" onclick="executeDeleteFromModal('member')">🗑️ 移除</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" onclick="closeEditModal()">取消</button>
+                <button id="btn-save-next" class="btn-primary" onclick="saveMemberData(true)" style="display:none; background-color:#059669;">下一筆</button>
+                <button id="btn-save-member" class="btn-primary" onclick="saveMemberData(false)">儲存</button>
+            </div>
         </div>
     </div>
 </div>
@@ -412,7 +443,6 @@
             <input type="text" id="asset-item" placeholder="未命名設備 (選填)">
         </div>
         
-        <!-- SN 加入了 oninput 雙向綁定邏輯 -->
         <div class="form-group">
             <label>資產編號 / SN (共同項)</label>
             <input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)" oninput="syncSnPc('sn')">
@@ -431,7 +461,6 @@
         
         <div id="asset-computer-fields" style="border-top: 1px dashed #cbd5e1; margin: 20px 0 10px 0; padding-top: 15px; display:none;">
             
-            <!-- 使用者改為自訂的獨立下拉選單 -->
             <div class="form-group">
                 <label>使用者 <span style="font-weight:normal; font-size:12px; color:#94a3b8;">(限定本辦公室人員)</span></label>
                 <div class="custom-dropdown-btn" onclick="toggleOwnerDropdown(event)">
@@ -448,7 +477,6 @@
                 </div>
             </div>
             
-            <!-- PC ID 加入了 oninput 雙向綁定邏輯 -->
             <div class="form-group">
                 <label>電腦編號 (PC ID)</label>
                 <input type="text" id="asset-pc" placeholder="例如：9059145 (無則填 N/A)" oninput="syncSnPc('pc')">
@@ -469,9 +497,12 @@
             </div>
         </div>
 
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeAssetModal()">取消</button>
-            <button id="btn-save-asset" class="btn-primary" onclick="saveAssetData()">儲存</button>
+        <div class="modal-footer" style="justify-content: space-between;">
+            <button id="btn-delete-asset" class="btn-danger" style="display:none;" onclick="executeDeleteFromModal('asset')">🗑️ 移除</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" onclick="closeAssetModal()">取消</button>
+                <button id="btn-save-asset" class="btn-primary" onclick="saveAssetData()">儲存</button>
+            </div>
         </div>
     </div>
 </div>
@@ -484,8 +515,8 @@
             <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeOfficeModal()">×</button>
         </div>
         <div class="form-group">
-            <label>辦公室名稱 (為防資料遺失，暫不可修改)</label>
-            <input type="text" id="office-name" disabled style="background-color: #f1f5f9; color: #94a3b8;">
+            <label>辦公室名稱 (支援更名，將連動更新所有所屬人員/資產)</label>
+            <input type="text" id="office-name" placeholder="輸入辦公室名稱">
         </div>
         <div class="form-group">
             <label>門禁密碼</label>
@@ -523,6 +554,10 @@
     let globalCategories = [...defaultCategories]; 
     let currentAssetCategory = '電腦';
     
+    // 職稱排序專用全域變數
+    let globalTitleRanks = [];
+    let tempTitleRanks = []; // 編輯 Modal 用的暫存陣列
+    
     let currentLevel = 0; 
     let currentFloor = '';
     let currentOffice = '';
@@ -546,7 +581,7 @@
         let loadedCount = 0;
         const checkAllLoaded = () => {
             loadedCount++;
-            if (loadedCount >= 3 && !isInitialized) {
+            if (loadedCount >= 4 && !isInitialized) { // 加入 titleRanks 後共 4 個來源
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
@@ -558,7 +593,7 @@
 
         onSnapshot(collection(db, "offices"), (snapshot) => {
             globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-            renderSidebarTree(); // 即時動態重繪側邊欄樹狀結構
+            renderSidebarTree(); 
             checkAllLoaded();
         });
         onSnapshot(collection(db, "members"), (snapshot) => {
@@ -577,6 +612,16 @@
                 globalCategories = [...defaultCategories];
             }
             if(document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
+        });
+        
+        // 監聽職稱排序設定
+        onSnapshot(doc(db, "settings", "titleRanks"), (docSnap) => {
+            if(docSnap.exists()) {
+                globalTitleRanks = docSnap.data().list || [];
+            } else {
+                globalTitleRanks = [];
+            }
+            checkAllLoaded();
         });
     }
 
@@ -639,7 +684,6 @@
 
         let html = `<div class="menu-item" onclick="goHome(); closeSidebar();" style="border-bottom: 1px solid #f1f5f9;">🏠 首頁</div>`;
 
-        // 依據樓層群組化辦公室
         const floorMap = {};
         globalOffices.forEach(o => {
             const f = o.floor || '其他樓層';
@@ -657,16 +701,12 @@
                 </div>
                 <ul class="tree-office-list" id="floor-${idx}-list">
             `;
-            
-            // 辦公室依名稱排序
             const sortedOffices = floorMap[floor].sort((a,b) => a.name.localeCompare(b.name));
             sortedOffices.forEach(off => {
                 html += `<li class="tree-office" onclick="showDetail('${off.name}'); closeSidebar();">↳ ${off.name}</li>`;
             });
-            
             html += `</ul>`;
         });
-
         treeContainer.innerHTML = html;
     }
 
@@ -711,6 +751,7 @@
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeFabMenu(); closeEditModal(); closeAssetModal(); closeOfficeModal(); closeSidebar();
+            closeTitleRankModal();
             document.getElementById('category-panel').classList.remove('active');
             document.getElementById('owner-panel').classList.remove('active');
             closeConfirmModal();
@@ -747,7 +788,7 @@
             } else if (currentTab === 'assets') {
                 specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增資產 (包含電腦)</button>`;
             }
-            fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal()">✏️ 編輯辦公室密碼</button>`;
+            fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal()">✏️ 編輯辦公室資訊</button>`;
         } else {
             fabContainer.style.display = 'none';
         }
@@ -816,7 +857,7 @@
         switchView('view-office');
     }
 
-    function showDetail(office, push = true) {
+    window.showDetail = function(office, push = true) {
         currentLevel = 2; currentOffice = office; currentTab = 'staff';
         if (push) history.pushState({ level: 2, floor: currentFloor, office: office }, "");
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -833,12 +874,12 @@
         updateFabMenu(); 
     }
 
-    // ================= 動態渲染與排序資產邏輯 =================
+    // ================= 動態渲染與排序邏輯 (人員與資產) =================
     window.updateDetailContent = function() {
         const grid = document.getElementById('detail-grid');
         grid.innerHTML = '';
         
-        const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
+        let officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
         const officeAssetsList = globalAssets.filter(a => a.office_id === currentOffice);
 
         let assetCount = officeAssetsList.length;
@@ -847,11 +888,42 @@
         document.getElementById('tab-assets').innerText = `資產 (${assetCount})`;
         document.getElementById('tab-facilities').innerText = `孔位`;
 
-        // 只有在資產頁籤時才顯示過濾工具列
-        document.getElementById('asset-filter-container').style.display = (currentTab === 'assets') ? 'flex' : 'none';
+        // 顯示對應的 Filter 區塊
+        document.getElementById('filter-container').style.display = (currentTab === 'staff' || currentTab === 'assets') ? 'flex' : 'none';
+        document.getElementById('staff-sort-select').style.display = (currentTab === 'staff') ? 'block' : 'none';
+        document.getElementById('btn-set-title-rank').style.display = (currentTab === 'staff') ? 'block' : 'none';
+        document.getElementById('asset-sort-select').style.display = (currentTab === 'assets') ? 'block' : 'none';
 
         if (currentTab === 'staff') {
-            if(officeMembers.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
+            if(officeMembers.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
+                return;
+            }
+            
+            // 執行人員動態排序
+            const staffSortMode = document.getElementById('staff-sort-select').value;
+            officeMembers.sort((a, b) => {
+                if (staffSortMode === 'name') {
+                    // 依姓氏筆畫/拼音 (繁體中文標準比較)
+                    return (a.name || '').localeCompare(b.name || '', 'zh-TW');
+                } else if (staffSortMode === 'title') {
+                    // 依自訂職稱高低 (權重陣列 globalTitleRanks)
+                    const rankA = globalTitleRanks.indexOf(a.title);
+                    const rankB = globalTitleRanks.indexOf(b.title);
+                    const valA = rankA !== -1 ? rankA : 999; // 找不到的墊底
+                    const valB = rankB !== -1 ? rankB : 999;
+                    if (valA !== valB) return valA - valB;
+                    return (a.name || '').localeCompare(b.name || '', 'zh-TW');
+                } else if (staffSortMode === 'join_date') {
+                    // 依入廠日期
+                    const dateA = a.join_date || '9999-99-99'; // 沒日期的排最後
+                    const dateB = b.join_date || '9999-99-99';
+                    if (dateA !== dateB) return dateA.localeCompare(dateB);
+                    return (a.name || '').localeCompare(b.name || '', 'zh-TW');
+                }
+                return 0;
+            });
+
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card';
                 const displayJoinDate = m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A';
@@ -879,7 +951,6 @@
                 return;
             }
 
-            // 準備用來排序的衍生欄位
             let displayAssets = officeAssetsList.map(a => {
                 let ownerName = '💻 公用設備';
                 if (a.category === '電腦' && a.owner_id) {
@@ -887,7 +958,6 @@
                     if (owner) ownerName = `👤 使用者: ${owner.name}`;
                 }
                 
-                // 智慧消去重複前綴邏輯
                 let itemDisplay = a.item || '未命名設備';
                 let titleText = itemDisplay;
                 if (a.category && a.category !== itemDisplay && !itemDisplay.includes(a.category)) {
@@ -897,12 +967,12 @@
                 return { ...a, _ownerName: ownerName, _titleText: titleText };
             });
 
-            // 執行資產動態排序 (Frontend Sort)
+            // 執行資產動態排序
             const sortMode = document.getElementById('asset-sort-select').value;
             displayAssets.sort((a, b) => {
-                if (sortMode === 'name') return a._titleText.localeCompare(b._titleText);
+                if (sortMode === 'name') return a._titleText.localeCompare(b._titleText, 'zh-TW');
                 else if (sortMode === 'sn') {
-                    const snA = a.sn || 'ZZZ'; // 空值沉底
+                    const snA = a.sn || 'ZZZ'; 
                     const snB = b.sn || 'ZZZ';
                     return snA.localeCompare(snB);
                 } else if (sortMode === 'status') {
@@ -910,9 +980,9 @@
                     const valA = order[a.status] || 99;
                     const valB = order[b.status] || 99;
                     if (valA !== valB) return valA - valB;
-                    return a._titleText.localeCompare(b._titleText); // 狀態相同則依名稱排序
+                    return a._titleText.localeCompare(b._titleText, 'zh-TW'); 
                 } else if (sortMode === 'owner') {
-                    return a._ownerName.localeCompare(b._ownerName);
+                    return a._ownerName.localeCompare(b._ownerName, 'zh-TW');
                 }
                 return 0;
             });
@@ -1018,14 +1088,110 @@
         switchView('view-extensions');
     }
 
+    // ================= 職稱全域排序 Modal 邏輯 =================
+    window.openTitleRankModal = function() {
+        // 收集目前所有出現過的職稱
+        const allTitles = new Set();
+        globalMembers.forEach(m => {
+            if(m.title && m.title !== 'N/A' && m.title.trim() !== '') {
+                allTitles.add(m.title.trim());
+            }
+        });
+        
+        // 組合出最新的暫存權重陣列 (保留舊權重排序，把新的放最後面)
+        tempTitleRanks = [...globalTitleRanks];
+        allTitles.forEach(t => {
+            if (!tempTitleRanks.includes(t)) tempTitleRanks.push(t);
+        });
+
+        renderTitleRankList();
+        document.getElementById('title-rank-modal-overlay').classList.add('active');
+    }
+
+    window.closeTitleRankModal = function() {
+        document.getElementById('title-rank-modal-overlay').classList.remove('active');
+    }
+
+    function renderTitleRankList() {
+        const listDiv = document.getElementById('title-rank-list');
+        listDiv.innerHTML = '';
+        
+        if (tempTitleRanks.length === 0) {
+            listDiv.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">目前系統中尚未登錄任何職稱</div>';
+            return;
+        }
+
+        tempTitleRanks.forEach((title, index) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #f1f5f9; background:white;';
+            
+            const badge = document.createElement('span');
+            badge.style.cssText = 'background:var(--accent); color:var(--text-muted); font-size:12px; padding:2px 6px; border-radius:4px; margin-right:10px; font-family:monospace;';
+            badge.innerText = index + 1;
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.innerText = title;
+            nameSpan.style.flex = '1';
+            nameSpan.style.fontWeight = 'bold';
+
+            const btnGroup = document.createElement('div');
+            btnGroup.style.display = 'flex'; btnGroup.style.gap = '5px';
+
+            const upBtn = document.createElement('button');
+            upBtn.innerHTML = '▲'; upBtn.style.cssText = 'background:none; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; color:var(--text-muted); padding:4px 8px;';
+            if (index === 0) upBtn.disabled = true;
+            else upBtn.onclick = () => moveTitle(index, -1);
+
+            const downBtn = document.createElement('button');
+            downBtn.innerHTML = '▼'; downBtn.style.cssText = 'background:none; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; color:var(--text-muted); padding:4px 8px;';
+            if (index === tempTitleRanks.length - 1) downBtn.disabled = true;
+            else downBtn.onclick = () => moveTitle(index, 1);
+
+            btnGroup.appendChild(upBtn); btnGroup.appendChild(downBtn);
+            itemDiv.appendChild(badge); itemDiv.appendChild(nameSpan); itemDiv.appendChild(btnGroup);
+            listDiv.appendChild(itemDiv);
+        });
+    }
+
+    function moveTitle(index, direction) {
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= tempTitleRanks.length) return;
+        
+        // 交換陣列元素
+        const temp = tempTitleRanks[index];
+        tempTitleRanks[index] = tempTitleRanks[targetIndex];
+        tempTitleRanks[targetIndex] = temp;
+        
+        renderTitleRankList();
+    }
+
+    window.saveTitleRanks = async function() {
+        try {
+            await setDoc(doc(db, "settings", "titleRanks"), { list: tempTitleRanks });
+            globalTitleRanks = [...tempTitleRanks];
+            closeTitleRankModal();
+            customAlert("職稱排序設定已儲存！");
+            if (document.getElementById('staff-sort-select').value === 'title') {
+                updateDetailContent(); // 若目前是選職稱排序，立刻重繪畫面
+            }
+        } catch(error) {
+            console.error(error); customAlert("儲存失敗，請檢查網路連線。", true);
+        }
+    }
+
+
+    // ================= 1. 人員表單邏輯 =================
     function openMemberModal(memberId = null) {
         closeFabMenu(); 
         const btnNext = document.getElementById('btn-save-next');
+        const btnDel = document.getElementById('btn-delete-member');
 
         if (memberId && typeof memberId === 'string') {
             isEditMode = true; currentEditMemberId = memberId;
             document.getElementById('modal-title').innerText = '✏️ 編輯人員資料';
             btnNext.style.display = 'none'; 
+            btnDel.style.display = 'inline-block'; // 顯示刪除按鈕
+
             const m = globalMembers.find(x => x.id === memberId);
             if(m) {
                 document.getElementById('edit-name').value = m.name || '';
@@ -1037,6 +1203,7 @@
             isEditMode = false; currentEditMemberId = null;
             document.getElementById('modal-title').innerText = '➕ 新增人員資料';
             btnNext.style.display = 'inline-block'; 
+            btnDel.style.display = 'none'; 
             document.getElementById('edit-name').value = '';
             document.getElementById('edit-title').value = '';
             document.getElementById('edit-ext').value = '';
@@ -1104,7 +1271,7 @@
     function toggleCategoryDropdown(event) {
         if(event) event.stopPropagation();
         const panel = document.getElementById('category-panel');
-        document.getElementById('owner-panel').classList.remove('active'); // 確保另一個關閉
+        document.getElementById('owner-panel').classList.remove('active'); 
         panel.classList.toggle('active');
         if(panel.classList.contains('active')) {
             document.getElementById('category-search-input').value = '';
@@ -1116,7 +1283,6 @@
     function renderCategoryDropdown(filterText = '') {
         const listDiv = document.getElementById('category-list');
         listDiv.innerHTML = '';
-        
         const filtered = globalCategories.filter(c => c.toLowerCase().includes(filterText.toLowerCase()));
         
         if(filtered.length === 0) {
@@ -1150,8 +1316,6 @@
         document.getElementById('selected-category-text').innerText = cat;
         document.getElementById('category-panel').classList.remove('active');
         document.getElementById('asset-computer-fields').style.display = (cat === '電腦') ? 'block' : 'none';
-        
-        // 若名稱為空，留白即可，儲存時再寫入；避免提早覆寫使用者輸入
     }
 
     async function addCategory(event) {
@@ -1184,11 +1348,11 @@
         document.getElementById('confirm-modal-overlay').classList.add('active');
     }
 
-    // ================= 4. 人員下拉選單邏輯 (對接資產表單) =================
+    // ================= 4. 人員下拉選單邏輯 =================
     function toggleOwnerDropdown(event) {
         if(event) event.stopPropagation();
         const panel = document.getElementById('owner-panel');
-        document.getElementById('category-panel').classList.remove('active'); // 確保另一個關閉
+        document.getElementById('category-panel').classList.remove('active');
         panel.classList.toggle('active');
         if(panel.classList.contains('active')) {
             document.getElementById('owner-search-input').value = '';
@@ -1204,7 +1368,6 @@
         const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
         const filtered = officeMembers.filter(m => m.name.toLowerCase().includes(filterText.toLowerCase()));
 
-        // 永遠在頂部或是符合搜尋時顯示「公用設備」選項
         if ("公用設備 (無指定)".includes(filterText) || filterText === '') {
             const publicDiv = document.createElement('div');
             publicDiv.className = 'dropdown-item';
@@ -1226,6 +1389,7 @@
             textSpan.style.flex = '1';
             textSpan.onclick = () => selectOwner(m.id, m.name);
             
+            // 下拉選單內的刪除按鈕
             const delBtn = document.createElement('button');
             delBtn.className = 'dropdown-item-delete';
             delBtn.innerText = '🗑️';
@@ -1280,6 +1444,26 @@
         document.getElementById('confirm-modal-overlay').classList.add('active');
     }
 
+    // ================= 編輯表單內的刪除觸發器 =================
+    window.executeDeleteFromModal = function(type) {
+        if (type === 'member') {
+            const m = globalMembers.find(x => x.id === currentEditMemberId);
+            if (m) promptDeleteOwner(new Event('click'), m.id, m.name); // 複用原有的刪除人員邏輯
+        } else if (type === 'asset') {
+            const a = globalAssets.find(x => x.id === currentEditAssetId);
+            if (a) {
+                pendingDeleteAction = { type: 'asset', id: a.id };
+                let extraWarning = '';
+                if (a.owner_id) {
+                    const owner = globalMembers.find(m => m.id === a.owner_id);
+                    if (owner) extraWarning = `\n\n⚠️ 注意：此設備目前配發給「${owner.name}」。`;
+                }
+                document.getElementById('confirm-msg').innerText = `確定要永久刪除資產「${a.item || '未命名設備'}」嗎？此動作無法復原。${extraWarning}`;
+                document.getElementById('confirm-modal-overlay').classList.add('active');
+            }
+        }
+    }
+
     // ================= 共用刪除執行中樞 =================
     function closeConfirmModal() {
         document.getElementById('confirm-modal-overlay').classList.remove('active');
@@ -1309,14 +1493,19 @@
                 // 解除該員所有綁定的資產 (轉退公用)
                 const userAssets = globalAssets.filter(a => a.owner_id === ownerId);
                 for (const a of userAssets) { await updateDoc(doc(db, 'assets', a.id), { owner_id: null }); }
-                
-                // 刪除人員本身
                 await deleteDoc(doc(db, 'members', ownerId));
                 
-                // 如果刪掉的人正是目前表單裡選的人，自動切回公用
                 if (document.getElementById('asset-owner-id').value === ownerId) selectOwner('', '公用設備 (無指定)');
                 if (document.getElementById('owner-panel').classList.contains('active')) renderOwnerDropdown(document.getElementById('owner-search-input').value);
+                
+                // 如果是從編輯視窗按刪除的，一起關閉它
+                if (document.getElementById('edit-modal-overlay').classList.contains('active')) closeEditModal();
+
                 customAlert(`已刪除人員「${pendingDeleteAction.name}」！`);
+            } else if (pendingDeleteAction.type === 'asset') {
+                await deleteDoc(doc(db, 'assets', pendingDeleteAction.id));
+                if (document.getElementById('asset-modal-overlay').classList.contains('active')) closeAssetModal();
+                customAlert(`已刪除該資產！`);
             }
             closeConfirmModal();
         } catch(e) {
@@ -1329,9 +1518,12 @@
     // ================= 5. 資產表單儲存邏輯 =================
     function openAssetModal(assetId = null) {
         closeFabMenu();
+        const btnDel = document.getElementById('btn-delete-asset');
+
         if (assetId && typeof assetId === 'string') {
             currentEditAssetId = assetId;
             document.getElementById('asset-modal-title').innerText = '📦 編輯資產資料';
+            btnDel.style.display = 'inline-block';
             
             const a = globalAssets.find(x => x.id === assetId);
             if(a) {
@@ -1356,6 +1548,7 @@
         } else {
             currentEditAssetId = null;
             document.getElementById('asset-modal-title').innerText = '➕ 新增資產';
+            btnDel.style.display = 'none';
             
             selectCategory('電腦');
             document.getElementById('asset-item').value = '';
@@ -1375,7 +1568,6 @@
 
     async function saveAssetData() {
         let itemInput = document.getElementById('asset-item').value.trim();
-        // 智慧預設值：若留白，自動帶入類型名稱
         if (!itemInput) { itemInput = currentAssetCategory; }
 
         const btn = document.getElementById('btn-save-asset');
@@ -1425,17 +1617,64 @@
 
     function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
 
+    // ================= 辦公室連動更名演算法 =================
     async function saveOfficeData() {
+        const newOfficeName = document.getElementById('office-name').value.trim();
+        const newOfficePwd = document.getElementById('office-pwd').value || 'N/A';
+        
+        if (!newOfficeName) { customAlert('辦公室名稱不能為空！', true); return; }
+
         const btn = document.getElementById('btn-save-office');
         btn.disabled = true; btn.innerText = '儲存中...';
 
         try {
-            await updateDoc(doc(db, 'offices', currentOffice), {
-                pwd: document.getElementById('office-pwd').value || 'N/A'
-            });
-            closeOfficeModal(); customAlert("辦公室密碼已更新！");
+            // 如果名稱有更改，需要執行連動轉移 (Cascading Update)
+            if (newOfficeName !== currentOffice) {
+                // 防呆：確認新名稱是否已存在
+                if (globalOffices.find(o => o.name === newOfficeName)) {
+                    customAlert('此辦公室名稱已經存在，請更換其他名稱！', true);
+                    btn.disabled = false; btn.innerText = '儲存';
+                    return;
+                }
+
+                // 1. 建立新辦公室 Document
+                const oldOfficeData = globalOffices.find(o => o.name === currentOffice);
+                await setDoc(doc(db, 'offices', newOfficeName), {
+                    name: newOfficeName,
+                    floor: oldOfficeData.floor,
+                    pwd: newOfficePwd
+                });
+
+                // 2. 轉移所屬人員
+                const membersToUpdate = globalMembers.filter(m => m.office_id === currentOffice);
+                for (const m of membersToUpdate) {
+                    await updateDoc(doc(db, 'members', m.id), { office_id: newOfficeName });
+                }
+
+                // 3. 轉移所屬資產
+                const assetsToUpdate = globalAssets.filter(a => a.office_id === currentOffice);
+                for (const a of assetsToUpdate) {
+                    await updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeName });
+                }
+
+                // 4. 刪除舊辦公室 Document
+                await deleteDoc(doc(db, 'offices', currentOffice));
+
+                // 5. 更新當下前端狀態
+                currentOffice = newOfficeName;
+                history.replaceState({ level: 2, floor: currentFloor, office: newOfficeName }, "");
+                updateMainTitle(newOfficeName);
+                
+                customAlert(`辦公室已成功更名為：${newOfficeName}`);
+            } else {
+                // 若僅更改密碼
+                await updateDoc(doc(db, 'offices', currentOffice), { pwd: newOfficePwd });
+                customAlert("辦公室資訊已更新！");
+            }
+            
+            closeOfficeModal(); 
         } catch(error) {
-            console.error("更新失敗: ", error); customAlert("儲存失敗，請確認資料是否存在。", true);
+            console.error("更新失敗: ", error); customAlert("儲存失敗，請檢查網路連線。", true);
         } finally {
             btn.disabled = false; btn.innerText = '儲存';
         }

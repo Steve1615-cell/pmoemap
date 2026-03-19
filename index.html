@@ -288,11 +288,16 @@
             z-index: 9999; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             opacity: 0; visibility: hidden; transition: all 0.3s ease;
         }
-        #custom-toast.show { opacity: 1; visibility: visible; top: 40px; }
+        #custom-toast.show { opacity: 1; visibility: visible; top: 60px; }
         #custom-toast.danger { background: #ef4444; } 
     </style>
 </head>
 <body>
+
+<!-- 新增：全域離線提示橫幅 -->
+<div id="offline-banner" style="display:none; background:var(--danger); color:white; text-align:center; padding:10px; font-weight:bold; position:sticky; top:0; z-index:9999; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+    ⚠️ 目前為離線模式，您可以繼續更新資料，恢復連線後請保持App開啟狀態，資料才會立即同步。
+</div>
 
 <!-- 自訂提示框 -->
 <div id="custom-toast"></div>
@@ -352,7 +357,7 @@
 
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
         
-        <!-- 新增：開發人員選項開關 -->
+        <!-- 開發人員選項開關 -->
         <div class="menu-item" style="cursor: default;">
             <div style="display:flex; align-items:center; gap:10px;">
                 <span>🛠️ 開發人員選項</span>
@@ -368,7 +373,7 @@
         <div class="menu-item" onclick="showExtensionsView()">📞 辦公室分機表</div>
     </div>
     <div class="sidebar-footer">
-        <button onclick="restoreLostComputers()" style="background:none; border:1px solid #cbd5e1; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; color:var(--text-muted); margin-bottom:10px;">🚑 復原測試資產</button>
+        <!-- 復原測試資產按鈕已移至開發人員選項 -->
         <div>更多功能開發中！</div>
     </div>
 </div>
@@ -394,6 +399,7 @@
         <!-- 開發人員專屬標籤列 (預設隱藏) -->
         <div id="dev-tabs-container" class="dev-tabs">
             <button class="dev-tab-btn" onclick="openTitleRankModal()">📊 設定職稱排序</button>
+            <button class="dev-tab-btn" onclick="restoreLostComputers()">🚑 復原測試資產</button>
             <button class="dev-tab-btn disabled">🔒 系統備份 (未開放)</button>
             <button class="dev-tab-btn disabled">🔒 權限管理 (未開放)</button>
         </div>
@@ -589,8 +595,9 @@
 
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
+    // 加入了 Firebase 的離線快取模組
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDt7Z-QAG4C73K7f0RyItXMNQJc2NDxkzE",
@@ -602,7 +609,12 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = initializeFirestore(app, { experimentalForceLongPolling: true });
+    
+    // 啟用 Firebase 的持久化離線快取
+    const db = initializeFirestore(app, { 
+        experimentalForceLongPolling: true,
+        localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+    });
 
     let globalOffices = [];
     let globalMembers = [];
@@ -628,6 +640,7 @@
     let currentEditAssetId = null;
     let isEditMode = false; 
 
+    // 自訂提示訊息功能
     function customAlert(msg, isDanger = false) {
         const toast = document.getElementById('custom-toast');
         toast.innerText = msg;
@@ -636,6 +649,33 @@
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 3000);
     }
+
+    // ================= 離線狀態偵測 (Offline-First UX) =================
+    window.addEventListener('offline', () => {
+        document.getElementById('offline-banner').style.display = 'block';
+        customAlert('⚠️ 網路連線中斷，已切換至離線模式', true);
+    });
+
+    window.addEventListener('online', () => {
+        document.getElementById('offline-banner').style.display = 'none';
+        customAlert('🌐 網路已恢復，資料正在背景同步中...');
+    });
+
+    // 若啟動時就沒網路，顯示離線警告
+    if (!navigator.onLine) {
+        document.getElementById('offline-banner').style.display = 'block';
+    }
+
+    // 將 Firestore 的寫入動作封裝，避免在離線時按鈕永遠卡在「儲存中...」
+    window.safeWrite = async function(promise) {
+        // 若完全斷網，不等待 promise 即可返回 (Firestore 已經將資料寫入本地 indexedDB 快取)
+        if (!navigator.onLine) return 'offline';
+        // 若網路不穩 (Lie-Fi)，設定 3 秒超時後解鎖介面，讓使用者繼續操作
+        const timeout = new Promise(r => setTimeout(() => r('timeout'), 3000));
+        const res = await Promise.race([promise, timeout]);
+        if (res === 'timeout') console.warn("連線不穩，變更已暫存於本地快取");
+        return res;
+    };
 
     function setupRealtimeListeners() {
         let loadedCount = 0;
@@ -651,6 +691,7 @@
             }
         };
 
+        // 即使離線，onSnapshot 也會從本地 IndexedDB 讀取資料並立刻觸發更新！
         onSnapshot(collection(db, "offices"), (snapshot) => {
             globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
             renderSidebarTree(); 
@@ -668,7 +709,7 @@
             if(docSnap.exists()) {
                 globalCategories = docSnap.data().list;
             } else {
-                setDoc(doc(db, "settings", "categories"), { list: defaultCategories });
+                safeWrite(setDoc(doc(db, "settings", "categories"), { list: defaultCategories }));
                 globalCategories = [...defaultCategories];
             }
             if(document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
@@ -714,7 +755,7 @@
             });
         });
         
-        document.getElementById('dev-tabs-container').style.display = (devOptionsEnabled) ? 'flex' : 'none';
+        document.getElementById('dev-tabs-container').style.display = (devOptionsEnabled && currentLevel === 0) ? 'flex' : 'none';
         
         updateNavigationUI();
         if (!history.state) history.replaceState({ level: 0 }, "");
@@ -1160,7 +1201,6 @@
     window.openTitleRankModal = function() {
         closeSidebar();
         
-        // 載入下拉選單 (所有辦公室選項)
         const scopeSelect = document.getElementById('title-rank-scope');
         scopeSelect.innerHTML = `<option value="global">🌍 套用至所有辦公室 (預設全域)</option>`;
         const sortedOffices = globalOffices.map(o => o.name).sort();
@@ -1181,7 +1221,6 @@
     window.changeTitleRankScope = function() {
         currentTitleRankScope = document.getElementById('title-rank-scope').value;
         
-        // 收集該 Scope 內出現過的職稱
         const allTitles = new Set();
         let targetMembers = globalMembers;
         if (currentTitleRankScope !== 'global') {
@@ -1194,23 +1233,19 @@
             }
         });
         
-        // 讀取既有設定
         let existingRanks = [];
         if (currentTitleRankScope === 'global') {
             existingRanks = globalTitleRankSettings.global || [];
         } else {
             existingRanks = globalTitleRankSettings.offices[currentTitleRankScope] || [];
-            // 若該辦公室尚未自訂，先載入全域值當作參考
             if (existingRanks.length === 0) existingRanks = globalTitleRankSettings.global || [];
         }
         
-        // 組合出暫存權重陣列 (保留舊權重排序，把新的放最後面)
         tempTitleRanks = [...existingRanks];
         allTitles.forEach(t => {
             if (!tempTitleRanks.includes(t)) tempTitleRanks.push(t);
         });
 
-        // 如果 Scope 切換後發現根本沒有資料，則清空舊有的多餘項目
         tempTitleRanks = tempTitleRanks.filter(t => allTitles.has(t) || existingRanks.includes(t));
 
         renderTitleRankList();
@@ -1237,7 +1272,6 @@
                 <span style="flex:1; font-weight:bold;">${title}</span>
             `;
             
-            // 原生 HTML5 Drag and Drop 事件
             itemDiv.addEventListener('dragstart', handleDragStart);
             itemDiv.addEventListener('dragover', handleDragOver);
             itemDiv.addEventListener('dragenter', handleDragEnter);
@@ -1335,12 +1369,14 @@
             };
 
             if (isEditMode) {
-                await updateDoc(doc(db, 'members', currentEditMemberId), memberDataToSave);
+                await safeWrite(updateDoc(doc(db, 'members', currentEditMemberId), memberDataToSave));
             } else {
                 if (currentOffice.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOffice.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
                 else memberDataToSave.dept = currentOffice; 
-                await addDoc(collection(db, 'members'), memberDataToSave);
+                
+                const newMemberRef = doc(collection(db, 'members'));
+                await safeWrite(setDoc(newMemberRef, memberDataToSave));
             }
             
             if (continueNext && !isEditMode) {
@@ -1353,7 +1389,7 @@
             }
         } catch(error) {
             console.error("更新失敗: ", error);
-            customAlert("儲存失敗，請檢查網路連線。", true);
+            customAlert("儲存發生錯誤", true);
             btn.disabled = false; btn.innerText = originalText;
         }
     }
@@ -1430,12 +1466,12 @@
 
         try {
             globalCategories.push(newCat);
-            await setDoc(doc(db, "settings", "categories"), { list: globalCategories });
+            await safeWrite(setDoc(doc(db, "settings", "categories"), { list: globalCategories }));
             input.value = '';
             renderCategoryDropdown();
             selectCategory(newCat); 
             customAlert(`成功新增類型：${newCat}`);
-        } catch(e) { console.error(e); customAlert('新增失敗，請檢查網路。', true); }
+        } catch(e) { console.error(e); customAlert('新增失敗', true); }
     }
 
     function promptDeleteCategory(event, catName) {
@@ -1525,12 +1561,14 @@
             const memberDataToSave = {
                 name: newName, title: 'N/A', join_date: '', ext: 'N/A', office_id: currentOffice, dept: dept
             };
-            const docRef = await addDoc(collection(db, 'members'), memberDataToSave);
-            input.value = '';
             
-            selectOwner(docRef.id, newName);
+            const newMemberRef = doc(collection(db, 'members'));
+            await safeWrite(setDoc(newMemberRef, memberDataToSave));
+            
+            input.value = '';
+            selectOwner(newMemberRef.id, newName);
             customAlert(`成功新增人員：${newName}`);
-        } catch(e) { console.error(e); customAlert('新增人員失敗，請檢查網路。', true); }
+        } catch(e) { console.error(e); customAlert('新增人員失敗', true); }
     }
 
     function promptDeleteOwner(event, id, name) {
@@ -1572,7 +1610,7 @@
         pendingDeleteAction = null;
     }
 
-    async function executeConfirmAction() {
+    window.executeConfirmAction = async function() {
         if (!pendingDeleteAction) return;
         const btn = document.getElementById('btn-confirm-action');
         btn.disabled = true; btn.innerText = '處理中...';
@@ -1586,7 +1624,7 @@
                     globalTitleRankSettings.offices[currentTitleRankScope] = [...tempTitleRanks];
                 }
                 
-                await setDoc(doc(db, "settings", "titleRanks"), globalTitleRankSettings);
+                await safeWrite(setDoc(doc(db, "settings", "titleRanks"), globalTitleRankSettings));
                 
                 closeTitleRankModal();
                 closeConfirmModal();
@@ -1598,10 +1636,12 @@
             else if (pendingDeleteAction.type === 'category') {
                 const cat = pendingDeleteAction.payload;
                 const usedAssets = globalAssets.filter(a => a.category === cat);
-                for (const a of usedAssets) { await deleteDoc(doc(db, 'assets', a.id)); }
                 
+                const ops = usedAssets.map(a => deleteDoc(doc(db, 'assets', a.id)));
                 globalCategories = globalCategories.filter(c => c !== cat);
-                await setDoc(doc(db, "settings", "categories"), { list: globalCategories });
+                ops.push(setDoc(doc(db, "settings", "categories"), { list: globalCategories }));
+                
+                await safeWrite(Promise.all(ops));
                 
                 if (currentAssetCategory === cat) selectCategory('電腦');
                 if (document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
@@ -1613,25 +1653,28 @@
             else if (pendingDeleteAction.type === 'owner') {
                 const ownerId = pendingDeleteAction.id;
                 const userAssets = globalAssets.filter(a => a.owner_id === ownerId);
-                for (const a of userAssets) { await updateDoc(doc(db, 'assets', a.id), { owner_id: null }); }
-                await deleteDoc(doc(db, 'members', ownerId));
+                
+                const ops = userAssets.map(a => updateDoc(doc(db, 'assets', a.id), { owner_id: null }));
+                ops.push(deleteDoc(doc(db, 'members', ownerId)));
+                
+                await safeWrite(Promise.all(ops));
                 
                 if (document.getElementById('asset-owner-id').value === ownerId) selectOwner('', '公用設備 (無指定)');
                 if (document.getElementById('owner-panel').classList.contains('active')) renderOwnerDropdown(document.getElementById('owner-search-input').value);
                 if (document.getElementById('edit-modal-overlay').classList.contains('active')) closeEditModal();
 
                 closeConfirmModal();
-                customAlert(`已刪除人員「${pendingDeleteAction.name}」！`);
+                customAlert(`已刪除該人員資料！`);
             } 
             // ---- 處理刪除資產 ----
             else if (pendingDeleteAction.type === 'asset') {
-                await deleteDoc(doc(db, 'assets', pendingDeleteAction.id));
+                await safeWrite(deleteDoc(doc(db, 'assets', pendingDeleteAction.id)));
                 if (document.getElementById('asset-modal-overlay').classList.contains('active')) closeAssetModal();
                 closeConfirmModal();
                 customAlert(`已刪除該資產！`);
             }
         } catch(e) {
-            console.error(e); customAlert('操作失敗', true);
+            console.error(e); customAlert('操作發生錯誤', true);
         } finally {
             btn.disabled = false; btn.innerText = '確定執行';
         }
@@ -1713,15 +1756,16 @@
             }
 
             if (currentEditAssetId) {
-                await updateDoc(doc(db, 'assets', currentEditAssetId), assetDataToSave);
+                await safeWrite(updateDoc(doc(db, 'assets', currentEditAssetId), assetDataToSave));
             } else {
-                await addDoc(collection(db, 'assets'), assetDataToSave);
+                const newRef = doc(collection(db, 'assets'));
+                await safeWrite(setDoc(newRef, assetDataToSave));
             }
             
             closeAssetModal();
             customAlert("資產已儲存！");
         } catch(error) {
-            console.error("更新失敗: ", error); customAlert("儲存失敗，請檢查網路連線。", true);
+            console.error("更新失敗: ", error); customAlert("儲存發生錯誤", true);
         } finally {
             btn.disabled = false; btn.innerText = '儲存';
         }
@@ -1739,7 +1783,7 @@
 
     function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
 
-    // ================= 辦公室連動更名演算法 (修復消失 Bug) =================
+    // ================= 辦公室連動更名演算法 =================
     async function saveOfficeData() {
         const newOfficeName = document.getElementById('office-name').value.trim();
         const newOfficePwd = document.getElementById('office-pwd').value || 'N/A';
@@ -1757,37 +1801,39 @@
                     return;
                 }
 
-                // 1. 建立新辦公室 Document
+                const ops = [];
                 const oldOfficeData = globalOffices.find(o => o.name === currentOffice);
-                await setDoc(doc(db, 'offices', newOfficeName), {
+                ops.push(setDoc(doc(db, 'offices', newOfficeName), {
                     name: newOfficeName, floor: oldOfficeData.floor, pwd: newOfficePwd
-                });
+                }));
                 
-                // 2. ★ 關鍵修復：立即在前端更新 currentOffice 與路徑，防止 Snapshot 重繪時產生空白
                 const oldOfficeName = currentOffice;
+                
+                // 立即更新前端，達成樂觀 UI 效果
                 currentOffice = newOfficeName;
                 history.replaceState({ level: 2, floor: currentFloor, office: newOfficeName }, "");
                 updateMainTitle(newOfficeName);
+                closeOfficeModal(); 
+                customAlert(`辦公室已成功更名為：${newOfficeName}`);
 
-                // 3. 轉移所屬人員與資產
                 const membersToUpdate = globalMembers.filter(m => m.office_id === oldOfficeName);
-                for (const m of membersToUpdate) { await updateDoc(doc(db, 'members', m.id), { office_id: newOfficeName }); }
+                for (const m of membersToUpdate) { ops.push(updateDoc(doc(db, 'members', m.id), { office_id: newOfficeName })); }
 
                 const assetsToUpdate = globalAssets.filter(a => a.office_id === oldOfficeName);
-                for (const a of assetsToUpdate) { await updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeName }); }
+                for (const a of assetsToUpdate) { ops.push(updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeName })); }
 
-                // 4. 刪除舊辦公室 Document
-                await deleteDoc(doc(db, 'offices', oldOfficeName));
-
-                customAlert(`辦公室已成功更名為：${newOfficeName}`);
+                ops.push(deleteDoc(doc(db, 'offices', oldOfficeName)));
+                
+                // 背景非同步執行所有替換，不卡 UI
+                safeWrite(Promise.all(ops)).catch(e => console.error('更名連動更新異常', e));
+                
             } else {
-                await updateDoc(doc(db, 'offices', currentOffice), { pwd: newOfficePwd });
+                await safeWrite(updateDoc(doc(db, 'offices', currentOffice), { pwd: newOfficePwd }));
+                closeOfficeModal(); 
                 customAlert("辦公室資訊已更新！");
             }
-            
-            closeOfficeModal(); 
         } catch(error) {
-            console.error("更新失敗: ", error); customAlert("儲存失敗，請檢查網路連線。", true);
+            console.error("更新失敗: ", error); customAlert("儲存發生錯誤", true);
         } finally {
             btn.disabled = false; btn.innerText = '儲存';
         }
@@ -1803,7 +1849,11 @@
                 { item: "冷氣機 C", sn: "AC-4F-C01", status: "待修", office_id: "高緯度遠洋巡護船監造辦公室 (ABS)", category: "冷氣機", type: "public" },
                 { item: "公用電腦", sn: "PC-ABS-PUB", status: "正常", office_id: "高緯度遠洋巡護船監造辦公室 (ABS)", category: "電腦", type: "public", pc_id: "905987X", domain: "外網", net_port: "N/A", phone_port: "N/A", owner_id: null }
             ];
-            for(let a of defaultAssets) { await addDoc(collection(db, 'assets'), a); }
+            const ops = defaultAssets.map(a => {
+                const newRef = doc(collection(db, 'assets'));
+                return setDoc(newRef, a);
+            });
+            await safeWrite(Promise.all(ops));
             customAlert('✅ 測試資產已成功復原！');
         }
     };
@@ -1827,7 +1877,6 @@
     window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal; window.saveOfficeData = saveOfficeData;
     window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
 
-    // 開發選項專用
     window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal;
     window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
 

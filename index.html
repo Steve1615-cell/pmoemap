@@ -162,7 +162,7 @@
         /* 卡片上的編輯小按鈕 */
         .card-edit-btn {
             position: absolute; top: 12px; right: 15px; background: none; border: none; cursor: pointer;
-            font-size: 16px; opacity: 0.4; transition: opacity 0.2s, transform 0.2s; padding: 5px;
+            font-size: 16px; opacity: 0.4; transition: opacity 0.2s, transform 0.2s; padding: 5px; z-index: 10;
         }
         .card-edit-btn:hover { opacity: 1; transform: scale(1.1); color: var(--primary); }
 
@@ -225,6 +225,7 @@
         .btn-primary:hover { background: #1d4ed8; }
         .btn-secondary:hover { background: #cbd5e1; }
         .btn-danger:hover { background: #b91c1c; }
+        .btn-danger:disabled { background: #fca5a5; cursor: not-allowed; }
         .btn-edit { background: none; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
         .btn-edit:hover { background: var(--accent); color: var(--primary); border-color: var(--primary); }
 
@@ -315,11 +316,11 @@
 
 <div id="custom-toast"></div>
 
-<!-- 共用防呆警告對話框 -->
+<!-- 共用防呆警告對話框 (刪除/套用 專用) -->
 <div id="confirm-modal-overlay" class="modal-overlay" style="z-index: 4000;">
     <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header" style="color: var(--danger);">
-            <span>⚠️ 刪除/套用 警告</span>
+            <span id="confirm-modal-title">⚠️ 系統警告</span>
         </div>
         <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
         <div class="modal-footer">
@@ -349,28 +350,6 @@
         <div class="modal-footer" style="margin-top: 15px;">
             <button class="btn-secondary" onclick="closeTitleRankModal()">取消</button>
             <button class="btn-primary" onclick="promptSaveTitleRanks()">套用排序</button>
-        </div>
-    </div>
-</div>
-
-<!-- 新增辦公室表單 (Modal) -->
-<div id="add-office-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeAddOfficeModal()" style="z-index: 3200;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <span>➕ 新增辦公室</span>
-            <button class="btn-close" onclick="closeAddOfficeModal()" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;">×</button>
-        </div>
-        <div class="form-group">
-            <label>辦公室名稱</label>
-            <input type="text" id="new-office-name" placeholder="輸入辦公室名稱 (必填)">
-        </div>
-        <div class="form-group">
-            <label>預設門禁密碼</label>
-            <input type="text" id="new-office-pwd" placeholder="例如：0857# (無則填 N/A)">
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeAddOfficeModal()">取消</button>
-            <button id="btn-save-new-office" class="btn-primary" onclick="saveNewOfficeData()">儲存</button>
         </div>
     </div>
 </div>
@@ -606,23 +585,50 @@
     </div>
 </div>
 
+<!-- 辦公室編輯/新增表單 (Modal) -->
 <div id="office-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeOfficeModal()">
-    <div class="modal-content">
+    <div class="modal-content" style="overflow: visible;">
         <div class="modal-header">
-            <span>✏️ 編輯辦公室資訊</span>
+            <span id="office-modal-title">✏️ 編輯辦公室資訊</span>
             <button class="btn-close" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;" onclick="closeOfficeModal()">×</button>
         </div>
-        <div class="form-group">
-            <label>辦公室名稱 (變更將連動所有人員與資產)</label>
-            <input type="text" id="office-name" placeholder="輸入辦公室名稱">
+        
+        <div class="form-group" id="office-floor-group" style="display: none;">
+            <label>所屬區域 (樓層)</label>
+            <input type="text" id="office-floor" disabled style="background-color: #f1f5f9; color: #94a3b8;">
         </div>
+
+        <div class="form-group">
+            <label>房間類型 (自訂標籤將同步於地圖與報表)</label>
+            <div class="custom-dropdown-btn" onclick="toggleRoomTypeDropdown(event)">
+                <span id="selected-room-type-text">選擇房間類型...</span>
+                <span style="font-size: 12px; color: var(--text-muted);">▼</span>
+            </div>
+            <div class="custom-dropdown-panel" id="room-type-panel">
+                <div class="dropdown-search-row">
+                    <input type="text" id="room-type-search-input" placeholder="搜尋或新增類型..." oninput="filterRoomTypes()" onclick="event.stopPropagation()">
+                    <button class="btn-primary" onclick="addRoomType(event)" style="padding: 4px 8px; flex-shrink: 0;">➕</button>
+                </div>
+                <div class="dropdown-list" id="room-type-list"></div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>房間名稱 (變更名稱將連動所有內部資料)</label>
+            <input type="text" id="office-name" placeholder="輸入房間或辦公室名稱">
+        </div>
+
         <div class="form-group">
             <label>門禁密碼</label>
             <input type="text" id="office-pwd" placeholder="例如：0857# (無則填 N/A)">
         </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeOfficeModal()">取消</button>
-            <button id="btn-save-office" class="btn-primary" onclick="saveOfficeData()">儲存</button>
+
+        <div class="modal-footer" style="justify-content: space-between;">
+            <button id="btn-delete-office" class="btn-danger" style="display:none;" onclick="executeDeleteFromModal('office')">🗑️ 移除整個辦公室</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" onclick="closeOfficeModal()">取消</button>
+                <button id="btn-save-office" class="btn-primary" onclick="saveOfficeData()">儲存</button>
+            </div>
         </div>
     </div>
 </div>
@@ -647,8 +653,18 @@
         localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
     });
 
-    // ================= 版本更新日誌設定 (動態陣列) =================
+    // ================= 版本更新日誌設定 =================
     const systemUpdateLogs = [
+        {
+            version: "v1.2.0",
+            date: "202603191530",
+            changes: [
+                "解鎖「辦公室編輯」功能與獨立自訂的「房間類型下拉選單」。",
+                "實裝辦公室「雙重警告防護刪除機制」，超過10項物件將觸發5秒倒數防呆。",
+                "修復下拉選單層級與外觀樣式重疊問題。",
+                "為後續 Phase 3 (特徵標籤制地圖綁定) 建立基礎資料架構。"
+            ]
+        },
         {
             version: "v1.1.0",
             date: "202603191450",
@@ -665,17 +681,7 @@
             changes: [
                 "新增離線存取功能與斷網防呆提示。",
                 "實作系統版本號紀錄與更新日誌檢視介面。",
-                "修復設定職稱排序時，指定辦公室顯示多餘未登錄職稱之問題。",
                 "優化手機版表單滑動體驗 (100dvh)。"
-            ]
-        },
-        {
-            version: "v0.9.0",
-            date: "Beta",
-            changes: [
-                "導入 Firebase Realtime 雲端資料庫同步。",
-                "支援自訂資產類型與動態使用者下拉選單。",
-                "辦公室名稱變更之連動更新演算法實裝。"
             ]
         }
     ];
@@ -687,6 +693,10 @@
     let defaultCategories = ['電腦', '影印機', '冰箱', '洗衣機', '冷氣機'];
     let globalCategories = [...defaultCategories]; 
     let currentAssetCategory = '電腦';
+
+    let defaultRoomTypes = ['辦公室', '庫房', '會議室'];
+    let globalRoomTypes = [...defaultRoomTypes];
+    let currentRoomType = '辦公室';
     
     let devOptionsEnabled = false;
     let globalTitleRankSettings = { global: [], offices: {} };
@@ -702,6 +712,7 @@
     let currentEditMemberId = null; 
     let currentEditAssetId = null;
     let isEditMode = false; 
+    let isOfficeEditMode = false;
 
     function customAlert(msg, isDanger = false) {
         const toast = document.getElementById('custom-toast');
@@ -736,7 +747,7 @@
         let loadedCount = 0;
         const checkAllLoaded = () => {
             loadedCount++;
-            if (loadedCount >= 4 && !isInitialized) { 
+            if (loadedCount >= 5 && !isInitialized) { 
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
@@ -766,6 +777,16 @@
                 globalCategories = [...defaultCategories];
             }
             if(document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
+        });
+        onSnapshot(doc(db, "settings", "roomTypes"), (docSnap) => {
+            if(docSnap.exists()) {
+                globalRoomTypes = docSnap.data().list;
+            } else {
+                safeWrite(setDoc(doc(db, "settings", "roomTypes"), { list: defaultRoomTypes }));
+                globalRoomTypes = [...defaultRoomTypes];
+            }
+            if(document.getElementById('room-type-panel').classList.contains('active')) renderRoomTypeDropdown();
+            checkAllLoaded();
         });
         onSnapshot(doc(db, "settings", "titleRanks"), (docSnap) => {
             if(docSnap.exists()) {
@@ -808,7 +829,6 @@
         
         document.getElementById('dev-tabs-container').style.display = (devOptionsEnabled && currentLevel === 0) ? 'flex' : 'none';
         
-        // 自動載入最新的版本號到 Footer
         if (systemUpdateLogs.length > 0) {
             document.querySelector('.version-footer').innerText = `v${systemUpdateLogs[0].version} (${systemUpdateLogs[0].date})`;
         }
@@ -912,14 +932,19 @@
         if (ownerPanel && ownerPanel.classList.contains('active') && !e.target.closest('.form-group')) {
             ownerPanel.classList.remove('active');
         }
+        const roomPanel = document.getElementById('room-type-panel');
+        if (roomPanel && roomPanel.classList.contains('active') && !e.target.closest('.form-group')) {
+            roomPanel.classList.remove('active');
+        }
     });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            closeFabMenu(); closeEditModal(); closeAssetModal(); closeOfficeModal(); closeSidebar(); closeAddOfficeModal();
+            closeFabMenu(); closeEditModal(); closeAssetModal(); closeOfficeModal(); closeSidebar();
             closeTitleRankModal(); closeUpdateLogModal();
             document.getElementById('category-panel').classList.remove('active');
             document.getElementById('owner-panel').classList.remove('active');
+            if(document.getElementById('room-type-panel')) document.getElementById('room-type-panel').classList.remove('active');
             closeConfirmModal();
         }
     });
@@ -935,7 +960,6 @@
         document.getElementById('fab-menu').classList.remove('active');
     }
 
-    // ================= 動態選單更新 (修復按鈕語意) =================
     function updateFabMenu() {
         const fabMenu = document.getElementById('fab-menu');
         const fabContainer = document.getElementById('fab-container');
@@ -947,7 +971,7 @@
         } else if (currentLevel === 1) {
             fabContainer.style.display = 'flex';
             fabMenu.innerHTML = `
-                <button class="fab-item" onclick="openAddOfficeModal()">➕ 新增辦公室</button>
+                <button class="fab-item" onclick="openOfficeModal()">➕ 新增辦公室</button>
                 <button class="fab-item disabled" style="color: #94a3b8; cursor: not-allowed;">🗺️ 綁定地圖區塊 (未開放)</button>
             `;
         } else if (currentLevel === 2) {
@@ -958,7 +982,7 @@
             } else if (currentTab === 'assets') {
                 specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增資產 (包含電腦)</button>`;
             }
-            fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal()">✏️ 編輯辦公室資訊</button>`;
+            fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal('${currentOffice}')">✏️ 編輯辦公室資訊</button>`;
         } else {
             fabContainer.style.display = 'none';
         }
@@ -1022,11 +1046,12 @@
         const floorOffices = globalOffices.filter(o => o.floor === floor);
         floorOffices.forEach(off => {
             const card = document.createElement('div'); card.className = 'nav-card';
-            // 加入卡片編輯按鈕
+            const roomTypeDisplay = off.roomType && off.roomType !== '辦公室' ? `<div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${off.roomType}</div>` : '';
             card.innerHTML = `
-                <button class="card-edit-btn" onclick="event.stopPropagation(); customAlert('辦公室地圖綁定功能開發中！')">✏️</button>
+                ${roomTypeDisplay}
+                <button class="card-edit-btn" onclick="event.stopPropagation(); openOfficeModal('${off.name}')">✏️</button>
                 <h2>${off.name}</h2>
-                <div class="password-container"><span class="password-badge">${off.pwd}</span></div>
+                <div class="password-container"><span class="password-badge">${off.pwd || 'N/A'}</span></div>
                 <div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>
             `;
             card.onclick = () => showDetail(off.name);
@@ -1277,12 +1302,10 @@
         document.getElementById('title-rank-modal-overlay').classList.remove('active');
     }
 
-    // ================= 動態系統更新日誌 =================
     window.openUpdateLogModal = function() {
         const container = document.getElementById('update-log-content');
         container.innerHTML = '';
         
-        // 僅保留最新 3 筆，動態生成 HTML
         systemUpdateLogs.slice(0, 3).forEach((log, index) => {
             const colorTitle = index === 0 ? 'var(--primary)' : 'var(--text-muted)';
             const colorText = index === 0 ? 'var(--text-main)' : 'var(--text-muted)';
@@ -1404,45 +1427,9 @@
     window.promptSaveTitleRanks = function() {
         const targetText = document.getElementById('title-rank-scope').options[document.getElementById('title-rank-scope').selectedIndex].text;
         pendingDeleteAction = { type: 'titleRanks' };
+        document.getElementById('confirm-modal-title').innerText = '⚠️ 套用設定確認';
         document.getElementById('confirm-msg').innerText = `確定將此排序套用至\n「${targetText}」？`;
         document.getElementById('confirm-modal-overlay').classList.add('active');
-    }
-
-    // ================= 1. 新增/編輯辦公室表單邏輯 =================
-    window.openAddOfficeModal = function() {
-        closeFabMenu();
-        document.getElementById('new-office-name').value = '';
-        document.getElementById('new-office-pwd').value = '';
-        document.getElementById('add-office-modal-overlay').classList.add('active');
-    }
-
-    window.closeAddOfficeModal = function() {
-        document.getElementById('add-office-modal-overlay').classList.remove('active');
-    }
-
-    window.saveNewOfficeData = async function() {
-        const name = document.getElementById('new-office-name').value.trim();
-        const pwd = document.getElementById('new-office-pwd').value || 'N/A';
-        
-        if (!name) { customAlert('辦公室名稱不能為空！', true); return; }
-        if (globalOffices.find(o => o.name === name)) {
-            customAlert('此辦公室名稱已經存在！', true); return;
-        }
-
-        const btn = document.getElementById('btn-save-new-office');
-        btn.disabled = true; btn.innerText = '儲存中...';
-
-        try {
-            await safeWrite(setDoc(doc(db, 'offices', name), {
-                name: name, floor: currentFloor, pwd: pwd
-            }));
-            closeAddOfficeModal();
-            customAlert(`成功新增辦公室：${name}`);
-        } catch(error) {
-            console.error(error); customAlert('新增發生錯誤', true);
-        } finally {
-            btn.disabled = false; btn.innerText = '儲存';
-        }
     }
 
     function openMemberModal(memberId = null) {
@@ -1536,6 +1523,7 @@
         if(event) event.stopPropagation();
         const panel = document.getElementById('category-panel');
         document.getElementById('owner-panel').classList.remove('active'); 
+        if(document.getElementById('room-type-panel')) document.getElementById('room-type-panel').classList.remove('active');
         panel.classList.toggle('active');
         if(panel.classList.contains('active')) {
             document.getElementById('category-search-input').value = '';
@@ -1603,11 +1591,92 @@
         event.stopPropagation();
         pendingDeleteAction = { type: 'category', payload: catName };
         const usedAssets = globalAssets.filter(a => a.category === catName);
+        document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告';
         if (usedAssets.length > 0) {
             const assetListText = usedAssets.map(a => `- ${a.office_id}: ${a.item || '未命名設備'}`).slice(0, 5).join('\n') + (usedAssets.length > 5 ? '\n...等' : '');
             document.getElementById('confirm-msg').innerText = `曾以此類型「${catName}」登錄過的資產（共 ${usedAssets.length} 件）都會一併被永久刪除！\n\n包含：\n${assetListText}\n\n請問是否確定要刪除？`;
         } else {
             document.getElementById('confirm-msg').innerText = `確定要刪除類型「${catName}」嗎？`;
+        }
+        document.getElementById('confirm-modal-overlay').classList.add('active');
+    }
+
+    // ================= 房間類型下拉選單邏輯 =================
+    window.toggleRoomTypeDropdown = function(event) {
+        if(event) event.stopPropagation();
+        const panel = document.getElementById('room-type-panel');
+        panel.classList.toggle('active');
+        if(panel.classList.contains('active')) {
+            document.getElementById('room-type-search-input').value = '';
+            renderRoomTypeDropdown();
+            document.getElementById('room-type-search-input').focus();
+        }
+    }
+
+    window.renderRoomTypeDropdown = function(filterText = '') {
+        const listDiv = document.getElementById('room-type-list');
+        listDiv.innerHTML = '';
+        const filtered = globalRoomTypes.filter(c => c.toLowerCase().includes(filterText.toLowerCase()));
+        
+        if(filtered.length === 0) {
+            listDiv.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到結果，可點擊上方 ➕ 新增</div>';
+            return;
+        }
+
+        filtered.forEach(cat => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'dropdown-item';
+            const textSpan = document.createElement('span');
+            textSpan.innerText = cat;
+            textSpan.style.flex = '1';
+            textSpan.onclick = () => selectRoomType(cat);
+            
+            const delBtn = document.createElement('button');
+            delBtn.className = 'dropdown-item-delete';
+            delBtn.innerText = '🗑️';
+            delBtn.onclick = (e) => promptDeleteRoomType(e, cat);
+
+            itemDiv.appendChild(textSpan);
+            itemDiv.appendChild(delBtn);
+            listDiv.appendChild(itemDiv);
+        });
+    }
+
+    window.filterRoomTypes = function() { renderRoomTypeDropdown(document.getElementById('room-type-search-input').value); }
+
+    window.selectRoomType = function(cat) {
+        currentRoomType = cat;
+        document.getElementById('selected-room-type-text').innerText = cat;
+        document.getElementById('room-type-panel').classList.remove('active');
+    }
+
+    window.addRoomType = async function(event) {
+        if(event) event.stopPropagation();
+        const input = document.getElementById('room-type-search-input');
+        const newCat = input.value.trim();
+        if(!newCat) { customAlert('請輸入要新增的房間類型名稱！', true); return; }
+        if(globalRoomTypes.includes(newCat)) { customAlert('此類型已存在！', true); return; }
+
+        try {
+            globalRoomTypes.push(newCat);
+            await safeWrite(setDoc(doc(db, "settings", "roomTypes"), { list: globalRoomTypes }));
+            input.value = '';
+            renderRoomTypeDropdown();
+            selectRoomType(newCat); 
+            customAlert(`成功新增房間類型：${newCat}`);
+        } catch(e) { console.error(e); customAlert('新增失敗', true); }
+    }
+
+    window.promptDeleteRoomType = function(event, catName) {
+        event.stopPropagation();
+        pendingDeleteAction = { type: 'roomType', payload: catName };
+        const usedOffices = globalOffices.filter(o => o.roomType === catName);
+        document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告';
+        if (usedOffices.length > 0) {
+            const officeListText = usedOffices.map(o => `- ${o.name}`).slice(0, 5).join('\n') + (usedOffices.length > 5 ? '\n...等' : '');
+            document.getElementById('confirm-msg').innerText = `有 ${usedOffices.length} 間房間正在使用此類型「${catName}」，刪除後這些房間將恢復為預設類型。\n\n包含：\n${officeListText}\n\n請問是否確定要刪除？`;
+        } else {
+            document.getElementById('confirm-msg').innerText = `確定要刪除房間類型「${catName}」嗎？`;
         }
         document.getElementById('confirm-modal-overlay').classList.add('active');
     }
@@ -1698,7 +1767,7 @@
     function promptDeleteOwner(event, id, name) {
         event.stopPropagation();
         pendingDeleteAction = { type: 'owner', id: id, name: name };
-        
+        document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告';
         const userAssets = globalAssets.filter(a => a.owner_id === id);
         if (userAssets.length > 0) {
             document.getElementById('confirm-msg').innerText = `確定要刪除人員「${name}」嗎？\n\n警告：該員名下綁定有 ${userAssets.length} 件設備。刪除此人員後，那些設備會自動轉退為「公用設備」。`;
@@ -1716,6 +1785,7 @@
             const a = globalAssets.find(x => x.id === currentEditAssetId);
             if (a) {
                 pendingDeleteAction = { type: 'asset', id: a.id };
+                document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告';
                 let extraWarning = '';
                 if (a.owner_id) {
                     const owner = globalMembers.find(m => m.id === a.owner_id);
@@ -1724,17 +1794,70 @@
                 document.getElementById('confirm-msg').innerText = `確定要永久刪除資產「${a.item || '未命名設備'}」嗎？此動作無法復原。${extraWarning}`;
                 document.getElementById('confirm-modal-overlay').classList.add('active');
             }
+        } else if (type === 'office') {
+            const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
+            const officeAssetsList = globalAssets.filter(a => a.office_id === currentOffice);
+            const totalItems = officeMembers.length + officeAssetsList.length;
+            
+            pendingDeleteAction = { type: 'office', payload: currentOffice, count: totalItems, step: 1 };
+            document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告';
+            
+            if (totalItems >= 10) {
+                document.getElementById('confirm-msg').innerText = `警告：辦公室「${currentOffice}」內目前有高達 ${totalItems} 項物件 (人員與資產)。\n\n移除辦公室將會連帶永久刪除所有內部資料！\n請問是否確認進入刪除程序？`;
+            } else if (totalItems >= 3) {
+                document.getElementById('confirm-msg').innerText = `警告：辦公室「${currentOffice}」內有 ${totalItems} 項物件 (人員與資產)。\n移除辦公室將連帶永久刪除這些資料！\n\n請問是否確定要刪除？`;
+            } else {
+                document.getElementById('confirm-msg').innerText = `確定要永久刪除辦公室「${currentOffice}」嗎？此動作無法復原。`;
+            }
+            
+            document.getElementById('confirm-modal-overlay').classList.add('active');
         }
     }
 
     function closeConfirmModal() {
         document.getElementById('confirm-modal-overlay').classList.remove('active');
         pendingDeleteAction = null;
+        
+        // 恢復按鈕預設狀態 (防止倒數計時中斷時卡住)
+        const btn = document.getElementById('btn-confirm-action');
+        btn.disabled = false;
+        btn.innerText = '確定執行';
     }
+
+    // 新增：處理 5 秒倒數的計時器變數
+    let confirmTimer = null;
 
     window.executeConfirmAction = async function() {
         if (!pendingDeleteAction) return;
         const btn = document.getElementById('btn-confirm-action');
+        
+        // 處理辦公室刪除的「雙重警告防護」
+        if (pendingDeleteAction.type === 'office' && pendingDeleteAction.count >= 10 && pendingDeleteAction.step === 1) {
+            pendingDeleteAction.step = 2; // 進入第二階段
+            document.getElementById('confirm-modal-title').innerText = '⛔ 最終防護鎖';
+            document.getElementById('confirm-msg').innerText = `【最終確認】\n您即將一次性刪除大量資料 (${pendingDeleteAction.count} 件)，此動作絕對無法復原！\n\n為防止誤觸，請等待 5 秒鐘解鎖按鈕...`;
+            
+            btn.disabled = true;
+            let timeLeft = 5;
+            btn.innerText = `等待 ${timeLeft} 秒...`;
+            
+            if (confirmTimer) clearInterval(confirmTimer);
+            confirmTimer = setInterval(() => {
+                timeLeft--;
+                if (timeLeft > 0) {
+                    btn.innerText = `等待 ${timeLeft} 秒...`;
+                } else {
+                    clearInterval(confirmTimer);
+                    btn.disabled = false;
+                    btn.innerText = '確定永久刪除';
+                    btn.classList.add('btn-danger'); 
+                }
+            }, 1000);
+            
+            return; // 暫停執行，等待第二次點擊
+        }
+        
+        // 開始正式執行非同步刪除/修改作業
         btn.disabled = true; btn.innerText = '處理中...';
 
         try {
@@ -1744,52 +1867,70 @@
                 } else {
                     globalTitleRankSettings.offices[currentTitleRankScope] = [...tempTitleRanks];
                 }
-                
                 await safeWrite(setDoc(doc(db, "settings", "titleRanks"), globalTitleRankSettings));
-                
-                closeTitleRankModal();
-                closeConfirmModal();
+                closeTitleRankModal(); closeConfirmModal();
                 customAlert("職稱排序設定已儲存！");
                 if (document.getElementById('staff-sort-select').value === 'title') updateDetailContent();
-                
             } 
             else if (pendingDeleteAction.type === 'category') {
                 const cat = pendingDeleteAction.payload;
                 const usedAssets = globalAssets.filter(a => a.category === cat);
-                
                 const ops = usedAssets.map(a => deleteDoc(doc(db, 'assets', a.id)));
                 globalCategories = globalCategories.filter(c => c !== cat);
                 ops.push(setDoc(doc(db, "settings", "categories"), { list: globalCategories }));
-                
                 await safeWrite(Promise.all(ops));
                 
                 if (currentAssetCategory === cat) selectCategory('電腦');
                 if (document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
-                closeConfirmModal();
-                customAlert(`已刪除類型「${cat}」及其相關資產！`);
-
+                closeConfirmModal(); customAlert(`已刪除類型「${cat}」及其相關資產！`);
             } 
+            else if (pendingDeleteAction.type === 'roomType') {
+                const cat = pendingDeleteAction.payload;
+                const usedOffices = globalOffices.filter(o => o.roomType === cat);
+                const ops = usedOffices.map(o => updateDoc(doc(db, 'offices', o.name), { roomType: '辦公室' }));
+                globalRoomTypes = globalRoomTypes.filter(c => c !== cat);
+                ops.push(setDoc(doc(db, "settings", "roomTypes"), { list: globalRoomTypes }));
+                await safeWrite(Promise.all(ops));
+                
+                if (currentRoomType === cat) selectRoomType('辦公室');
+                if (document.getElementById('room-type-panel').classList.contains('active')) renderRoomTypeDropdown();
+                closeConfirmModal(); customAlert(`已刪除房間類型「${cat}」！`);
+            }
             else if (pendingDeleteAction.type === 'owner') {
                 const ownerId = pendingDeleteAction.id;
                 const userAssets = globalAssets.filter(a => a.owner_id === ownerId);
-                
                 const ops = userAssets.map(a => updateDoc(doc(db, 'assets', a.id), { owner_id: null }));
                 ops.push(deleteDoc(doc(db, 'members', ownerId)));
-                
                 await safeWrite(Promise.all(ops));
                 
                 if (document.getElementById('asset-owner-id').value === ownerId) selectOwner('', '公用設備 (無指定)');
                 if (document.getElementById('owner-panel').classList.contains('active')) renderOwnerDropdown(document.getElementById('owner-search-input').value);
                 if (document.getElementById('edit-modal-overlay').classList.contains('active')) closeEditModal();
-
-                closeConfirmModal();
-                customAlert(`已刪除該人員資料！`);
+                closeConfirmModal(); customAlert(`已刪除該人員資料！`);
             } 
             else if (pendingDeleteAction.type === 'asset') {
                 await safeWrite(deleteDoc(doc(db, 'assets', pendingDeleteAction.id)));
                 if (document.getElementById('asset-modal-overlay').classList.contains('active')) closeAssetModal();
+                closeConfirmModal(); customAlert(`已刪除該資產！`);
+            }
+            else if (pendingDeleteAction.type === 'office') {
+                const offName = pendingDeleteAction.payload;
+                const membersToDelete = globalMembers.filter(m => m.office_id === offName);
+                const assetsToDelete = globalAssets.filter(a => a.office_id === offName);
+                
+                const ops = [];
+                membersToDelete.forEach(m => ops.push(deleteDoc(doc(db, 'members', m.id))));
+                assetsToDelete.forEach(a => ops.push(deleteDoc(doc(db, 'assets', a.id))));
+                ops.push(deleteDoc(doc(db, 'offices', offName)));
+                
+                await safeWrite(Promise.all(ops));
+                
+                if (document.getElementById('office-modal-overlay').classList.contains('active')) closeOfficeModal();
                 closeConfirmModal();
-                customAlert(`已刪除該資產！`);
+                customAlert(`辦公室「${offName}」及內部所有資料已移除！`);
+                
+                // 退回樓層畫面
+                showOffices(currentFloor);
             }
         } catch(e) {
             console.error(e); customAlert('操作發生錯誤', true);
@@ -1888,19 +2029,40 @@
         }
     }
 
-    function openOfficeModal() {
+    // ================= 辦公室編輯與新增 =================
+    window.openAddOfficeModal = function() {
         closeFabMenu();
-        const officeData = globalOffices.find(o => o.name === currentOffice);
-        if (!officeData) { customAlert('找不到辦公室資料！', true); return; }
-
-        document.getElementById('office-name').value = officeData.name;
-        document.getElementById('office-pwd').value = officeData.pwd || '';
+        isOfficeEditMode = false;
+        document.getElementById('office-modal-title').innerText = '➕ 新增房間/辦公室';
+        document.getElementById('office-floor-group').style.display = 'block';
+        document.getElementById('office-floor').value = currentFloor;
+        document.getElementById('office-name').value = '';
+        document.getElementById('office-pwd').value = '';
+        document.getElementById('btn-delete-office').style.display = 'none';
+        
+        selectRoomType('辦公室');
         document.getElementById('office-modal-overlay').classList.add('active');
     }
 
-    function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
+    window.openOfficeModal = function(officeName) {
+        closeFabMenu();
+        isOfficeEditMode = true;
+        const officeData = globalOffices.find(o => o.name === officeName);
+        if (!officeData) { customAlert('找不到辦公室資料！', true); return; }
 
-    async function saveOfficeData() {
+        document.getElementById('office-modal-title').innerText = '✏️ 編輯房間資訊';
+        document.getElementById('office-floor-group').style.display = 'none';
+        document.getElementById('office-name').value = officeData.name;
+        document.getElementById('office-pwd').value = officeData.pwd || '';
+        document.getElementById('btn-delete-office').style.display = 'inline-block';
+        
+        selectRoomType(officeData.roomType || '辦公室');
+        document.getElementById('office-modal-overlay').classList.add('active');
+    }
+
+    window.closeOfficeModal = function() { document.getElementById('office-modal-overlay').classList.remove('active'); }
+
+    window.saveOfficeData = async function() {
         const newOfficeName = document.getElementById('office-name').value.trim();
         const newOfficePwd = document.getElementById('office-pwd').value || 'N/A';
         
@@ -1910,41 +2072,54 @@
         btn.disabled = true; btn.innerText = '儲存中...';
 
         try {
-            if (newOfficeName !== currentOffice) {
+            if (isOfficeEditMode) {
+                // 修改現有辦公室
+                if (newOfficeName !== currentOffice) {
+                    if (globalOffices.find(o => o.name === newOfficeName)) {
+                        customAlert('此辦公室名稱已經存在，請更換其他名稱！', true);
+                        btn.disabled = false; btn.innerText = '儲存';
+                        return;
+                    }
+
+                    const ops = [];
+                    const oldOfficeData = globalOffices.find(o => o.name === currentOffice);
+                    ops.push(setDoc(doc(db, 'offices', newOfficeName), {
+                        name: newOfficeName, floor: oldOfficeData.floor, pwd: newOfficePwd, roomType: currentRoomType
+                    }));
+                    
+                    const oldOfficeName = currentOffice;
+                    currentOffice = newOfficeName;
+                    history.replaceState({ level: 2, floor: currentFloor, office: newOfficeName }, "");
+                    updateMainTitle(newOfficeName);
+                    
+                    const membersToUpdate = globalMembers.filter(m => m.office_id === oldOfficeName);
+                    for (const m of membersToUpdate) { ops.push(updateDoc(doc(db, 'members', m.id), { office_id: newOfficeName })); }
+
+                    const assetsToUpdate = globalAssets.filter(a => a.office_id === oldOfficeName);
+                    for (const a of assetsToUpdate) { ops.push(updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeName })); }
+
+                    ops.push(deleteDoc(doc(db, 'offices', oldOfficeName)));
+                    
+                    safeWrite(Promise.all(ops)).catch(e => console.error('更名連動更新異常', e));
+                    closeOfficeModal(); 
+                    customAlert(`辦公室已成功更名為：${newOfficeName}`);
+                } else {
+                    await safeWrite(updateDoc(doc(db, 'offices', currentOffice), { pwd: newOfficePwd, roomType: currentRoomType }));
+                    closeOfficeModal(); 
+                    customAlert("辦公室資訊已更新！");
+                }
+            } else {
+                // 新增全新辦公室
                 if (globalOffices.find(o => o.name === newOfficeName)) {
-                    customAlert('此辦公室名稱已經存在，請更換其他名稱！', true);
+                    customAlert('此辦公室名稱已經存在！', true);
                     btn.disabled = false; btn.innerText = '儲存';
                     return;
                 }
-
-                const ops = [];
-                const oldOfficeData = globalOffices.find(o => o.name === currentOffice);
-                ops.push(setDoc(doc(db, 'offices', newOfficeName), {
-                    name: newOfficeName, floor: oldOfficeData.floor, pwd: newOfficePwd
+                await safeWrite(setDoc(doc(db, 'offices', newOfficeName), {
+                    name: newOfficeName, floor: currentFloor, pwd: newOfficePwd, roomType: currentRoomType
                 }));
-                
-                const oldOfficeName = currentOffice;
-                
-                currentOffice = newOfficeName;
-                history.replaceState({ level: 2, floor: currentFloor, office: newOfficeName }, "");
-                updateMainTitle(newOfficeName);
-                closeOfficeModal(); 
-                customAlert(`辦公室已成功更名為：${newOfficeName}`);
-
-                const membersToUpdate = globalMembers.filter(m => m.office_id === oldOfficeName);
-                for (const m of membersToUpdate) { ops.push(updateDoc(doc(db, 'members', m.id), { office_id: newOfficeName })); }
-
-                const assetsToUpdate = globalAssets.filter(a => a.office_id === oldOfficeName);
-                for (const a of assetsToUpdate) { ops.push(updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeName })); }
-
-                ops.push(deleteDoc(doc(db, 'offices', oldOfficeName)));
-                
-                safeWrite(Promise.all(ops)).catch(e => console.error('更名連動更新異常', e));
-                
-            } else {
-                await safeWrite(updateDoc(doc(db, 'offices', currentOffice), { pwd: newOfficePwd }));
-                closeOfficeModal(); 
-                customAlert("辦公室資訊已更新！");
+                closeOfficeModal();
+                customAlert(`成功新增房間：${newOfficeName}`);
             }
         } catch(error) {
             console.error("更新失敗: ", error); customAlert("儲存發生錯誤", true);
@@ -1979,24 +2154,20 @@
     window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal; window.saveMemberData = saveMemberData;
     window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal; window.saveAssetData = saveAssetData;
     
-    window.toggleCategoryDropdown = toggleCategoryDropdown;
-    window.filterCategories = filterCategories; window.addCategory = addCategory;
-    
-    window.toggleOwnerDropdown = toggleOwnerDropdown;
-    window.filterOwners = filterOwners; window.addOwnerFromAsset = addOwnerFromAsset;
+    window.toggleCategoryDropdown = toggleCategoryDropdown; window.filterCategories = filterCategories; window.addCategory = addCategory;
+    window.toggleOwnerDropdown = toggleOwnerDropdown; window.filterOwners = filterOwners; window.addOwnerFromAsset = addOwnerFromAsset;
     
     window.promptDeleteCategory = promptDeleteCategory; window.promptDeleteOwner = promptDeleteOwner;
     window.executeConfirmAction = executeConfirmAction; window.closeConfirmModal = closeConfirmModal;
     
-    window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal; window.saveOfficeData = saveOfficeData;
     window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
-
     window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal;
     window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
     window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
 
-    // 開放：新增辦公室
-    window.openAddOfficeModal = openAddOfficeModal; window.closeAddOfficeModal = closeAddOfficeModal; window.saveNewOfficeData = saveNewOfficeData;
+    // 開放：新增與編輯辦公室，以及對應的房間類型下拉選單
+    window.openAddOfficeModal = openAddOfficeModal; window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal; window.saveOfficeData = saveOfficeData;
+    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; window.filterRoomTypes = filterRoomTypes; window.addRoomType = addRoomType; window.selectRoomType = selectRoomType; window.promptDeleteRoomType = promptDeleteRoomType;
 
     window.addEventListener('resize', syncHeaderLayout);
     setupRealtimeListeners();

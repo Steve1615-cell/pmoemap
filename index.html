@@ -13,6 +13,8 @@
             --danger: #ef4444;
             --text-main: #1e293b;
             --text-muted: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
         }
 
         body {
@@ -166,7 +168,7 @@
         }
         .card-edit-btn:hover { opacity: 1; transform: scale(1.1); color: var(--primary); }
 
-        /* 標籤頁控制 */
+        /* 標籤頁控制 (現在改為從 JS 動態生成) */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap; }
         .tab-btn {
             padding: 8px 20px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
@@ -233,6 +235,9 @@
         .custom-dropdown-btn {
             width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;
             background: white; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+        }
+        .custom-dropdown-btn.locked {
+            background-color: #f1f5f9; cursor: not-allowed; pointer-events: none; opacity: 0.8;
         }
         .custom-dropdown-panel {
             position: absolute; top: 100%; left: 0; width: 100%; box-sizing: border-box;
@@ -306,6 +311,12 @@
             margin-top: 20px; border-top: 1px dashed #e2e8f0; cursor: pointer; transition: color 0.2s;
         }
         .version-footer:hover { color: var(--primary); }
+
+        /* 特徵鎖定提示面板 */
+        .locked-feature-panel {
+            grid-column: 1/-1; text-align: center; padding: 50px 20px; 
+            background: white; border-radius: 12px; border: 1px dashed #cbd5e1; color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
@@ -462,10 +473,9 @@
     <div id="view-office" class="view"><div class="grid-nav" id="office-list"></div></div>
     
     <div id="view-detail" class="view">
-        <div class="tabs">
-            <button id="tab-staff" class="tab-btn active" onclick="switchTab('staff')">人員</button>
-            <button id="tab-assets" class="tab-btn" onclick="switchTab('assets')">資產</button>
-            <button id="tab-facilities" class="tab-btn" onclick="switchTab('facilities')">孔位</button>
+        <!-- 動態特徵標籤容器 -->
+        <div class="tabs" id="dynamic-room-tabs">
+            <!-- JS 動態生成 -->
         </div>
         
         <div id="filter-container" style="display: none; justify-content: flex-end; margin-bottom: 15px; gap: 10px;">
@@ -624,10 +634,10 @@
         </div>
 
         <div class="form-group">
-            <label>房間類型 (自訂標籤將同步於地圖與報表)</label>
-            <div class="custom-dropdown-btn" onclick="toggleRoomTypeDropdown(event)">
+            <label>房間類型 <span id="room-type-lock-hint" style="color:var(--danger); display:none; font-size:12px;">(建立後不可更改)</span></label>
+            <div class="custom-dropdown-btn" id="room-type-dropdown-btn" onclick="toggleRoomTypeDropdown(event)">
                 <span id="selected-room-type-text">選擇房間類型...</span>
-                <span style="font-size: 12px; color: var(--text-muted);">▼</span>
+                <span id="room-type-dropdown-arrow" style="font-size: 12px; color: var(--text-muted);">▼</span>
             </div>
             <div class="custom-dropdown-panel" id="room-type-panel">
                 <div class="dropdown-search-row">
@@ -681,6 +691,16 @@
     // ================= 版本更新日誌設定 =================
     const systemUpdateLogs = [
         {
+            version: "v1.4.0",
+            date: "202603191600",
+            changes: [
+                "導入「特徵標籤制 (Traits)」，依據房間類型動態切換顯示分頁。",
+                "實裝編輯房間時自動鎖定「房間類型」機制，防止核心配置錯亂。",
+                "預留 Phase 3 會議室「預約系統」與庫房「登記領取」之 UI 架構接口。",
+                "會議室外觀標籤「🟢 可預約」預載實裝。"
+            ]
+        },
+        {
             version: "v1.3.0",
             date: "202603191545",
             changes: [
@@ -698,18 +718,25 @@
                 "修復下拉選單層級與外觀樣式重疊問題。",
                 "為後續 Phase 3 (特徵標籤制地圖綁定) 建立基礎資料架構。"
             ]
-        },
-        {
-            version: "v1.1.0",
-            date: "202603191450",
-            changes: [
-                "首頁選單重構：「新增區域」功能預留。",
-                "第二層選單重構：開放「新增辦公室」功能，保留地圖綁定接口。",
-                "辦公室卡片右上角新增 ✏️ 編輯提示。",
-                "導入動態版本日誌渲染系統（僅保留最新 3 筆）。"
-            ]
         }
     ];
+
+    // ================= 特徵標籤制配置字典 (Config-Driven Architecture) =================
+    const ROOM_TRAITS = {
+        '辦公室': { tabs: ['staff', 'assets', 'facilities'], defaultTab: 'staff' },
+        '庫房':   { tabs: ['assets', 'facilities', 'checkout'], defaultTab: 'assets' },
+        '會議室': { tabs: ['booking', 'assets', 'facilities'], defaultTab: 'booking' },
+        '機房':   { tabs: ['assets', 'facilities'], defaultTab: 'assets' },
+        'DEFAULT':{ tabs: ['staff', 'assets', 'facilities'], defaultTab: 'staff' } // 自訂房間類型預設給予辦公室配置
+    };
+
+    const TAB_LABELS = {
+        'staff': '人員',
+        'assets': '資產',
+        'facilities': '孔位',
+        'checkout': '🔒 登記領取',
+        'booking': '🔒 預約排程'
+    };
 
     let globalOffices = [];
     let globalMembers = [];
@@ -719,7 +746,7 @@
     let globalCategories = [...defaultCategories]; 
     let currentAssetCategory = '電腦';
 
-    let defaultRoomTypes = ['辦公室', '庫房', '會議室'];
+    let defaultRoomTypes = ['辦公室', '庫房', '會議室', '機房'];
     let globalRoomTypes = [...defaultRoomTypes];
     let currentRoomType = '辦公室';
     
@@ -1004,12 +1031,15 @@
         } else if (currentLevel === 2) {
             fabContainer.style.display = 'flex';
             let specificAction = '';
-            if (currentTab === 'staff' || currentTab === 'facilities') {
+            // 依據目前動態分頁決定按鈕行為
+            if (currentTab === 'staff') {
                 specificAction = `<button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>`;
             } else if (currentTab === 'assets') {
                 specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增資產 (包含電腦)</button>`;
+            } else if (currentTab === 'booking' || currentTab === 'checkout') {
+                specificAction = `<button class="fab-item" onclick="customAlert('此功能尚未開放')">➕ 新增紀錄</button>`;
             }
-            fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal('${currentOffice}')">✏️ 編輯辦公室資訊</button>`;
+            fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal('${currentOffice}')">✏️ 編輯房間資訊</button>`;
         } else {
             fabContainer.style.display = 'none';
         }
@@ -1073,11 +1103,20 @@
         const floorOffices = globalOffices.filter(o => o.floor === floor);
         floorOffices.forEach(off => {
             const card = document.createElement('div'); card.className = 'nav-card';
-            const roomTypeDisplay = off.roomType && off.roomType !== '辦公室' ? `<div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${off.roomType}</div>` : '';
+            
+            // 依照房間特徵給予對應的標籤與狀態徽章
+            const rType = off.roomType || '辦公室';
+            let extraBadge = '';
+            if (rType === '會議室') {
+                // 預留會議系統狀態徽章
+                extraBadge = `<span style="font-size:12px; color:var(--success); font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; margin-left:10px;">🟢 可預約</span>`;
+            }
+
+            const roomTypeDisplay = rType !== '辦公室' ? `<div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${rType}</div>` : '';
             card.innerHTML = `
                 ${roomTypeDisplay}
                 <button class="card-edit-btn" onclick="event.stopPropagation(); openOfficeModal('${off.name}')">✏️</button>
-                <h2>${off.name}</h2>
+                <h2>${off.name} ${extraBadge}</h2>
                 <div class="password-container"><span class="password-badge">${off.pwd || 'N/A'}</span></div>
                 <div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>
             `;
@@ -1088,18 +1127,39 @@
     }
 
     window.showDetail = function(office, push = true) {
-        currentLevel = 2; currentOffice = office; currentTab = 'staff';
+        currentLevel = 2; currentOffice = office; 
         if (push) history.pushState({ level: 2, floor: currentFloor, office: office }, "");
+        
+        const officeData = globalOffices.find(o => o.name === currentOffice);
+        const rType = officeData ? (officeData.roomType || '辦公室') : '辦公室';
+        
+        // 解析特徵標籤，取得該房間該有的 Tabs
+        const traits = ROOM_TRAITS[rType] || ROOM_TRAITS['DEFAULT'];
+        
+        // 動態生成 Tabs
+        const tabsContainer = document.getElementById('dynamic-room-tabs');
+        tabsContainer.innerHTML = '';
+        traits.tabs.forEach(tabKey => {
+            tabsContainer.innerHTML += `<button id="tab-${tabKey}" class="tab-btn" onclick="switchTab('${tabKey}')">${TAB_LABELS[tabKey]}</button>`;
+        });
+
+        // 預設選擇該特徵指定的 Tab，並更新全域 currentTab 變數
+        currentTab = traits.defaultTab;
+
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-staff').classList.add('active');
+        const activeBtn = document.getElementById(`tab-${currentTab}`);
+        if(activeBtn) activeBtn.classList.add('active');
+
         updateDetailContent();
         switchView('view-detail');
     }
 
-    function switchTab(tab) {
+    window.switchTab = function(tab) {
         currentTab = tab;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`tab-${tab}`).classList.add('active');
+        const activeBtn = document.getElementById(`tab-${tab}`);
+        if(activeBtn) activeBtn.classList.add('active');
+        
         updateDetailContent();
         updateFabMenu(); 
     }
@@ -1111,15 +1171,26 @@
         let officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
         const officeAssetsList = globalAssets.filter(a => a.office_id === currentOffice);
 
+        // 標籤列計數器更新
         let assetCount = officeAssetsList.length;
-        
-        document.getElementById('tab-staff').innerText = `人員 (${officeMembers.length})`;
-        document.getElementById('tab-assets').innerText = `資產 (${assetCount})`;
-        document.getElementById('tab-facilities').innerText = `孔位`;
+        const staffTabBtn = document.getElementById('tab-staff');
+        if(staffTabBtn) staffTabBtn.innerText = `人員 (${officeMembers.length})`;
+        const assetTabBtn = document.getElementById('tab-assets');
+        if(assetTabBtn) assetTabBtn.innerText = `資產 (${assetCount})`;
 
         document.getElementById('filter-container').style.display = (currentTab === 'staff' || currentTab === 'assets') ? 'flex' : 'none';
         document.getElementById('staff-sort-select').style.display = (currentTab === 'staff') ? 'block' : 'none';
         document.getElementById('asset-sort-select').style.display = (currentTab === 'assets') ? 'block' : 'none';
+
+        // 渲染鎖定的特徵分頁 (預留給 Phase 3)
+        if (currentTab === 'checkout') {
+            grid.innerHTML = `<div class="locked-feature-panel"><h3>🔒 登記領取功能開發中</h3><p>未來將支援資產借用歷史紀錄與掃碼借還追蹤。</p></div>`;
+            return;
+        }
+        if (currentTab === 'booking') {
+            grid.innerHTML = `<div class="locked-feature-panel"><h3>🔒 會議室預約系統開發中</h3><p>未來將支援會議參與人員設定、時間倒數排程與自動狀態變更。</p></div>`;
+            return;
+        }
 
         if (currentTab === 'staff') {
             if(officeMembers.length === 0) {
@@ -1795,7 +1866,6 @@
         pendingDeleteAction = { type: 'owner', id: id, name: name };
         
         const userAssets = globalAssets.filter(a => a.owner_id === id);
-        document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告';
         if (userAssets.length > 0) {
             document.getElementById('confirm-msg').innerText = `確定要刪除人員「${name}」嗎？\n\n警告：該員名下綁定有 ${userAssets.length} 件設備。刪除此人員後，那些設備會自動轉退為「公用設備」。`;
         } else {
@@ -2130,6 +2200,11 @@
         document.getElementById('office-pwd').value = '';
         document.getElementById('btn-delete-office').style.display = 'none';
         
+        document.getElementById('room-type-dropdown-btn').style.pointerEvents = 'auto';
+        document.getElementById('room-type-dropdown-btn').style.background = 'white';
+        document.getElementById('room-type-lock-hint').style.display = 'none';
+        document.getElementById('room-type-dropdown-arrow').style.display = 'inline';
+        
         selectRoomType('辦公室');
         document.getElementById('office-modal-overlay').classList.add('active');
     }
@@ -2147,6 +2222,11 @@
         document.getElementById('office-pwd').value = officeData.pwd || '';
         document.getElementById('btn-delete-office').style.display = 'inline-block';
         
+        document.getElementById('room-type-dropdown-btn').style.pointerEvents = 'none';
+        document.getElementById('room-type-dropdown-btn').style.background = '#f1f5f9';
+        document.getElementById('room-type-lock-hint').style.display = 'inline';
+        document.getElementById('room-type-dropdown-arrow').style.display = 'none';
+
         selectRoomType(officeData.roomType || '辦公室');
         document.getElementById('office-modal-overlay').classList.add('active');
     }
@@ -2174,7 +2254,7 @@
                     const ops = [];
                     const oldOfficeData = globalOffices.find(o => o.name === currentEditOfficeId);
                     ops.push(setDoc(doc(db, 'offices', newOfficeName), {
-                        name: newOfficeName, floor: oldOfficeData.floor, pwd: newOfficePwd, roomType: currentRoomType
+                        name: newOfficeName, floor: oldOfficeData.floor, pwd: newOfficePwd, roomType: oldOfficeData.roomType // 繼承舊類型
                     }));
                     
                     const oldOfficeName = currentEditOfficeId;
@@ -2197,7 +2277,7 @@
                     closeOfficeModal(); 
                     customAlert(`辦公室已成功更名為：${newOfficeName}`);
                 } else {
-                    await safeWrite(updateDoc(doc(db, 'offices', currentEditOfficeId), { pwd: newOfficePwd, roomType: currentRoomType }));
+                    await safeWrite(updateDoc(doc(db, 'offices', currentEditOfficeId), { pwd: newOfficePwd }));
                     closeOfficeModal(); 
                     customAlert("房間資訊已更新！");
                 }

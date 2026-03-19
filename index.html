@@ -312,7 +312,7 @@
 <!-- 自訂提示框 -->
 <div id="custom-toast"></div>
 
-<!-- 共用防呆警告對話框 (刪除專用) -->
+<!-- 共用防呆警告對話框 (刪除/套用 專用) -->
 <div id="confirm-modal-overlay" class="modal-overlay" style="z-index: 4000;">
     <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header" style="color: var(--danger);">
@@ -320,6 +320,32 @@
         </div>
         <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
         <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeConfirmModal()">取消</button>
+            <button id="btn-confirm-action" class="btn-danger" onclick="executeConfirmAction()">確定執行</button>
+        </div>
+    </div>
+</div>
+
+<!-- 職稱排序設定表單 (Modal) -->
+<div id="title-rank-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeTitleRankModal()" style="z-index: 3500;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>📊 設定職稱排序</span>
+            <button class="btn-close" onclick="closeTitleRankModal()" style="font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer;">×</button>
+        </div>
+        
+        <div class="form-group">
+            <label>選擇套用範圍：</label>
+            <select id="title-rank-scope" onchange="changeTitleRankScope()">
+                <!-- JS 動態生成選項 -->
+            </select>
+        </div>
+
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">請按住 ☰ 拖曳項目來調整高低順序 (越上方排序越優先)。</p>
+        <div id="title-rank-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
+            <!-- JS 動態生成可拖曳的清單 -->
+        </div>
+        <div class="modal-footer" style="margin-top: 15px;">
             <button class="btn-secondary" onclick="closeTitleRankModal()">取消</button>
             <button class="btn-primary" onclick="promptSaveTitleRanks()">套用排序</button>
         </div>
@@ -847,6 +873,7 @@
         document.getElementById('sidebar-overlay').classList.remove('active');
     }
 
+    // 全域點擊與快捷鍵防呆
     document.addEventListener('click', (e) => {
         const fabContainer = document.getElementById('fab-container');
         if (fabContainer && !fabContainer.contains(e.target) && document.getElementById('fab-menu').classList.contains('active')) {
@@ -1242,7 +1269,6 @@
             }
         });
 
-        // 修復：如果指定辦公室內根本沒有登錄職稱，直接顯示空狀態，不提供任何選項
         if (currentTitleRankScope !== 'global' && allTitles.size === 0) {
             tempTitleRanks = [];
             renderTitleRankList();
@@ -1254,7 +1280,6 @@
             existingRanks = globalTitleRankSettings.global || [];
         } else {
             existingRanks = globalTitleRankSettings.offices[currentTitleRankScope] || [];
-            // 若該辦公室有職稱，但尚未自訂過排序，才載入全域當作預設排序基準
             if (existingRanks.length === 0) existingRanks = globalTitleRankSettings.global || [];
         }
         
@@ -1263,7 +1288,6 @@
             if (!tempTitleRanks.includes(t)) tempTitleRanks.push(t);
         });
 
-        // 嚴格交集過濾：拔除那些在全域中有，但該辦公室「根本沒人使用」的冗餘職稱
         tempTitleRanks = tempTitleRanks.filter(t => allTitles.has(t));
 
         renderTitleRankList();

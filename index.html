@@ -194,7 +194,8 @@
 
         /* ======== 表單與彈出視窗 (Modal) ======== */
         .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            position: fixed; top: 0; left: 0; width: 100vw; 
+            height: 100vh; height: 100dvh; /* 引入 dVH 以完美適應手機動態導覽列 */
             background: rgba(0,0,0,0.5); z-index: 3000; display: flex; justify-content: center; align-items: center;
             opacity: 0; visibility: hidden; transition: all 0.3s ease;
         }
@@ -202,7 +203,9 @@
         .modal-content {
             background: white; width: 90%; max-width: 400px; border-radius: 12px;
             padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            transform: translateY(-20px); transition: transform 0.3s ease; max-height: 90vh; overflow-y: auto; 
+            transform: translateY(-20px); transition: transform 0.3s ease; 
+            max-height: 85vh; max-height: calc(100dvh - 40px); /* 嚴格限制最大高度，確保表單不會超出螢幕 */
+            overflow-y: auto; -webkit-overflow-scrolling: touch; /* 加入 iOS 原生平滑滾動 */
         }
         .modal-overlay.active .modal-content { transform: translateY(0); }
         .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; display: flex; justify-content: space-between;}
@@ -250,7 +253,7 @@
         }
         .draggable-item:active { cursor: grabbing; }
         .draggable-item.dragging { opacity: 0.5; background: #f8fafc; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
-        .draggable-item.drag-over { border-top: 2px solid var(--primary); } /* 提示落點位置 */
+        .draggable-item.drag-over { border-top: 2px solid var(--primary); } 
         .drag-handle { color: #cbd5e1; font-size: 18px; cursor: grab; padding-right: 5px; }
         .draggable-item:hover .drag-handle { color: var(--text-muted); }
 
@@ -294,8 +297,8 @@
 </head>
 <body>
 
-<!-- 新增：全域離線提示橫幅 -->
-<div id="offline-banner" style="display:none; background:var(--danger); color:white; text-align:center; padding:10px; font-weight:bold; position:sticky; top:0; z-index:9999; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+<!-- 全域離線提示橫幅 (修改 z-index 為 995 避免覆蓋 Modal 導致無法捲動) -->
+<div id="offline-banner" style="display:none; background:var(--danger); color:white; text-align:center; padding:10px; font-weight:bold; position:sticky; top:0; z-index:995; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
     ⚠️ 目前為離線模式，您可以繼續更新資料，恢復連線後請保持App開啟狀態，資料才會立即同步。
 </div>
 
@@ -316,7 +319,7 @@
     </div>
 </div>
 
-<!-- 職稱排序設定表單 (Modal) - 更新為拖曳版 -->
+<!-- 職稱排序設定表單 (Modal) -->
 <div id="title-rank-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeTitleRankModal()" style="z-index: 3500;">
     <div class="modal-content">
         <div class="modal-header">
@@ -373,7 +376,6 @@
         <div class="menu-item" onclick="showExtensionsView()">📞 辦公室分機表</div>
     </div>
     <div class="sidebar-footer">
-        <!-- 復原測試資產按鈕已移至開發人員選項 -->
         <div>更多功能開發中！</div>
     </div>
 </div>
@@ -504,7 +506,6 @@
             <input type="text" id="asset-item" placeholder="未命名設備 (選填)">
         </div>
         
-        <!-- SN 加入了 oninput 雙向綁定邏輯 -->
         <div class="form-group">
             <label>資產編號 / SN (共同項)</label>
             <input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)" oninput="syncSnPc('sn')">
@@ -523,7 +524,6 @@
         
         <div id="asset-computer-fields" style="border-top: 1px dashed #cbd5e1; margin: 20px 0 10px 0; padding-top: 15px; display:none;">
             
-            <!-- 使用者改為自訂的獨立下拉選單 -->
             <div class="form-group">
                 <label>使用者 <span style="font-weight:normal; font-size:12px; color:#94a3b8;">(限定本辦公室人員)</span></label>
                 <div class="custom-dropdown-btn" onclick="toggleOwnerDropdown(event)">
@@ -540,7 +540,6 @@
                 </div>
             </div>
             
-            <!-- PC ID 加入了 oninput 雙向綁定邏輯 -->
             <div class="form-group">
                 <label>電腦編號 (PC ID)</label>
                 <input type="text" id="asset-pc" placeholder="例如：9059145 (無則填 N/A)" oninput="syncSnPc('pc')">
@@ -595,7 +594,6 @@
 
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
-    // 加入了 Firebase 的離線快取模組
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -609,8 +607,6 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    
-    // 啟用 Firebase 的持久化離線快取
     const db = initializeFirestore(app, { 
         experimentalForceLongPolling: true,
         localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
@@ -624,7 +620,6 @@
     let globalCategories = [...defaultCategories]; 
     let currentAssetCategory = '電腦';
     
-    // 開發人員模式與職稱設定
     let devOptionsEnabled = false;
     let globalTitleRankSettings = { global: [], offices: {} };
     let tempTitleRanks = []; 
@@ -640,7 +635,6 @@
     let currentEditAssetId = null;
     let isEditMode = false; 
 
-    // 自訂提示訊息功能
     function customAlert(msg, isDanger = false) {
         const toast = document.getElementById('custom-toast');
         toast.innerText = msg;
@@ -650,7 +644,7 @@
         setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    // ================= 離線狀態偵測 (Offline-First UX) =================
+    // 離線狀態偵測
     window.addEventListener('offline', () => {
         document.getElementById('offline-banner').style.display = 'block';
         customAlert('⚠️ 網路連線中斷，已切換至離線模式', true);
@@ -661,16 +655,10 @@
         customAlert('🌐 網路已恢復，資料正在背景同步中...');
     });
 
-    // 若啟動時就沒網路，顯示離線警告
-    if (!navigator.onLine) {
-        document.getElementById('offline-banner').style.display = 'block';
-    }
+    if (!navigator.onLine) document.getElementById('offline-banner').style.display = 'block';
 
-    // 將 Firestore 的寫入動作封裝，避免在離線時按鈕永遠卡在「儲存中...」
     window.safeWrite = async function(promise) {
-        // 若完全斷網，不等待 promise 即可返回 (Firestore 已經將資料寫入本地 indexedDB 快取)
         if (!navigator.onLine) return 'offline';
-        // 若網路不穩 (Lie-Fi)，設定 3 秒超時後解鎖介面，讓使用者繼續操作
         const timeout = new Promise(r => setTimeout(() => r('timeout'), 3000));
         const res = await Promise.race([promise, timeout]);
         if (res === 'timeout') console.warn("連線不穩，變更已暫存於本地快取");
@@ -691,7 +679,6 @@
             }
         };
 
-        // 即使離線，onSnapshot 也會從本地 IndexedDB 讀取資料並立刻觸發更新！
         onSnapshot(collection(db, "offices"), (snapshot) => {
             globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
             renderSidebarTree(); 
@@ -734,7 +721,6 @@
         else if (currentLevel === 3) showExtensionsView(false);
     }
 
-    // ================= 開發人員模式 =================
     window.toggleDevOptions = function(event) {
         devOptionsEnabled = event.target.checked;
         if (currentLevel === 0) {
@@ -756,7 +742,6 @@
         });
         
         document.getElementById('dev-tabs-container').style.display = (devOptionsEnabled && currentLevel === 0) ? 'flex' : 'none';
-        
         updateNavigationUI();
         if (!history.state) history.replaceState({ level: 0 }, "");
     }
@@ -790,7 +775,6 @@
         else if (state.level === 3) showExtensionsView(false);
     });
 
-    // ================= 側邊欄樹狀菜單生成 =================
     function renderSidebarTree() {
         const treeContainer = document.getElementById('sidebar-nav-tree');
         if (!treeContainer) return;
@@ -844,7 +828,6 @@
         document.getElementById('sidebar-overlay').classList.remove('active');
     }
 
-    // 全域點擊與快捷鍵防呆
     document.addEventListener('click', (e) => {
         const fabContainer = document.getElementById('fab-container');
         if (fabContainer && !fabContainer.contains(e.target) && document.getElementById('fab-menu').classList.contains('active')) {
@@ -988,7 +971,6 @@
         updateFabMenu(); 
     }
 
-    // ================= 動態渲染與排序邏輯 (人員與資產) =================
     window.updateDetailContent = function() {
         const grid = document.getElementById('detail-grid');
         grid.innerHTML = '';
@@ -1002,7 +984,6 @@
         document.getElementById('tab-assets').innerText = `資產 (${assetCount})`;
         document.getElementById('tab-facilities').innerText = `孔位`;
 
-        // 顯示對應的 Filter 區塊
         document.getElementById('filter-container').style.display = (currentTab === 'staff' || currentTab === 'assets') ? 'flex' : 'none';
         document.getElementById('staff-sort-select').style.display = (currentTab === 'staff') ? 'block' : 'none';
         document.getElementById('asset-sort-select').style.display = (currentTab === 'assets') ? 'block' : 'none';
@@ -1013,13 +994,11 @@
                 return;
             }
             
-            // 執行人員動態排序
             const staffSortMode = document.getElementById('staff-sort-select').value;
             officeMembers.sort((a, b) => {
                 if (staffSortMode === 'name') {
                     return (a.name || '').localeCompare(b.name || '', 'zh-TW');
                 } else if (staffSortMode === 'title') {
-                    // 優先尋找該辦公室專屬的排序，若無則退回全域設定
                     const ranks = globalTitleRankSettings.offices[currentOffice] || globalTitleRankSettings.global || [];
                     const rankA = ranks.indexOf(a.title);
                     const rankB = ranks.indexOf(b.title);
@@ -1197,7 +1176,6 @@
         switchView('view-extensions');
     }
 
-    // ================= 動態拖曳排序 Modal 邏輯 =================
     window.openTitleRankModal = function() {
         closeSidebar();
         
@@ -1317,7 +1295,6 @@
         document.getElementById('confirm-modal-overlay').classList.add('active');
     }
 
-    // ================= 1. 人員表單邏輯 =================
     function openMemberModal(memberId = null) {
         closeFabMenu(); 
         const btnNext = document.getElementById('btn-save-next');
@@ -1394,7 +1371,6 @@
         }
     }
 
-    // ================= 2. 雙向同步 PC ID 與 SN =================
     window.syncSnPc = function(source) {
         if (currentAssetCategory !== '電腦') return;
         if (source === 'sn') {
@@ -1404,7 +1380,6 @@
         }
     }
 
-    // ================= 3. 自訂下拉選單 (共用防呆邏輯) =================
     let pendingDeleteAction = null; 
 
     function toggleCategoryDropdown(event) {
@@ -1487,7 +1462,6 @@
         document.getElementById('confirm-modal-overlay').classList.add('active');
     }
 
-    // ================= 4. 人員下拉選單邏輯 =================
     function toggleOwnerDropdown(event) {
         if(event) event.stopPropagation();
         const panel = document.getElementById('owner-panel');
@@ -1584,7 +1558,6 @@
         document.getElementById('confirm-modal-overlay').classList.add('active');
     }
 
-    // ================= 編輯表單內的刪除觸發器 =================
     window.executeDeleteFromModal = function(type) {
         if (type === 'member') {
             const m = globalMembers.find(x => x.id === currentEditMemberId);
@@ -1604,7 +1577,6 @@
         }
     }
 
-    // ================= 共用確認中樞 (包含刪除與排序設定) =================
     function closeConfirmModal() {
         document.getElementById('confirm-modal-overlay').classList.remove('active');
         pendingDeleteAction = null;
@@ -1616,7 +1588,6 @@
         btn.disabled = true; btn.innerText = '處理中...';
 
         try {
-            // ---- 處理儲存職稱排序 ----
             if (pendingDeleteAction.type === 'titleRanks') {
                 if (currentTitleRankScope === 'global') {
                     globalTitleRankSettings.global = [...tempTitleRanks];
@@ -1632,7 +1603,6 @@
                 if (document.getElementById('staff-sort-select').value === 'title') updateDetailContent();
                 
             } 
-            // ---- 處理刪除分類 ----
             else if (pendingDeleteAction.type === 'category') {
                 const cat = pendingDeleteAction.payload;
                 const usedAssets = globalAssets.filter(a => a.category === cat);
@@ -1649,7 +1619,6 @@
                 customAlert(`已刪除類型「${cat}」及其相關資產！`);
 
             } 
-            // ---- 處理刪除人員 ----
             else if (pendingDeleteAction.type === 'owner') {
                 const ownerId = pendingDeleteAction.id;
                 const userAssets = globalAssets.filter(a => a.owner_id === ownerId);
@@ -1666,7 +1635,6 @@
                 closeConfirmModal();
                 customAlert(`已刪除該人員資料！`);
             } 
-            // ---- 處理刪除資產 ----
             else if (pendingDeleteAction.type === 'asset') {
                 await safeWrite(deleteDoc(doc(db, 'assets', pendingDeleteAction.id)));
                 if (document.getElementById('asset-modal-overlay').classList.contains('active')) closeAssetModal();
@@ -1680,7 +1648,6 @@
         }
     }
 
-    // ================= 5. 資產表單儲存邏輯 =================
     function openAssetModal(assetId = null) {
         closeFabMenu();
         const btnDel = document.getElementById('btn-delete-asset');
@@ -1783,7 +1750,6 @@
 
     function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
 
-    // ================= 辦公室連動更名演算法 =================
     async function saveOfficeData() {
         const newOfficeName = document.getElementById('office-name').value.trim();
         const newOfficePwd = document.getElementById('office-pwd').value || 'N/A';
@@ -1809,7 +1775,6 @@
                 
                 const oldOfficeName = currentOffice;
                 
-                // 立即更新前端，達成樂觀 UI 效果
                 currentOffice = newOfficeName;
                 history.replaceState({ level: 2, floor: currentFloor, office: newOfficeName }, "");
                 updateMainTitle(newOfficeName);
@@ -1824,7 +1789,6 @@
 
                 ops.push(deleteDoc(doc(db, 'offices', oldOfficeName)));
                 
-                // 背景非同步執行所有替換，不卡 UI
                 safeWrite(Promise.all(ops)).catch(e => console.error('更名連動更新異常', e));
                 
             } else {

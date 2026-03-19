@@ -91,7 +91,7 @@
         .breadcrumb-item.current { cursor: default; color: var(--text-main); text-decoration: none; }
         .breadcrumb-separator { color: #cbd5e1; font-size: 14px; }
 
-        /* 側邊欄 */
+        /* 側邊欄與動態樹狀選單 */
         .sidebar-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.5); z-index: 998; opacity: 0; visibility: hidden; transition: all 0.3s ease;
@@ -109,12 +109,28 @@
         }
         .btn-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); }
         .sidebar-menu { flex: 1; padding: 10px 0; overflow-y: auto; }
+        
         .menu-item {
             padding: 15px 25px; cursor: pointer; font-weight: bold; font-size: 16px;
             display: flex; align-items: center; gap: 15px; transition: background 0.2s;
         }
         .menu-item:hover { background: var(--accent); color: var(--primary); }
         .menu-item.disabled { color: #94a3b8; cursor: not-allowed; }
+        
+        /* 樹狀選單 CSS */
+        .tree-floor { 
+            padding: 12px 25px; cursor: pointer; font-weight: bold; font-size: 15px; color: var(--text-main); 
+            display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; 
+        }
+        .tree-floor:hover { background: var(--accent); color: var(--primary); }
+        .tree-office-list { list-style: none; padding: 0; margin: 0; display: none; background: #f8fafc; }
+        .tree-office-list.open { display: block; }
+        .tree-office { 
+            padding: 12px 25px 12px 45px; cursor: pointer; font-size: 14px; color: var(--text-muted); 
+            border-bottom: 1px solid #f1f5f9; transition: all 0.2s; 
+        }
+        .tree-office:hover { background: #e2e8f0; color: var(--primary); padding-left: 50px; }
+
         .sidebar-footer { padding: 15px; text-align: center; color: var(--text-muted); font-size: 13px; border-top: 1px solid #e2e8f0; }
 
         /* 視圖切換與卡片 */
@@ -268,8 +284,20 @@
         <button class="btn-close" onclick="closeSidebar()">×</button>
     </div>
     <div class="sidebar-menu">
-        <div class="menu-item disabled">🗺️ 地圖顯示</div>
-        <div class="menu-item" onclick="showExtensionsView()">📞 辦公室分機表</div>
+        <!-- 動態樹狀導覽 -->
+        <div id="sidebar-nav-tree"></div>
+
+        <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
+
+        <div class="menu-item disabled tooltip-container" data-tooltip="辦公室地圖視角開發中！">
+            🗺️ 地圖顯示
+        </div>
+        <div class="menu-item disabled tooltip-container" data-tooltip="在列資產總表開發中！">
+            📦 在列資產總表
+        </div>
+        <div class="menu-item" onclick="showExtensionsView()">
+            📞 辦公室分機表
+        </div>
     </div>
     <div class="sidebar-footer">
         <button onclick="restoreLostComputers()" style="background:none; border:1px solid #cbd5e1; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; color:var(--text-muted); margin-bottom:10px;">🚑 復原測試資產</button>
@@ -301,14 +329,30 @@
         </div>
     </div>
     <div id="view-office" class="view"><div class="grid-nav" id="office-list"></div></div>
+    
     <div id="view-detail" class="view">
         <div class="tabs">
             <button id="tab-staff" class="tab-btn active" onclick="switchTab('staff')">人員</button>
             <button id="tab-assets" class="tab-btn" onclick="switchTab('assets')">資產</button>
             <button id="tab-facilities" class="tab-btn" onclick="switchTab('facilities')">孔位</button>
         </div>
+        
+        <!-- 資產過濾/排序工具列 -->
+        <div id="asset-filter-container" style="display: none; justify-content: flex-end; margin-bottom: 15px;">
+            <div style="background: white; padding: 5px 15px; border-radius: 8px; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <label style="font-size: 13px; font-weight: bold; color: var(--text-muted); margin:0;">排序方式：</label>
+                <select id="asset-sort-select" onchange="updateDetailContent()" style="border: none; outline: none; font-size: 14px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
+                    <option value="name">📌 依資產名稱</option>
+                    <option value="sn">🔢 依資產編號</option>
+                    <option value="status">🚦 依設備狀態</option>
+                    <option value="owner">👤 依使用者名稱</option>
+                </select>
+            </div>
+        </div>
+
         <div id="detail-grid" class="grid-nav"></div>
     </div>
+
     <div id="view-extensions" class="view"><div id="ext-container"></div></div>
 </div>
 
@@ -513,7 +557,9 @@
         };
 
         onSnapshot(collection(db, "offices"), (snapshot) => {
-            globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); checkAllLoaded();
+            globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+            renderSidebarTree(); // 即時動態重繪側邊欄樹狀結構
+            checkAllLoaded();
         });
         onSnapshot(collection(db, "members"), (snapshot) => {
             globalMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); checkAllLoaded();
@@ -586,6 +632,56 @@
         else if (state.level === 3) showExtensionsView(false);
     });
 
+    // ================= 側邊欄樹狀菜單生成 =================
+    function renderSidebarTree() {
+        const treeContainer = document.getElementById('sidebar-nav-tree');
+        if (!treeContainer) return;
+
+        let html = `<div class="menu-item" onclick="goHome(); closeSidebar();" style="border-bottom: 1px solid #f1f5f9;">🏠 首頁</div>`;
+
+        // 依據樓層群組化辦公室
+        const floorMap = {};
+        globalOffices.forEach(o => {
+            const f = o.floor || '其他樓層';
+            if (!floorMap[f]) floorMap[f] = [];
+            floorMap[f].push(o);
+        });
+
+        const sortedFloors = Object.keys(floorMap).sort();
+
+        sortedFloors.forEach((floor, idx) => {
+            html += `
+                <div class="tree-floor" onclick="toggleTreeFloor('floor-${idx}')">
+                    <span>🏢 ${floor}</span>
+                    <span id="floor-${idx}-arrow" style="font-size:12px; transition: transform 0.3s;">▼</span>
+                </div>
+                <ul class="tree-office-list" id="floor-${idx}-list">
+            `;
+            
+            // 辦公室依名稱排序
+            const sortedOffices = floorMap[floor].sort((a,b) => a.name.localeCompare(b.name));
+            sortedOffices.forEach(off => {
+                html += `<li class="tree-office" onclick="showDetail('${off.name}'); closeSidebar();">↳ ${off.name}</li>`;
+            });
+            
+            html += `</ul>`;
+        });
+
+        treeContainer.innerHTML = html;
+    }
+
+    window.toggleTreeFloor = function(id) {
+        const list = document.getElementById(`${id}-list`);
+        const arrow = document.getElementById(`${id}-arrow`);
+        if (list.classList.contains('open')) {
+            list.classList.remove('open');
+            arrow.style.transform = 'rotate(0deg)';
+        } else {
+            list.classList.add('open');
+            arrow.style.transform = 'rotate(180deg)';
+        }
+    }
+
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('active');
         document.getElementById('sidebar-overlay').classList.toggle('active');
@@ -601,7 +697,6 @@
             closeFabMenu();
         }
         
-        // 點擊空白處自動關閉分類與人員下拉選單
         const catPanel = document.getElementById('category-panel');
         if (catPanel && catPanel.classList.contains('active') && !e.target.closest('.form-group')) {
             catPanel.classList.remove('active');
@@ -738,7 +833,8 @@
         updateFabMenu(); 
     }
 
-    function updateDetailContent() {
+    // ================= 動態渲染與排序資產邏輯 =================
+    window.updateDetailContent = function() {
         const grid = document.getElementById('detail-grid');
         grid.innerHTML = '';
         
@@ -750,6 +846,9 @@
         document.getElementById('tab-staff').innerText = `人員 (${officeMembers.length})`;
         document.getElementById('tab-assets').innerText = `資產 (${assetCount})`;
         document.getElementById('tab-facilities').innerText = `孔位`;
+
+        // 只有在資產頁籤時才顯示過濾工具列
+        document.getElementById('asset-filter-container').style.display = (currentTab === 'assets') ? 'flex' : 'none';
 
         if (currentTab === 'staff') {
             if(officeMembers.length === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
@@ -775,9 +874,50 @@
             });
         } 
         else if (currentTab === 'assets') {
-            if(assetCount === 0) grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無資產資料</div>';
+            if(assetCount === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無資產資料</div>';
+                return;
+            }
+
+            // 準備用來排序的衍生欄位
+            let displayAssets = officeAssetsList.map(a => {
+                let ownerName = '💻 公用設備';
+                if (a.category === '電腦' && a.owner_id) {
+                    const owner = globalMembers.find(m => m.id === a.owner_id);
+                    if (owner) ownerName = `👤 使用者: ${owner.name}`;
+                }
+                
+                // 智慧消去重複前綴邏輯
+                let itemDisplay = a.item || '未命名設備';
+                let titleText = itemDisplay;
+                if (a.category && a.category !== itemDisplay && !itemDisplay.includes(a.category)) {
+                    titleText = `${a.category}：${itemDisplay}`;
+                }
+
+                return { ...a, _ownerName: ownerName, _titleText: titleText };
+            });
+
+            // 執行資產動態排序 (Frontend Sort)
+            const sortMode = document.getElementById('asset-sort-select').value;
+            displayAssets.sort((a, b) => {
+                if (sortMode === 'name') return a._titleText.localeCompare(b._titleText);
+                else if (sortMode === 'sn') {
+                    const snA = a.sn || 'ZZZ'; // 空值沉底
+                    const snB = b.sn || 'ZZZ';
+                    return snA.localeCompare(snB);
+                } else if (sortMode === 'status') {
+                    const order = { '正常': 1, '碳粉不足': 2, '待修': 3, '報廢': 4, '其他': 5 };
+                    const valA = order[a.status] || 99;
+                    const valB = order[b.status] || 99;
+                    if (valA !== valB) return valA - valB;
+                    return a._titleText.localeCompare(b._titleText); // 狀態相同則依名稱排序
+                } else if (sortMode === 'owner') {
+                    return a._ownerName.localeCompare(b._ownerName);
+                }
+                return 0;
+            });
             
-            officeAssetsList.forEach(a => {
+            displayAssets.forEach(a => {
                 const card = document.createElement('div'); card.className = 'nav-card';
                 let statusIcon = '⚪';
                 if(a.status === '正常') statusIcon = '🟢';
@@ -787,20 +927,12 @@
 
                 let userText = '';
                 if (a.category === '電腦' && a.owner_id) {
-                    const owner = globalMembers.find(m => m.id === a.owner_id);
-                    if (owner) userText = `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">👤 使用者: ${owner.name}</div>`;
-                }
-
-                // 智慧消去重複前綴邏輯
-                const itemDisplay = a.item || '未命名設備';
-                let titleText = itemDisplay;
-                if (a.category && a.category !== itemDisplay && !itemDisplay.includes(a.category)) {
-                    titleText = `${a.category}：${itemDisplay}`;
+                    userText = `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${a._ownerName}</div>`;
                 }
 
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <h3 style="margin:0; text-align:left;">${titleText}</h3>
+                        <h3 style="margin:0; text-align:left;">${a._titleText}</h3>
                         <button class="btn-edit" onclick="openAssetModal('${a.id}')">✏️ 編輯</button>
                     </div>
                     ${userText}
@@ -1326,7 +1458,7 @@
 
     window.toggleSidebar = toggleSidebar; window.closeSidebar = closeSidebar;
     window.showExtensionsView = showExtensionsView; window.goHome = goHome; window.goBack = goBack;
-    window.showOffices = showOffices; window.switchTab = switchTab;
+    window.showOffices = showOffices; window.showDetail = showDetail; window.switchTab = switchTab;
     
     window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal; window.saveMemberData = saveMemberData;
     window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal; window.saveAssetData = saveAssetData;

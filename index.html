@@ -461,21 +461,28 @@
                     <div id="user-email-display" style="font-size: 11px; color: var(--text-muted);"></div>
                 </div>
                 <img id="user-avatar" src="" style="width:32px; height:32px; border-radius:50%; border: 2px solid #e2e8f0;">
-                <button onclick="logout()" class="btn-nav" style="padding:6px 10px; font-size:12px; background:#fee2e2; color:var(--danger);">登出</button>
+                <button id="btn-logout" onclick="logout()" class="btn-nav" style="padding:6px 10px; font-size:12px; background:#fee2e2; color:var(--danger); transition: all 0.2s;">登出</button>
             </div>
         </div> 
     </header>
 
     <div id="breadcrumb" class="breadcrumb"></div>
 
-    <!-- ✨ 系統登入大廳 (未登入前只顯示這個畫面) -->
+    <!-- ✨ 系統登入大廳 (未登入前顯示這個畫面) -->
     <div id="view-login" class="view">
         <div style="max-width: 400px; margin: 60px auto; background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;">
             <div style="font-size: 48px; margin-bottom: 10px;">🏢</div>
             <h2 style="margin-top:0; color: var(--text-main); font-size: 24px;">系統授權登入</h2>
-            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 30px; line-height: 1.6;">
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
                 為了保護圖資與資產安全，本系統已啟用權限控管。<br>請使用授權的 Google 帳號進行登入。
             </p>
+            
+            <!-- ✨ 新增：記住我選項 -->
+            <div style="margin-bottom: 25px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <input type="checkbox" id="remember-me" checked style="width: 16px; height: 16px; cursor: pointer;">
+                <label for="remember-me" style="font-size: 14px; color: var(--text-muted); cursor: pointer; user-select: none;">保持登入狀態 (記住我)</label>
+            </div>
+
             <button onclick="loginWithGoogle()" style="display:flex; align-items:center; justify-content:center; gap:10px; width: 100%; padding: 12px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: var(--text-main);">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 20px;">
                 使用 Google 帳號登入
@@ -491,7 +498,6 @@
             <button class="dev-tab-btn disabled">🔒 系統備份 (未開放)</button>
         </div>
 
-        <!-- ✨ 這裡現在會被 JS 動態注入卡片，不再寫死 -->
         <div class="grid-nav"></div>
     </div>
     
@@ -525,7 +531,7 @@
 
     <div id="view-extensions" class="view"><div id="ext-container"></div></div>
 
-    <!-- 頁腳版本號 -->
+    <!-- ✨ 修復：讓版本號與日誌在全域可見，包含未登入畫面 -->
     <div class="version-footer" onclick="openUpdateLogModal()">
         <!-- 由 JS 動態填入最新版本號 -->
     </div>
@@ -695,9 +701,9 @@
 
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
-    // ✨ 引入 Firebase Auth 認證模組
+    // ✨ 引入 Firebase Auth 認證模組 (新增 setPersistence 相關設定)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore, persistentLocalCache, persistentSingleTabManager } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -718,16 +724,23 @@
         localCache: persistentLocalCache({tabManager: persistentSingleTabManager()})
     });
 
+    // ================= 系統授權白名單 (Phase 4 Step 2: Authorization) =================
+    // 未來可開放多位管理員或同事，只需將 Email 填入陣列即可。
+    const AUTHORIZED_EMAILS = [
+        'steve1616@gmail.com', // 系統管理員
+        // 'other.member@gmail.com'
+    ];
+
     // ================= 版本更新日誌設定 (維持最新三版) =================
     const systemUpdateLogs = [
         {
             version: "1.5.0",
             date: "20260324",
             changes: [
-                "【安全升級】正式導入 Google 帳號授權登入機制，全面封鎖未授權存取。",
-                "系統大廳與導覽列權限隔離，未登入者僅能查看登入畫面。",
-                "優化首頁加載邏輯，修復登入後「懸浮預覽」與「版本資訊」未正常顯示的問題。",
-                "首頁區域卡片升級為動態生成，可隨資料庫自動增減區域。"
+                "【安全升級】實作「白名單過濾 (Authorization)」，僅允許授權的 Google 帳號登入系統。",
+                "新增「記住我」功能，可自動記憶登入狀態，無需頻繁重新授權。",
+                "優化斷網體驗：離線模式下自動「鎖定登出按鈕」，防止使用者誤觸後無法登回系統。",
+                "開放未登入者也可於登入大廳查看系統當前版本與更新日誌。"
             ]
         },
         {
@@ -749,6 +762,15 @@
             ]
         }
     ];
+
+    // ✨ 即刻渲染版本號，確保無論是否登入都能看到
+    function renderVersionFooter() {
+        const footer = document.querySelector('.version-footer');
+        if (footer && systemUpdateLogs.length > 0) {
+            footer.innerText = `系統版本 v${systemUpdateLogs[0].version} (${systemUpdateLogs[0].date}) - 點擊查看更新日誌`;
+        }
+    }
+    renderVersionFooter();
 
     const ROOM_TRAITS = {
         '辦公室': { tabs: ['staff', 'assets', 'facilities'], defaultTab: 'staff' },
@@ -783,7 +805,6 @@
     let tempTitleRanks = []; 
     let currentTitleRankScope = 'global';
     
-    // ✨ -1 代表登入大廳，0 代表首頁
     let currentLevel = -1; 
     let currentFloor = '';
     
@@ -802,6 +823,24 @@
     let confirmTimer = null;
     let pendingDeleteAction = null; 
 
+    // ✨ 獨立出離線鎖定登出的檢查機制
+    function checkOfflineLogoutLock() {
+        const btnLogout = document.getElementById('btn-logout');
+        if (!btnLogout) return;
+
+        if (!navigator.onLine) {
+            btnLogout.disabled = true;
+            btnLogout.style.opacity = '0.5';
+            btnLogout.style.cursor = 'not-allowed';
+            btnLogout.innerText = '🔒 離線無法登出';
+        } else {
+            btnLogout.disabled = false;
+            btnLogout.style.opacity = '1';
+            btnLogout.style.cursor = 'pointer';
+            btnLogout.innerText = '登出';
+        }
+    }
+
     function customAlert(msg, isDanger = false) {
         const toast = document.getElementById('custom-toast');
         toast.innerText = msg;
@@ -814,14 +853,18 @@
     window.addEventListener('offline', () => {
         document.getElementById('offline-banner').style.display = 'block';
         customAlert('⚠️ 網路連線中斷，已切換至離線模式', true);
+        checkOfflineLogoutLock(); // 斷網時鎖定登出
     });
 
     window.addEventListener('online', () => {
         document.getElementById('offline-banner').style.display = 'none';
         customAlert('🌐 網路已恢復，資料正在背景同步中...');
+        checkOfflineLogoutLock(); // 恢復連線時解除登出鎖定
     });
 
-    if (!navigator.onLine) document.getElementById('offline-banner').style.display = 'block';
+    if (!navigator.onLine) {
+        document.getElementById('offline-banner').style.display = 'block';
+    }
 
     window.addEventListener('beforeunload', (e) => {
         if (!navigator.onLine) {
@@ -841,11 +884,18 @@
     };
 
     // =======================================================
-    // ✨ 核心大門守衛：驗證身分狀態 (Auth Listener)
+    // ✨ 核心大門守衛：驗證身分狀態與白名單過濾
     // =======================================================
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            // 已登入：解鎖並顯示系統畫面，顯示使用者資訊
+            // ✨ 白名單檢查：如果陣列有資料，且登入信箱不在陣列內，則踢出
+            if (AUTHORIZED_EMAILS.length > 0 && !AUTHORIZED_EMAILS.includes(user.email)) {
+                customAlert(`⛔ 存取遭拒：您的帳號 (${user.email}) 未獲系統白名單授權！`, true);
+                signOut(auth); // 強制登出
+                return;
+            }
+
+            // 已登入且獲授權：解鎖並顯示系統畫面，顯示使用者資訊
             document.getElementById('user-profile').style.display = 'flex';
             document.getElementById('user-info-text').style.display = 'block';
             document.getElementById('user-name-display').innerText = user.displayName || '系統使用者';
@@ -853,6 +903,8 @@
             document.getElementById('user-avatar').src = user.photoURL || 'https://via.placeholder.com/32';
             document.getElementById('header-left').style.visibility = 'visible';
             
+            checkOfflineLogoutLock(); // 初始化檢查離線鎖定
+
             // 如果還沒初始化資料庫監聽，現在開始抓資料
             if (!isInitialized) {
                 document.getElementById('loading-overlay').innerText = '身分驗證成功，資料讀取中...';
@@ -879,6 +931,11 @@
 
     window.loginWithGoogle = async () => {
         try {
+            // ✨ 讀取「記住我」的狀態，設定 Persistence
+            const rememberMe = document.getElementById('remember-me').checked;
+            const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+            await setPersistence(auth, persistenceType);
+
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Google 登入錯誤：", error);
@@ -968,7 +1025,6 @@
         }
     }
 
-    // ✨ 修復與升級：動態生成首頁樓層卡片，解決懸浮清單消失與擴充性的問題
     function initView() {
         const gridNav = document.querySelector('#view-floor .grid-nav');
         if (gridNav) {
@@ -983,7 +1039,6 @@
 
             let sortedFloors = Object.keys(floorMap).sort();
             
-            // 如果資料庫全空，預設提供兩個樓層作為空殼
             if (sortedFloors.length === 0) {
                 sortedFloors = ['修船大樓３Ｆ', '修船大樓４Ｆ'];
                 floorMap['修船大樓３Ｆ'] = [];
@@ -1014,15 +1069,6 @@
         }
         
         document.getElementById('dev-tabs-container').style.display = (devOptionsEnabled && currentLevel === 0) ? 'flex' : 'none';
-        
-        // ✨ 修復：確保版本資訊在載入完成後必定繪製
-        if (systemUpdateLogs.length > 0) {
-            const footer = document.querySelector('.version-footer');
-            if (footer) {
-                footer.innerText = `系統版本 v${systemUpdateLogs[0].version} (${systemUpdateLogs[0].date}) - 點擊查看更新日誌`;
-            }
-        }
-
         updateNavigationUI();
         if (!history.state) history.replaceState({ level: 0 }, "");
     }
@@ -1230,7 +1276,6 @@
         updateNavigationUI();
     }
 
-    // ✨ 修復：強制在回到首頁時呼叫 initView，確保積木正確渲染
     function goHome(push = true) {
         currentLevel = 0; currentFloor = ''; currentOfficeId = ''; currentOfficeName = '';
         if (push) history.pushState({ level: 0 }, "");

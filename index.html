@@ -294,7 +294,7 @@
         #loading-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: var(--bg); display: flex; justify-content: center; align-items: center;
-            z-index: 2000; font-size: 20px; font-weight: bold; color: var(--primary); transition: opacity 0.3s;
+            z-index: 2000; font-size: 20px; font-weight: bold; color: var(--primary); transition: opacity 0.3s; flex-direction: column; gap: 15px;
         }
         #custom-toast {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
@@ -337,6 +337,31 @@
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeConfirmModal()">取消</button>
             <button id="btn-confirm-action" class="btn-danger" onclick="executeConfirmAction()">確定執行</button>
+        </div>
+    </div>
+</div>
+
+<!-- ✨ 新增：白名單管理表單 (Modal) -->
+<div id="whitelist-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeWhitelistModal()" style="z-index: 3500;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>🛡️ 系統授權白名單</span>
+            <button class="btn-close" onclick="closeWhitelistModal()">×</button>
+        </div>
+        <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">
+            加入清單的 Google 帳號才能登入系統。您的帳號 (<b style="color:var(--text-main);">steve1616@gmail.com</b>) 為最高權限，不受此限，以防誤觸鎖死。
+        </div>
+        
+        <div class="dropdown-search-row" style="margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <input type="email" id="whitelist-input" placeholder="輸入要授權的 Google 信箱..." style="border:none; box-shadow:none; flex:1;">
+            <button class="btn-primary" onclick="addWhitelistEmail()" style="padding: 4px 12px; flex-shrink: 0;">新增</button>
+        </div>
+
+        <div id="whitelist-list" style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
+            <!-- JS 動態生成 -->
+        </div>
+        <div class="modal-footer" style="margin-top: 15px;">
+            <button class="btn-secondary" onclick="closeWhitelistModal()">關閉</button>
         </div>
     </div>
 </div>
@@ -409,7 +434,11 @@
 </div>
 
 <!-- 載入中遮罩 -->
-<div id="loading-overlay">資料讀取中...</div>
+<div id="loading-overlay">
+    <div id="loading-spinner" style="font-size: 40px; animation: spin 1s linear infinite;">⏳</div>
+    <div id="loading-text">資料讀取中...</div>
+</div>
+<style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
 
 <!-- 側邊欄與遮罩區域 -->
 <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -477,7 +506,7 @@
                 為了保護圖資與資產安全，本系統已啟用權限控管。<br>請使用授權的 Google 帳號進行登入。
             </p>
             
-            <!-- ✨ 新增：記住我選項 -->
+            <!-- ✨ 記住我選項 -->
             <div style="margin-bottom: 25px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <input type="checkbox" id="remember-me" checked style="width: 16px; height: 16px; cursor: pointer;">
                 <label for="remember-me" style="font-size: 14px; color: var(--text-muted); cursor: pointer; user-select: none;">保持登入狀態 (記住我)</label>
@@ -495,7 +524,8 @@
             <button class="dev-tab-btn" onclick="openTitleRankModal()">📊 設定職稱排序</button>
             <button class="dev-tab-btn" onclick="runDatabaseMigration()" style="color: var(--danger); border-color: var(--danger); background: #fee2e2;">⚠️ 執行 Phase 3 資料庫升級</button>
             <button class="dev-tab-btn" onclick="restoreLostComputers()">🚑 復原測試資產</button>
-            <button class="dev-tab-btn disabled">🔒 系統備份 (未開放)</button>
+            <!-- ✨ 解鎖權限管理工具 -->
+            <button class="dev-tab-btn" onclick="openWhitelistModal()" style="color: var(--primary); border-color: var(--primary); background: #e0e7ff;">🛡️ 權限白名單管理</button>
         </div>
 
         <div class="grid-nav"></div>
@@ -531,7 +561,7 @@
 
     <div id="view-extensions" class="view"><div id="ext-container"></div></div>
 
-    <!-- ✨ 修復：讓版本號與日誌在全域可見，包含未登入畫面 -->
+    <!-- ✨ 讓版本號與日誌在全域可見，包含未登入畫面 -->
     <div class="version-footer" onclick="openUpdateLogModal()">
         <!-- 由 JS 動態填入最新版本號 -->
     </div>
@@ -701,10 +731,9 @@
 
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
-    // ✨ 引入 Firebase Auth 認證模組 (新增 setPersistence 相關設定)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore, persistentLocalCache, persistentSingleTabManager } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore, persistentLocalCache, persistentSingleTabManager, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDt7Z-QAG4C73K7f0RyItXMNQJc2NDxkzE",
@@ -716,20 +745,13 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app); // 初始化身份驗證
-    const provider = new GoogleAuthProvider(); // 建立 Google 登入提供者
+    const auth = getAuth(app); 
+    const provider = new GoogleAuthProvider(); 
 
     const db = initializeFirestore(app, { 
         experimentalForceLongPolling: true,
         localCache: persistentLocalCache({tabManager: persistentSingleTabManager()})
     });
-
-    // ================= 系統授權白名單 (Phase 4 Step 2: Authorization) =================
-    // 未來可開放多位管理員或同事，只需將 Email 填入陣列即可。
-    const AUTHORIZED_EMAILS = [
-        'steve1616@gmail.com', // 系統管理員
-        // 'other.member@gmail.com'
-    ];
 
     // ================= 版本更新日誌設定 (維持最新三版) =================
     const systemUpdateLogs = [
@@ -737,7 +759,7 @@
             version: "1.5.0",
             date: "20260324",
             changes: [
-                "【安全升級】實作「白名單過濾 (Authorization)」，僅允許授權的 Google 帳號登入系統。",
+                "【安全升級】實作動態白名單過濾 (Dynamic Authorization)，可直接於網頁內建工具增刪授權帳號。",
                 "新增「記住我」功能，可自動記憶登入狀態，無需頻繁重新授權。",
                 "優化斷網體驗：離線模式下自動「鎖定登出按鈕」，防止使用者誤觸後無法登回系統。",
                 "開放未登入者也可於登入大廳查看系統當前版本與更新日誌。"
@@ -763,7 +785,6 @@
         }
     ];
 
-    // ✨ 即刻渲染版本號，確保無論是否登入都能看到
     function renderVersionFooter() {
         const footer = document.querySelector('.version-footer');
         if (footer && systemUpdateLogs.length > 0) {
@@ -822,6 +843,9 @@
 
     let confirmTimer = null;
     let pendingDeleteAction = null; 
+    
+    // ✨ 新增全域動態白名單變數
+    let globalWhitelist = [];
 
     // ✨ 獨立出離線鎖定登出的檢查機制
     function checkOfflineLogoutLock() {
@@ -853,13 +877,13 @@
     window.addEventListener('offline', () => {
         document.getElementById('offline-banner').style.display = 'block';
         customAlert('⚠️ 網路連線中斷，已切換至離線模式', true);
-        checkOfflineLogoutLock(); // 斷網時鎖定登出
+        checkOfflineLogoutLock(); 
     });
 
     window.addEventListener('online', () => {
         document.getElementById('offline-banner').style.display = 'none';
         customAlert('🌐 網路已恢復，資料正在背景同步中...');
-        checkOfflineLogoutLock(); // 恢復連線時解除登出鎖定
+        checkOfflineLogoutLock(); 
     });
 
     if (!navigator.onLine) {
@@ -884,18 +908,50 @@
     };
 
     // =======================================================
-    // ✨ 核心大門守衛：驗證身分狀態與白名單過濾
+    // ✨ 動態白名單檢查邏輯
     // =======================================================
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
         if (user) {
-            // ✨ 白名單檢查：如果陣列有資料，且登入信箱不在陣列內，則踢出
-            if (AUTHORIZED_EMAILS.length > 0 && !AUTHORIZED_EMAILS.includes(user.email)) {
-                customAlert(`⛔ 存取遭拒：您的帳號 (${user.email}) 未獲系統白名單授權！`, true);
-                signOut(auth); // 強制登出
+            // 顯示正在檢查權限的載入畫面
+            document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '正在驗證系統授權...';
+            document.getElementById('loading-overlay').style.display = 'flex';
+            document.getElementById('loading-overlay').style.opacity = '1';
+
+            // ⚠️ 這是最高管理員防呆機制，防止你意外把自己踢出系統
+            const superAdmin = 'steve1616@gmail.com';
+            let isAllowed = false;
+
+            if (user.email === superAdmin) {
+                isAllowed = true;
+            } else {
+                try {
+                    // 去資料庫抓取白名單
+                    const wlSnap = await getDoc(doc(db, 'settings', 'whitelist'));
+                    if (wlSnap.exists()) {
+                        const emails = wlSnap.data().emails || [];
+                        isAllowed = emails.includes(user.email);
+                    } else {
+                        // 如果這是全新系統，自動把超級管理員寫進去建立第一筆資料
+                        await setDoc(doc(db, 'settings', 'whitelist'), { emails: [superAdmin] });
+                    }
+                } catch (error) {
+                    console.error('讀取白名單失敗', error);
+                    // 若因為斷網無法確認白名單，且非最高權限，則為了安全先擋住
+                    customAlert('無法連接資料庫驗證權限，請確認網路狀態！', true);
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    signOut(auth);
+                    return;
+                }
+            }
+
+            if (!isAllowed) {
+                customAlert(`⛔ 存取遭拒：您的帳號 (${user.email}) 未獲系統授權，請聯繫管理員！`, true);
+                document.getElementById('loading-overlay').style.display = 'none';
+                signOut(auth); 
                 return;
             }
 
-            // 已登入且獲授權：解鎖並顯示系統畫面，顯示使用者資訊
+            // 已登入且獲授權：解鎖並顯示系統畫面
             document.getElementById('user-profile').style.display = 'flex';
             document.getElementById('user-info-text').style.display = 'block';
             document.getElementById('user-name-display').innerText = user.displayName || '系統使用者';
@@ -903,19 +959,18 @@
             document.getElementById('user-avatar').src = user.photoURL || 'https://via.placeholder.com/32';
             document.getElementById('header-left').style.visibility = 'visible';
             
-            checkOfflineLogoutLock(); // 初始化檢查離線鎖定
+            checkOfflineLogoutLock(); 
 
-            // 如果還沒初始化資料庫監聽，現在開始抓資料
+            // 初始化資料庫即時監聽
             if (!isInitialized) {
-                document.getElementById('loading-overlay').innerText = '身分驗證成功，資料讀取中...';
-                document.getElementById('loading-overlay').style.display = 'flex';
-                document.getElementById('loading-overlay').style.opacity = '1';
+                document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '授權成功！資料讀取中...';
                 setupRealtimeListeners();
             } else {
                 if (currentLevel === -1) goHome(false); 
+                document.getElementById('loading-overlay').style.display = 'none';
             }
         } else {
-            // 未登入：鎖住大門，顯示登入大廳
+            // 未登入：鎖住大門
             currentLevel = -1;
             document.getElementById('user-profile').style.display = 'none';
             document.getElementById('user-info-text').style.display = 'none';
@@ -931,11 +986,9 @@
 
     window.loginWithGoogle = async () => {
         try {
-            // ✨ 讀取「記住我」的狀態，設定 Persistence
             const rememberMe = document.getElementById('remember-me').checked;
             const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence;
             await setPersistence(auth, persistenceType);
-
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Google 登入錯誤：", error);
@@ -955,9 +1008,10 @@
 
     function setupRealtimeListeners() {
         let loadedCount = 0;
+        // ✨ 因為多了一個白名單監聽器，所以需要等 7 個設定載入完畢
         const checkAllLoaded = () => {
             loadedCount++;
-            if (loadedCount >= 6 && !isInitialized) { 
+            if (loadedCount >= 7 && !isInitialized) { 
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
@@ -967,6 +1021,20 @@
                 refreshCurrentView();
             }
         };
+
+        // ✨ 監聽白名單變更
+        onSnapshot(doc(db, "settings", "whitelist"), (docSnap) => {
+            if(docSnap.exists()) {
+                globalWhitelist = docSnap.data().emails || [];
+            } else {
+                safeWrite(setDoc(doc(db, "settings", "whitelist"), { emails: ['steve1616@gmail.com'] }));
+                globalWhitelist = ['steve1616@gmail.com'];
+            }
+            if(document.getElementById('whitelist-modal-overlay').classList.contains('active')) {
+                renderWhitelist();
+            }
+            checkAllLoaded();
+        });
 
         onSnapshot(collection(db, "offices"), (snapshot) => {
             globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
@@ -1024,6 +1092,79 @@
             document.getElementById('dev-tabs-container').style.display = devOptionsEnabled ? 'flex' : 'none';
         }
     }
+
+    // =======================================================
+    // ✨ 動態白名單 UI 功能
+    // =======================================================
+    window.openWhitelistModal = () => {
+        closeSidebar();
+        document.getElementById('whitelist-input').value = '';
+        renderWhitelist();
+        document.getElementById('whitelist-modal-overlay').classList.add('active');
+    };
+
+    window.closeWhitelistModal = () => {
+        document.getElementById('whitelist-modal-overlay').classList.remove('active');
+    };
+
+    window.renderWhitelist = () => {
+        const listDiv = document.getElementById('whitelist-list');
+        listDiv.innerHTML = '';
+        if (globalWhitelist.length === 0) {
+            listDiv.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">目前尚無設定其他白名單</div>';
+            return;
+        }
+        
+        globalWhitelist.forEach(email => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'dropdown-item';
+            
+            let delBtnHtml = '';
+            if (email !== 'steve1616@gmail.com') {
+                delBtnHtml = `<button class="dropdown-item-delete" onclick="promptDeleteWhitelist('${email}')">🗑️</button>`;
+            } else {
+                delBtnHtml = `<span style="font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 6px; border-radius:4px;">最高權限</span>`;
+            }
+
+            itemDiv.innerHTML = `
+                <span style="flex:1; font-weight:bold;">${email}</span>
+                ${delBtnHtml}
+            `;
+            listDiv.appendChild(itemDiv);
+        });
+    };
+
+    window.addWhitelistEmail = async () => {
+        const input = document.getElementById('whitelist-input');
+        const email = input.value.trim().toLowerCase();
+        
+        if (!email || !email.includes('@')) { 
+            customAlert('請輸入有效的信箱格式！', true); 
+            return; 
+        }
+        if (globalWhitelist.includes(email)) { 
+            customAlert('此信箱已在白名單中！', true); 
+            return; 
+        }
+
+        try {
+            const newWl = [...globalWhitelist, email];
+            await safeWrite(setDoc(doc(db, 'settings', 'whitelist'), { emails: newWl }));
+            input.value = '';
+            customAlert(`成功將 ${email} 加入白名單！`);
+        } catch(e) { 
+            console.error(e); 
+            customAlert('新增失敗', true); 
+        }
+    };
+
+    window.promptDeleteWhitelist = (email) => {
+        pendingDeleteAction = { type: 'whitelist', payload: email };
+        document.getElementById('confirm-modal-title').innerText = '⚠️ 移除授權';
+        document.getElementById('confirm-msg').innerText = `確定要取消「${email}」的登入權限嗎？\n該帳號將會立刻被系統踢出並無法再登入。`;
+        document.getElementById('confirm-modal-overlay').classList.add('active');
+    };
+    // =======================================================
 
     function initView() {
         const gridNav = document.querySelector('#view-floor .grid-nav');
@@ -1174,7 +1315,7 @@
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeFabMenu(); closeEditModal(); closeAssetModal(); closeOfficeModal(); closeSidebar(); closeAddOfficeModal();
-            closeTitleRankModal(); closeUpdateLogModal(); closeOfficeActionModal();
+            closeTitleRankModal(); closeUpdateLogModal(); closeOfficeActionModal(); window.closeWhitelistModal();
             document.getElementById('category-panel').classList.remove('active');
             document.getElementById('owner-panel').classList.remove('active');
             if(document.getElementById('room-type-panel')) document.getElementById('room-type-panel').classList.remove('active');
@@ -2133,7 +2274,15 @@
         btn.disabled = true; btn.innerText = '處理中...';
 
         try {
-            if (pendingDeleteAction.type === 'titleRanks') {
+            // ✨ 新增白名單刪除處理
+            if (pendingDeleteAction.type === 'whitelist') {
+                const targetEmail = pendingDeleteAction.payload;
+                const newWl = globalWhitelist.filter(e => e !== targetEmail);
+                await safeWrite(setDoc(doc(db, 'settings', 'whitelist'), { emails: newWl }));
+                closeConfirmModal();
+                customAlert(`已移除「${targetEmail}」的登入權限！`);
+            }
+            else if (pendingDeleteAction.type === 'titleRanks') {
                 if (currentTitleRankScope === 'global') globalTitleRankSettings.global = [...tempTitleRanks];
                 else globalTitleRankSettings.offices[currentTitleRankScope] = [...tempTitleRanks];
 
@@ -2239,13 +2388,12 @@
                 title: document.getElementById('edit-title').value || 'N/A',
                 join_date: document.getElementById('edit-join-date').value || '', 
                 ext: document.getElementById('edit-ext').value || 'N/A',
-                office_id: currentOfficeId // ✨ 存入隱藏的 ID
+                office_id: currentOfficeId 
             };
 
             if (isEditMode) {
                 await safeWrite(updateDoc(doc(db, 'members', currentEditMemberId), memberDataToSave));
             } else {
-                // 自動帶入部門邏輯 (因應需求可保留)
                 if (currentOfficeName.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOfficeName.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
                 else memberDataToSave.dept = currentOfficeName; 
@@ -2282,7 +2430,7 @@
                 category: currentAssetCategory, 
                 sn: document.getElementById('asset-sn').value || 'N/A',
                 status: document.getElementById('asset-status').value,
-                office_id: currentOfficeId // ✨ 存入隱藏的 ID
+                office_id: currentOfficeId 
             };
 
             if (currentAssetCategory === '電腦') {
@@ -2312,7 +2460,7 @@
     function openOfficeModal(officeId) {
         closeFabMenu();
         isOfficeEditMode = true;
-        currentEditOfficeId = officeId; // ✨ 這裡是 UUID 了
+        currentEditOfficeId = officeId; 
         const officeData = globalOffices.find(o => o.id === officeId);
         if (!officeData) { customAlert('找不到辦公室資料！', true); return; }
 
@@ -2387,7 +2535,7 @@
         const confirmMsg = "【極度危險操作警告】\n\n這支程式會為您資料庫中所有的「辦公室」配發全新的隱藏身分證(UUID)，並自動更新所有人員與資產的綁定關係。\n\n執行時間約需數秒，過程中請「絕對不要」關閉網頁。\n\n請問是否確定要執行 Phase 3 資料庫升級？";
         if(!confirm(confirmMsg)) return;
 
-        document.getElementById('loading-overlay').innerText = '資料庫升級中，請勿關閉視窗...';
+        document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '資料庫升級中，請勿關閉視窗...';
         document.getElementById('loading-overlay').style.display = 'flex';
         document.getElementById('loading-overlay').style.opacity = '1';
 
@@ -2465,9 +2613,14 @@
     window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
     window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
     window.toggleDevOptions = toggleDevOptions;
-    // ✨ 綁定登入/登出功能
-    window.loginWithGoogle = loginWithGoogle;
-    window.logout = logout;
+    window.loginWithGoogle = loginWithGoogle; window.logout = logout;
+    
+    // ✨ 動態白名單綁定
+    window.openWhitelistModal = openWhitelistModal;
+    window.closeWhitelistModal = closeWhitelistModal;
+    window.renderWhitelist = renderWhitelist;
+    window.addWhitelistEmail = addWhitelistEmail;
+    window.promptDeleteWhitelist = promptDeleteWhitelist;
 
     // 啟動監聽與初始化畫面
     window.addEventListener('resize', syncHeaderLayout);

@@ -2260,6 +2260,22 @@
     window.closeConfirmModal = closeConfirmModal; window.executeConfirmAction = executeConfirmAction;
     window.restoreLostComputers = restoreLostComputers;
     window.saveMemberData = saveMemberData; window.saveAssetData = saveAssetData; window.saveOfficeData = saveOfficeData;
+
+    // 補齊所有畫面切換與選單功能的 window 綁定
+    window.goHome = goHome; window.goUpLevel = goUpLevel;
+    window.showOffices = showOffices; window.showDetail = showDetail;
+    window.switchTab = switchTab; window.updateDetailContent = updateDetailContent;
+    window.showExtensionsView = showExtensionsView; window.toggleSidebar = toggleSidebar;
+    window.closeSidebar = closeSidebar; window.toggleTreeFloor = toggleTreeFloor;
+    window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
+    window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal;
+    window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
+    window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
+    window.toggleDevOptions = toggleDevOptions;
+
+    // 啟動監聽與初始化畫面
+    window.addEventListener('resize', syncHeaderLayout);
+    setupRealtimeListeners();
 </script>
 </body>
 </html>

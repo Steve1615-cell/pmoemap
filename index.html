@@ -483,7 +483,7 @@
         </div>
     </div>
 
-    <div id="view-floor" class="view">
+    <div id="view-floor" class="view active">
         <div id="dev-tabs-container" class="dev-tabs">
             <button class="dev-tab-btn" onclick="openTitleRankModal()">📊 設定職稱排序</button>
             <button class="dev-tab-btn" onclick="runDatabaseMigration()" style="color: var(--danger); border-color: var(--danger); background: #fee2e2;">⚠️ 執行 Phase 3 資料庫升級</button>
@@ -491,10 +491,8 @@
             <button class="dev-tab-btn disabled">🔒 系統備份 (未開放)</button>
         </div>
 
-        <div class="grid-nav">
-            <div class="nav-card" onclick="showOffices('修船大樓３Ｆ')"><h2>修船大樓３Ｆ</h2><ul class="preview-list" id="preview-floor-3F"></ul></div>
-            <div class="nav-card" onclick="showOffices('修船大樓４Ｆ')"><h2>修船大樓４Ｆ</h2><ul class="preview-list" id="preview-floor-4F"></ul></div>
-        </div>
+        <!-- ✨ 這裡現在會被 JS 動態注入卡片，不再寫死 -->
+        <div class="grid-nav"></div>
     </div>
     
     <div id="view-office" class="view"><div class="grid-nav" id="office-list"></div></div>
@@ -728,8 +726,8 @@
             changes: [
                 "【安全升級】正式導入 Google 帳號授權登入機制，全面封鎖未授權存取。",
                 "系統大廳與導覽列權限隔離，未登入者僅能查看登入畫面。",
-                "優化 Google 登入錯誤捕捉機制，幫助排除網域授權問題。",
-                "為未來 Phase 4 的「權限分級 (管理員/一般使用者)」打下基礎。"
+                "優化首頁加載邏輯，修復登入後「懸浮預覽」與「版本資訊」未正常顯示的問題。",
+                "首頁區域卡片升級為動態生成，可隨資料庫自動增減區域。"
             ]
         },
         {
@@ -785,7 +783,7 @@
     let tempTitleRanks = []; 
     let currentTitleRankScope = 'global';
     
-    // ✨ 修改：-1 代表登入大廳，0 代表首頁
+    // ✨ -1 代表登入大廳，0 代表首頁
     let currentLevel = -1; 
     let currentFloor = '';
     
@@ -879,14 +877,11 @@
         }
     });
 
-    // 登入按鈕功能 - 加入更清楚的錯誤捕捉
     window.loginWithGoogle = async () => {
         try {
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Google 登入錯誤：", error);
-            
-            // 針對未授權網域給出明確提示
             if (error.code === 'auth/unauthorized-domain') {
                 customAlert('登入失敗：目前執行的網址未獲 Firebase 授權！請下載檔案至本機執行。', true);
             } else if (error.code === 'auth/popup-closed-by-user') {
@@ -897,11 +892,9 @@
         }
     };
 
-    // 登出按鈕功能
     window.logout = () => {
         signOut(auth);
     };
-    // =======================================================
 
     function setupRealtimeListeners() {
         let loadedCount = 0;
@@ -911,7 +904,6 @@
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
-                // 資料載入完畢，正式進入首頁
                 if (currentLevel === -1) goHome(false);
                 else refreshCurrentView();
             } else if (isInitialized) {
@@ -961,7 +953,6 @@
     }
 
     function refreshCurrentView() {
-        // 如果還在登入畫面，就不必更新內部資料畫面
         if (currentLevel === -1) return;
 
         if (currentLevel === 0) initView(); 
@@ -977,23 +968,59 @@
         }
     }
 
+    // ✨ 修復與升級：動態生成首頁樓層卡片，解決懸浮清單消失與擴充性的問題
     function initView() {
-        ['修船大樓３Ｆ', '修船大樓４Ｆ'].forEach(f => {
-            const floorId = f === '修船大樓３Ｆ' ? '3F' : '4F';
-            const list = document.getElementById(`preview-floor-${floorId}`);
-            list.innerHTML = ''; 
-            const floorOffices = globalOffices.filter(o => o.floor === f);
-            floorOffices.forEach(o => {
-                const li = document.createElement('li');
-                li.innerText = `• ${o.name || '未命名房間'}`;
-                list.appendChild(li);
+        const gridNav = document.querySelector('#view-floor .grid-nav');
+        if (gridNav) {
+            gridNav.innerHTML = ''; 
+            
+            const floorMap = {};
+            globalOffices.forEach(o => {
+                const f = o.floor || '未分類區域';
+                if (!floorMap[f]) floorMap[f] = [];
+                floorMap[f].push(o);
             });
-        });
+
+            let sortedFloors = Object.keys(floorMap).sort();
+            
+            // 如果資料庫全空，預設提供兩個樓層作為空殼
+            if (sortedFloors.length === 0) {
+                sortedFloors = ['修船大樓３Ｆ', '修船大樓４Ｆ'];
+                floorMap['修船大樓３Ｆ'] = [];
+                floorMap['修船大樓４Ｆ'] = [];
+            }
+
+            sortedFloors.forEach((floor, idx) => {
+                const card = document.createElement('div');
+                card.className = 'nav-card';
+                card.onclick = () => showOffices(floor);
+                
+                let html = `<h2>${floor}</h2><ul class="preview-list" id="preview-floor-${idx}">`;
+                
+                const sortedOffices = (floorMap[floor] || []).sort((a,b) => (a.name||'').localeCompare(b.name||''));
+                
+                if (sortedOffices.length > 0) {
+                    sortedOffices.forEach(o => {
+                        html += `<li>• ${o.name}</li>`;
+                    });
+                } else {
+                    html += `<li style="color: #94a3b8; font-style: italic;">尚無房間資料</li>`;
+                }
+                
+                html += `</ul>`;
+                card.innerHTML = html;
+                gridNav.appendChild(card);
+            });
+        }
         
         document.getElementById('dev-tabs-container').style.display = (devOptionsEnabled && currentLevel === 0) ? 'flex' : 'none';
         
+        // ✨ 修復：確保版本資訊在載入完成後必定繪製
         if (systemUpdateLogs.length > 0) {
-            document.querySelector('.version-footer').innerText = `系統版本 v${systemUpdateLogs[0].version} (${systemUpdateLogs[0].date}) - 點擊查看更新日誌`;
+            const footer = document.querySelector('.version-footer');
+            if (footer) {
+                footer.innerText = `系統版本 v${systemUpdateLogs[0].version} (${systemUpdateLogs[0].date}) - 點擊查看更新日誌`;
+            }
         }
 
         updateNavigationUI();
@@ -1023,8 +1050,6 @@
     window.addEventListener('popstate', (event) => {
         const state = event.state;
         if (!state) { goHome(false); return; }
-        
-        // 如果未登入，強制導向登入大廳
         if (currentLevel === -1) return;
 
         if (state.level === 0) goHome(false);
@@ -1126,7 +1151,6 @@
         const fabContainer = document.getElementById('fab-container');
         fabMenu.innerHTML = ''; closeFabMenu(); 
 
-        // 在登入大廳不顯示按鈕
         if (currentLevel === -1) {
             fabContainer.style.display = 'none';
             return;
@@ -1159,7 +1183,6 @@
         const btnUp = document.getElementById('btn-global-up');
         const breadcrumb = document.getElementById('breadcrumb');
 
-        // 在登入畫面時不顯示導覽列
         if (currentLevel === -1) {
             btnHome.style.display = 'none'; 
             btnUp.style.display = 'none';
@@ -1207,9 +1230,11 @@
         updateNavigationUI();
     }
 
+    // ✨ 修復：強制在回到首頁時呼叫 initView，確保積木正確渲染
     function goHome(push = true) {
         currentLevel = 0; currentFloor = ''; currentOfficeId = ''; currentOfficeName = '';
         if (push) history.pushState({ level: 0 }, "");
+        initView(); 
         switchView('view-floor');
     }
     
@@ -1250,7 +1275,6 @@
         currentOfficeId = officeId; 
         currentOfficeName = officeName;
         
-        // 確保返回上一層時，能正確抓到該房間所在的樓層 (防呆：從側邊欄點擊進入時)
         const officeData = globalOffices.find(o => o.id === currentOfficeId);
         if (officeData && officeData.floor) {
             currentFloor = officeData.floor;
@@ -1440,9 +1464,6 @@
         switchView('view-extensions');
     }
 
-    // ==========================================
-    // 彈出視窗與日誌功能
-    // ==========================================
     function openUpdateLogModal() {
         closeSidebar();
         const content = document.getElementById('update-log-content');

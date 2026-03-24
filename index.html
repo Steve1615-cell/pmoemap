@@ -1313,10 +1313,6 @@
         switchView('view-extensions');
     }
 
-    // ==========================================
-    // ✨ 所有被省略的 Modal UI 與資料處理邏輯補回
-    // ==========================================
-
     function openTitleRankModal() {
         closeSidebar();
         const scopeSelect = document.getElementById('title-rank-scope');
@@ -2244,7 +2240,7 @@
     // 將所有需要的 function 綁定到 window (避免 Reference Error)
     window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal;
     window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal;
-    window.openAddOfficeModal = openAddOfficeModal; window.closeOfficeModal = closeOfficeModal;
+    window.openAddOfficeModal = openAddOfficeModal; window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal;
     window.syncSnPc = syncSnPc;
     window.toggleCategoryDropdown = toggleCategoryDropdown; window.renderCategoryDropdown = renderCategoryDropdown;
     window.filterCategories = filterCategories; window.selectCategory = selectCategory;
@@ -2260,8 +2256,6 @@
     window.closeConfirmModal = closeConfirmModal; window.executeConfirmAction = executeConfirmAction;
     window.restoreLostComputers = restoreLostComputers;
     window.saveMemberData = saveMemberData; window.saveAssetData = saveAssetData; window.saveOfficeData = saveOfficeData;
-
-    // 補齊所有畫面切換與選單功能的 window 綁定
     window.goHome = goHome; window.goUpLevel = goUpLevel;
     window.showOffices = showOffices; window.showDetail = showDetail;
     window.switchTab = switchTab; window.updateDetailContent = updateDetailContent;

@@ -341,7 +341,7 @@
     </div>
 </div>
 
-<!-- ✨ 新增：白名單管理表單 (Modal) -->
+<!-- ✨ 系統授權白名單管理表單 (Modal) -->
 <div id="whitelist-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeWhitelistModal()" style="z-index: 3500;">
     <div class="modal-content">
         <div class="modal-header">
@@ -349,7 +349,7 @@
             <button class="btn-close" onclick="closeWhitelistModal()">×</button>
         </div>
         <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">
-            加入清單的 Google 帳號才能登入系統。您的帳號 (<b style="color:var(--text-main);">steve1616@gmail.com</b>) 為最高權限，不受此限，以防誤觸鎖死。
+            加入清單的 Google 帳號才能登入系統。您的帳號 (<b style="color:var(--text-main);">steve1615@gmail.com</b>) 為最高權限，不受此限，以防誤觸鎖死。
         </div>
         
         <div class="dropdown-search-row" style="margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
@@ -917,8 +917,8 @@
             document.getElementById('loading-overlay').style.display = 'flex';
             document.getElementById('loading-overlay').style.opacity = '1';
 
-            // ⚠️ 這是最高管理員防呆機制，防止你意外把自己踢出系統
-            const superAdmin = 'steve1616@gmail.com';
+            // ✨ 修正信箱為 steve1615@gmail.com
+            const superAdmin = 'steve1615@gmail.com';
             let isAllowed = false;
 
             if (user.email === superAdmin) {
@@ -1027,8 +1027,9 @@
             if(docSnap.exists()) {
                 globalWhitelist = docSnap.data().emails || [];
             } else {
-                safeWrite(setDoc(doc(db, "settings", "whitelist"), { emails: ['steve1616@gmail.com'] }));
-                globalWhitelist = ['steve1616@gmail.com'];
+                // ✨ 修正信箱
+                safeWrite(setDoc(doc(db, "settings", "whitelist"), { emails: ['steve1615@gmail.com'] }));
+                globalWhitelist = ['steve1615@gmail.com'];
             }
             if(document.getElementById('whitelist-modal-overlay').classList.contains('active')) {
                 renderWhitelist();
@@ -1120,7 +1121,8 @@
             itemDiv.className = 'dropdown-item';
             
             let delBtnHtml = '';
-            if (email !== 'steve1616@gmail.com') {
+            // ✨ 修正信箱比對
+            if (email !== 'steve1615@gmail.com') {
                 delBtnHtml = `<button class="dropdown-item-delete" onclick="promptDeleteWhitelist('${email}')">🗑️</button>`;
             } else {
                 delBtnHtml = `<span style="font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 6px; border-radius:4px;">最高權限</span>`;
@@ -2388,12 +2390,13 @@
                 title: document.getElementById('edit-title').value || 'N/A',
                 join_date: document.getElementById('edit-join-date').value || '', 
                 ext: document.getElementById('edit-ext').value || 'N/A',
-                office_id: currentOfficeId 
+                office_id: currentOfficeId // ✨ 存入隱藏的 ID
             };
 
             if (isEditMode) {
                 await safeWrite(updateDoc(doc(db, 'members', currentEditMemberId), memberDataToSave));
             } else {
+                // 自動帶入部門邏輯 (因應需求可保留)
                 if (currentOfficeName.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOfficeName.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
                 else memberDataToSave.dept = currentOfficeName; 
@@ -2430,7 +2433,7 @@
                 category: currentAssetCategory, 
                 sn: document.getElementById('asset-sn').value || 'N/A',
                 status: document.getElementById('asset-status').value,
-                office_id: currentOfficeId 
+                office_id: currentOfficeId // ✨ 存入隱藏的 ID
             };
 
             if (currentAssetCategory === '電腦') {
@@ -2460,7 +2463,7 @@
     function openOfficeModal(officeId) {
         closeFabMenu();
         isOfficeEditMode = true;
-        currentEditOfficeId = officeId; 
+        currentEditOfficeId = officeId; // ✨ 這裡是 UUID 了
         const officeData = globalOffices.find(o => o.id === officeId);
         if (!officeData) { customAlert('找不到辦公室資料！', true); return; }
 

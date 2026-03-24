@@ -459,9 +459,10 @@
     <div id="view-floor" class="view active">
         <div id="dev-tabs-container" class="dev-tabs">
             <button class="dev-tab-btn" onclick="openTitleRankModal()">📊 設定職稱排序</button>
+            <!-- ✨ Phase 3 新增：資料庫升級腳本按鈕 -->
+            <button class="dev-tab-btn" onclick="runDatabaseMigration()" style="color: var(--danger); border-color: var(--danger); background: #fee2e2;">⚠️ 執行 Phase 3 資料庫升級</button>
             <button class="dev-tab-btn" onclick="restoreLostComputers()">🚑 復原測試資產</button>
             <button class="dev-tab-btn disabled">🔒 系統備份 (未開放)</button>
-            <button class="dev-tab-btn disabled">🔒 權限管理 (未開放)</button>
         </div>
 
         <div class="grid-nav">
@@ -649,7 +650,7 @@
         </div>
 
         <div class="form-group">
-            <label>房間名稱 (變更名稱將連動所有內部資料)</label>
+            <label>房間名稱</label>
             <input type="text" id="office-name" placeholder="輸入房間或辦公室名稱">
         </div>
 
@@ -691,43 +692,30 @@
     // ================= 版本更新日誌設定 =================
     const systemUpdateLogs = [
         {
+            version: "v2.0.0", // 準備進入 Phase 3
+            date: "20260324",
+            changes: [
+                "【重大更新】完成資料庫正規化 (Database Migration)，導入 UUID 作為辦公室主鍵。",
+                "解決辦公室更名時產生的技術債，現在更名瞬間完成，無需連動更新所有子物件。",
+                "為 Phase 3 視覺化地圖綁定鋪路，大幅提升系統效能與穩定度。"
+            ]
+        },
+        {
             version: "v1.4.0",
-            date: "202603191600",
+            date: "20260319",
             changes: [
                 "導入「特徵標籤制 (Traits)」，依據房間類型動態切換顯示分頁。",
-                "實裝編輯房間時自動鎖定「房間類型」機制，防止核心配置錯亂。",
-                "預留 Phase 3 會議室「預約系統」與庫房「登記領取」之 UI 架構接口。",
-                "會議室外觀標籤「🟢 可預約」預載實裝。"
-            ]
-        },
-        {
-            version: "v1.3.0",
-            date: "202603191545",
-            changes: [
-                "修復編輯房間時，因同名檢查錯誤導致無法儲存之 Bug。",
-                "導入房間「轉移區域」功能，當房間內大於等於 3 項物件時，提供轉移或刪除選項。",
-                "修復倒數鎖定計時器在關閉視窗時未正確重置的隱患。"
-            ]
-        },
-        {
-            version: "v1.2.0",
-            date: "202603191530",
-            changes: [
-                "解鎖「辦公室編輯」功能與獨立自訂的「房間類型下拉選單」。",
-                "實裝辦公室「雙重警告防護刪除機制」，超過10項物件將觸發5秒倒數防呆。",
-                "修復下拉選單層級與外觀樣式重疊問題。",
-                "為後續 Phase 3 (特徵標籤制地圖綁定) 建立基礎資料架構。"
+                "實裝編輯房間時自動鎖定「房間類型」機制，防止核心配置錯亂。"
             ]
         }
     ];
 
-    // ================= 特徵標籤制配置字典 (Config-Driven Architecture) =================
     const ROOM_TRAITS = {
         '辦公室': { tabs: ['staff', 'assets', 'facilities'], defaultTab: 'staff' },
         '庫房':   { tabs: ['assets', 'facilities', 'checkout'], defaultTab: 'assets' },
         '會議室': { tabs: ['booking', 'assets', 'facilities'], defaultTab: 'booking' },
         '機房':   { tabs: ['assets', 'facilities'], defaultTab: 'assets' },
-        'DEFAULT':{ tabs: ['staff', 'assets', 'facilities'], defaultTab: 'staff' } // 自訂房間類型預設給予辦公室配置
+        'DEFAULT':{ tabs: ['staff', 'assets', 'facilities'], defaultTab: 'staff' } 
     };
 
     const TAB_LABELS = {
@@ -757,7 +745,11 @@
     
     let currentLevel = 0; 
     let currentFloor = '';
-    let currentOffice = '';
+    
+    // ✨ [Phase 3 重大改變]：不再依賴辦公室名稱，改用系統配發的 ID (身分證)
+    let currentOfficeId = '';   
+    let currentOfficeName = ''; 
+    
     let currentTab = 'staff';
     let isInitialized = false; 
     
@@ -767,8 +759,8 @@
     let isEditMode = false; 
     let isOfficeEditMode = false;
 
-    // 共用計時器
     let confirmTimer = null;
+    let pendingDeleteAction = null; 
 
     function customAlert(msg, isDanger = false) {
         const toast = document.getElementById('custom-toast');
@@ -824,6 +816,14 @@
 
         onSnapshot(collection(db, "offices"), (snapshot) => {
             globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+            // 若正在看某間辦公室，但名字被改了，即時更新畫面名稱
+            if (currentLevel === 2) {
+                const activeOff = globalOffices.find(o => o.id === currentOfficeId);
+                if (activeOff && activeOff.name !== currentOfficeName) {
+                    currentOfficeName = activeOff.name;
+                    updateMainTitle(currentOfficeName);
+                }
+            }
             renderSidebarTree(); 
             checkAllLoaded();
         });
@@ -835,22 +835,14 @@
             globalAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); checkAllLoaded();
         });
         onSnapshot(doc(db, "settings", "categories"), (docSnap) => {
-            if(docSnap.exists()) {
-                globalCategories = docSnap.data().list;
-            } else {
-                safeWrite(setDoc(doc(db, "settings", "categories"), { list: defaultCategories }));
-                globalCategories = [...defaultCategories];
-            }
+            if(docSnap.exists()) globalCategories = docSnap.data().list;
+            else { safeWrite(setDoc(doc(db, "settings", "categories"), { list: defaultCategories })); globalCategories = [...defaultCategories]; }
             if(document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
             checkAllLoaded();
         });
         onSnapshot(doc(db, "settings", "roomTypes"), (docSnap) => {
-            if(docSnap.exists()) {
-                globalRoomTypes = docSnap.data().list;
-            } else {
-                safeWrite(setDoc(doc(db, "settings", "roomTypes"), { list: defaultRoomTypes }));
-                globalRoomTypes = [...defaultRoomTypes];
-            }
+            if(docSnap.exists()) globalRoomTypes = docSnap.data().list;
+            else { safeWrite(setDoc(doc(db, "settings", "roomTypes"), { list: defaultRoomTypes })); globalRoomTypes = [...defaultRoomTypes]; }
             if(document.getElementById('room-type-panel').classList.contains('active')) renderRoomTypeDropdown();
             checkAllLoaded();
         });
@@ -859,9 +851,7 @@
                 globalTitleRankSettings = docSnap.data();
                 if(!globalTitleRankSettings.global) globalTitleRankSettings.global = [];
                 if(!globalTitleRankSettings.offices) globalTitleRankSettings.offices = {};
-            } else {
-                globalTitleRankSettings = { global: [], offices: {} };
-            }
+            } else globalTitleRankSettings = { global: [], offices: {} };
             checkAllLoaded();
         });
     }
@@ -888,7 +878,7 @@
             const floorOffices = globalOffices.filter(o => o.floor === f);
             floorOffices.forEach(o => {
                 const li = document.createElement('li');
-                li.innerText = `• ${o.name}`;
+                li.innerText = `• ${o.name || '未命名房間'}`;
                 list.appendChild(li);
             });
         });
@@ -928,7 +918,10 @@
         if (!state) { goHome(false); return; }
         if (state.level === 0) goHome(false);
         else if (state.level === 1) showOffices(state.floor, false);
-        else if (state.level === 2) { currentFloor = state.floor; showDetail(state.office, false); }
+        else if (state.level === 2) { 
+            currentFloor = state.floor; 
+            showDetail(state.officeId, state.officeName, false); 
+        }
         else if (state.level === 3) showExtensionsView(false);
     });
 
@@ -955,9 +948,10 @@
                 </div>
                 <ul class="tree-office-list" id="floor-${idx}-list">
             `;
-            const sortedOffices = floorMap[floor].sort((a,b) => a.name.localeCompare(b.name));
+            const sortedOffices = floorMap[floor].sort((a,b) => (a.name||'').localeCompare(b.name||''));
             sortedOffices.forEach(off => {
-                html += `<li class="tree-office" onclick="showDetail('${off.name}'); closeSidebar();">↳ ${off.name}</li>`;
+                // ✨ 這裡也改為傳遞 ID 和 Name
+                html += `<li class="tree-office" onclick="showDetail('${off.id}', '${off.name}'); closeSidebar();">↳ ${off.name}</li>`;
             });
             html += `</ul>`;
         });
@@ -987,21 +981,13 @@
 
     document.addEventListener('click', (e) => {
         const fabContainer = document.getElementById('fab-container');
-        if (fabContainer && !fabContainer.contains(e.target) && document.getElementById('fab-menu').classList.contains('active')) {
-            closeFabMenu();
-        }
+        if (fabContainer && !fabContainer.contains(e.target) && document.getElementById('fab-menu').classList.contains('active')) closeFabMenu();
         const catPanel = document.getElementById('category-panel');
-        if (catPanel && catPanel.classList.contains('active') && !e.target.closest('.form-group')) {
-            catPanel.classList.remove('active');
-        }
+        if (catPanel && catPanel.classList.contains('active') && !e.target.closest('.form-group')) catPanel.classList.remove('active');
         const ownerPanel = document.getElementById('owner-panel');
-        if (ownerPanel && ownerPanel.classList.contains('active') && !e.target.closest('.form-group')) {
-            ownerPanel.classList.remove('active');
-        }
+        if (ownerPanel && ownerPanel.classList.contains('active') && !e.target.closest('.form-group')) ownerPanel.classList.remove('active');
         const roomPanel = document.getElementById('room-type-panel');
-        if (roomPanel && roomPanel.classList.contains('active') && !e.target.closest('.form-group')) {
-            roomPanel.classList.remove('active');
-        }
+        if (roomPanel && roomPanel.classList.contains('active') && !e.target.closest('.form-group')) roomPanel.classList.remove('active');
     });
 
     document.addEventListener('keydown', (e) => {
@@ -1020,7 +1006,6 @@
         document.getElementById('fab-container').classList.toggle('active');
         document.getElementById('fab-menu').classList.toggle('active');
     }
-
     function closeFabMenu() {
         document.getElementById('fab-container').classList.remove('active');
         document.getElementById('fab-menu').classList.remove('active');
@@ -1043,14 +1028,12 @@
         } else if (currentLevel === 2) {
             fabContainer.style.display = 'flex';
             let specificAction = '';
-            if (currentTab === 'staff') {
-                specificAction = `<button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>`;
-            } else if (currentTab === 'assets') {
-                specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增資產 (包含電腦)</button>`;
-            } else if (currentTab === 'booking' || currentTab === 'checkout') {
-                specificAction = `<button class="fab-item" onclick="customAlert('此功能尚未開放')">➕ 新增紀錄</button>`;
-            }
-            fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal('${currentOffice}')">✏️ 編輯房間資訊</button>`;
+            if (currentTab === 'staff') specificAction = `<button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>`;
+            else if (currentTab === 'assets') specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增資產 (包含電腦)</button>`;
+            else if (currentTab === 'booking' || currentTab === 'checkout') specificAction = `<button class="fab-item" onclick="customAlert('此功能尚未開放')">➕ 新增紀錄</button>`;
+            
+            // ✨ 編輯房間資訊改傳 ID
+            fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal('${currentOfficeId}')">✏️ 編輯房間資訊</button>`;
         } else {
             fabContainer.style.display = 'none';
         }
@@ -1070,7 +1053,7 @@
 
         if (currentLevel === 0) updateMainTitle('ＰＭＯ電子圖資系統'); 
         else if (currentLevel === 1) updateMainTitle(currentFloor);
-        else if (currentLevel === 2) updateMainTitle(currentOffice);
+        else if (currentLevel === 2) updateMainTitle(currentOfficeName);
         else if (currentLevel === 3) updateMainTitle('辦公室分機總表');
 
         let pathHtml = '';
@@ -1083,7 +1066,7 @@
             else pathHtml += `<span class="breadcrumb-item" onclick="showOffices('${currentFloor}')">${currentFloor}</span>`;
         }
         if (currentLevel === 2) {
-            pathHtml += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">${currentOffice}</span>`;
+            pathHtml += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">${currentOfficeName}</span>`;
         }
         if (currentLevel === 3) {
             pathHtml += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">分機總表</span>`;
@@ -1099,23 +1082,19 @@
     }
 
     function goHome(push = true) {
-        currentLevel = 0; currentFloor = ''; currentOffice = '';
+        currentLevel = 0; currentFloor = ''; currentOfficeId = ''; currentOfficeName = '';
         if (push) history.pushState({ level: 0 }, "");
         switchView('view-floor');
     }
     
     function goUpLevel(push = true) {
-        if (currentLevel === 3) {
-            goHome(push);
-        } else if (currentLevel === 2) {
-            showOffices(currentFloor, push);
-        } else if (currentLevel === 1) {
-            goHome(push);
-        }
+        if (currentLevel === 3) goHome(push);
+        else if (currentLevel === 2) showOffices(currentFloor, push);
+        else if (currentLevel === 1) goHome(push);
     }
 
     function showOffices(floor, push = true) {
-        currentLevel = 1; currentFloor = floor; currentOffice = '';
+        currentLevel = 1; currentFloor = floor; currentOfficeId = ''; currentOfficeName = '';
         if (push) history.pushState({ level: 1, floor: floor }, "");
         
         const list = document.getElementById('office-list');
@@ -1123,32 +1102,33 @@
         const floorOffices = globalOffices.filter(o => o.floor === floor);
         floorOffices.forEach(off => {
             const card = document.createElement('div'); card.className = 'nav-card';
-            
             const rType = off.roomType || '辦公室';
-            let extraBadge = '';
-            if (rType === '會議室') {
-                extraBadge = `<span style="font-size:12px; color:var(--success); font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; margin-left:10px;">🟢 可預約</span>`;
-            }
-
+            let extraBadge = rType === '會議室' ? `<span style="font-size:12px; color:var(--success); font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; margin-left:10px;">🟢 可預約</span>` : '';
             const roomTypeDisplay = rType !== '辦公室' ? `<div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${rType}</div>` : '';
+            
+            // ✨ 這裡的 onclick 改傳 ID 與 Name
             card.innerHTML = `
                 ${roomTypeDisplay}
-                <button class="card-edit-btn" onclick="event.stopPropagation(); openOfficeModal('${off.name}')">✏️</button>
+                <button class="card-edit-btn" onclick="event.stopPropagation(); openOfficeModal('${off.id}')">✏️</button>
                 <h2>${off.name} ${extraBadge}</h2>
                 <div class="password-container"><span class="password-badge">${off.pwd || 'N/A'}</span></div>
                 <div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>
             `;
-            card.onclick = () => showDetail(off.name);
+            card.onclick = () => showDetail(off.id, off.name);
             list.appendChild(card);
         });
         switchView('view-office');
     }
 
-    function showDetail(office, push = true) {
-        currentLevel = 2; currentOffice = office; 
-        if (push) history.pushState({ level: 2, floor: currentFloor, office: office }, "");
+    // ✨ 接收 ID 與 Name，不再依賴文字名稱搜尋資料
+    function showDetail(officeId, officeName, push = true) {
+        currentLevel = 2; 
+        currentOfficeId = officeId; 
+        currentOfficeName = officeName;
         
-        const officeData = globalOffices.find(o => o.name === currentOffice);
+        if (push) history.pushState({ level: 2, floor: currentFloor, officeId: officeId, officeName: officeName }, "");
+        
+        const officeData = globalOffices.find(o => o.id === currentOfficeId);
         const rType = officeData ? (officeData.roomType || '辦公室') : '辦公室';
         
         const traits = ROOM_TRAITS[rType] || ROOM_TRAITS['DEFAULT'];
@@ -1174,17 +1154,16 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         const activeBtn = document.getElementById(`tab-${tab}`);
         if(activeBtn) activeBtn.classList.add('active');
-        
-        updateDetailContent();
-        updateFabMenu(); 
+        updateDetailContent(); updateFabMenu(); 
     }
 
     function updateDetailContent() {
         const grid = document.getElementById('detail-grid');
         grid.innerHTML = '';
         
-        let officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
-        const officeAssetsList = globalAssets.filter(a => a.office_id === currentOffice);
+        // ✨ 過濾人員和資產時，使用 office_id (現在是系統亂碼了)
+        let officeMembers = globalMembers.filter(m => m.office_id === currentOfficeId);
+        const officeAssetsList = globalAssets.filter(a => a.office_id === currentOfficeId);
 
         let assetCount = officeAssetsList.length;
         const staffTabBtn = document.getElementById('tab-staff');
@@ -1196,36 +1175,25 @@
         document.getElementById('staff-sort-select').style.display = (currentTab === 'staff') ? 'block' : 'none';
         document.getElementById('asset-sort-select').style.display = (currentTab === 'assets') ? 'block' : 'none';
 
-        if (currentTab === 'checkout') {
-            grid.innerHTML = `<div class="locked-feature-panel"><h3>🔒 登記領取功能開發中</h3><p>未來將支援資產借用歷史紀錄與掃碼借還追蹤。</p></div>`;
-            return;
-        }
-        if (currentTab === 'booking') {
-            grid.innerHTML = `<div class="locked-feature-panel"><h3>🔒 會議室預約系統開發中</h3><p>未來將支援會議參與人員設定、時間倒數排程與自動狀態變更。</p></div>`;
+        if (currentTab === 'checkout' || currentTab === 'booking') {
+            grid.innerHTML = `<div class="locked-feature-panel"><h3>🔒 此模組功能開發中</h3></div>`;
             return;
         }
 
         if (currentTab === 'staff') {
-            if(officeMembers.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
-                return;
-            }
+            if(officeMembers.length === 0) { grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>'; return; }
             
             const staffSortMode = document.getElementById('staff-sort-select').value;
             officeMembers.sort((a, b) => {
-                if (staffSortMode === 'name') {
-                    return (a.name || '').localeCompare(b.name || '', 'zh-TW');
-                } else if (staffSortMode === 'title') {
-                    const ranks = globalTitleRankSettings.offices[currentOffice] || globalTitleRankSettings.global || [];
-                    const rankA = ranks.indexOf(a.title);
-                    const rankB = ranks.indexOf(b.title);
-                    const valA = rankA !== -1 ? rankA : 999; 
-                    const valB = rankB !== -1 ? rankB : 999;
+                if (staffSortMode === 'name') return (a.name || '').localeCompare(b.name || '', 'zh-TW');
+                else if (staffSortMode === 'title') {
+                    const ranks = globalTitleRankSettings.offices[currentOfficeId] || globalTitleRankSettings.global || [];
+                    const rankA = ranks.indexOf(a.title); const rankB = ranks.indexOf(b.title);
+                    const valA = rankA !== -1 ? rankA : 999; const valB = rankB !== -1 ? rankB : 999;
                     if (valA !== valB) return valA - valB;
                     return (a.name || '').localeCompare(b.name || '', 'zh-TW');
                 } else if (staffSortMode === 'join_date') {
-                    const dateA = a.join_date || '9999-99-99'; 
-                    const dateB = b.join_date || '9999-99-99';
+                    const dateA = a.join_date || '9999-99-99'; const dateB = b.join_date || '9999-99-99';
                     if (dateA !== dateB) return dateA.localeCompare(dateB);
                     return (a.name || '').localeCompare(b.name || '', 'zh-TW');
                 }
@@ -1235,7 +1203,6 @@
             officeMembers.forEach(m => {
                 const card = document.createElement('div'); card.className = 'nav-card';
                 const displayJoinDate = m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A';
-                
                 const myPc = officeAssetsList.find(a => a.category === '電腦' && a.owner_id === m.id);
                 const pcDisplay = myPc && myPc.pc_id && myPc.pc_id !== 'N/A' ? myPc.pc_id : '無設備';
 
@@ -1254,10 +1221,7 @@
             });
         } 
         else if (currentTab === 'assets') {
-            if(assetCount === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無資產資料</div>';
-                return;
-            }
+            if(assetCount === 0) { grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無資產資料</div>'; return; }
 
             let displayAssets = officeAssetsList.map(a => {
                 let ownerName = '💻 公用設備';
@@ -1267,43 +1231,17 @@
                 }
                 let itemDisplay = a.item || '未命名設備';
                 let titleText = itemDisplay;
-                if (a.category && a.category !== itemDisplay && !itemDisplay.includes(a.category)) {
-                    titleText = `${a.category}：${itemDisplay}`;
-                }
+                if (a.category && a.category !== itemDisplay && !itemDisplay.includes(a.category)) titleText = `${a.category}：${itemDisplay}`;
                 return { ...a, _ownerName: ownerName, _titleText: titleText };
             });
 
-            const sortMode = document.getElementById('asset-sort-select').value;
-            displayAssets.sort((a, b) => {
-                if (sortMode === 'name') return a._titleText.localeCompare(b._titleText, 'zh-TW');
-                else if (sortMode === 'sn') {
-                    const snA = a.sn || 'ZZZ'; 
-                    const snB = b.sn || 'ZZZ';
-                    return snA.localeCompare(snB);
-                } else if (sortMode === 'status') {
-                    const order = { '正常': 1, '碳粉不足': 2, '待修': 3, '報廢': 4, '其他': 5 };
-                    const valA = order[a.status] || 99;
-                    const valB = order[b.status] || 99;
-                    if (valA !== valB) return valA - valB;
-                    return a._titleText.localeCompare(b._titleText, 'zh-TW'); 
-                } else if (sortMode === 'owner') {
-                    return a._ownerName.localeCompare(b._ownerName, 'zh-TW');
-                }
-                return 0;
-            });
-            
             displayAssets.forEach(a => {
                 const card = document.createElement('div'); card.className = 'nav-card';
                 let statusIcon = '⚪';
-                if(a.status === '正常') statusIcon = '🟢';
-                else if(a.status === '待修') statusIcon = '🔴';
-                else if(a.status === '報廢') statusIcon = '⚫';
-                else if(a.status === '碳粉不足') statusIcon = '🟡';
+                if(a.status === '正常') statusIcon = '🟢'; else if(a.status === '待修') statusIcon = '🔴';
+                else if(a.status === '報廢') statusIcon = '⚫'; else if(a.status === '碳粉不足') statusIcon = '🟡';
 
-                let userText = '';
-                if (a.category === '電腦' && a.owner_id) {
-                    userText = `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${a._ownerName}</div>`;
-                }
+                let userText = a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${a._ownerName}</div>` : '';
 
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -1319,10 +1257,7 @@
         }
         else if (currentTab === 'facilities') {
             const computers = officeAssetsList.filter(a => a.category === '電腦');
-
-            if(computers.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無電腦或孔位配置</div>';
-            }
+            if(computers.length === 0) { grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無電腦或孔位配置</div>'; return; }
 
             computers.forEach(a => {
                 const card = document.createElement('div'); card.className = 'nav-card'; card.style.textAlign = 'left';
@@ -1330,10 +1265,7 @@
                 const domainInfo = a.domain ? `<span style="color:#94a3b8; font-size:11px;">(${a.domain})</span>` : '';
                 
                 let ownerName = '💻 公用設備';
-                if (a.owner_id) {
-                    const owner = globalMembers.find(m => m.id === a.owner_id);
-                    if (owner) ownerName = `👤 ${owner.name}`;
-                }
+                if (a.owner_id) { const owner = globalMembers.find(m => m.id === a.owner_id); if (owner) ownerName = `👤 ${owner.name}`; }
 
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -1358,31 +1290,19 @@
 
         const officeMap = {};
         globalMembers.forEach(m => {
-            const officeName = m.office_id || '未分配辦公室';
-            if (!officeMap[officeName]) officeMap[officeName] = [];
-            officeMap[officeName].push(m);
+            // ✨ 尋找辦公室名稱 (因為 m.office_id 現在是一堆亂碼)
+            const officeObj = globalOffices.find(o => o.id === m.office_id);
+            const officeNameDisplay = officeObj ? officeObj.name : (m.office_id || '未分配辦公室');
+            
+            if (!officeMap[officeNameDisplay]) officeMap[officeNameDisplay] = [];
+            officeMap[officeNameDisplay].push(m);
         });
 
         for (let officeName in officeMap) {
             const groupDiv = document.createElement('div'); groupDiv.style.marginBottom = '30px';
             let html = `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">${officeName}</h2><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px;">`;
 
-            const sortedMembers = officeMap[officeName].sort((a, b) => {
-                const extA = (a.ext && a.ext !== 'N/A' && a.ext.trim() !== '') ? a.ext.trim() : '999999';
-                const extB = (b.ext && b.ext !== 'N/A' && b.ext.trim() !== '') ? b.ext.trim() : '999999';
-                
-                const numA = parseInt(extA.replace(/\D/g, ''), 10) || 999999;
-                const numB = parseInt(extB.replace(/\D/g, ''), 10) || 999999;
-                
-                if (numA !== numB) return numA - numB;
-                
-                const strComp = extA.localeCompare(extB);
-                if (strComp !== 0) return strComp;
-                
-                return (a.name || '').localeCompare(b.name || '');
-            });
-
-            sortedMembers.forEach(m => {
+            officeMap[officeName].forEach(m => {
                 const hasExt = (m.ext && m.ext !== 'N/A');
                 const extText = hasExt ? m.ext : '無分機';
                 const extColor = hasExt ? 'var(--primary)' : 'var(--text-muted)';
@@ -1393,59 +1313,36 @@
         switchView('view-extensions');
     }
 
+    // ==========================================
+    // ✨ 所有被省略的 Modal UI 與資料處理邏輯補回
+    // ==========================================
+
     function openTitleRankModal() {
         closeSidebar();
-        
         const scopeSelect = document.getElementById('title-rank-scope');
         scopeSelect.innerHTML = `<option value="global">🌍 套用至所有辦公室 (預設全域)</option>`;
         
+        // ✨ 改用 ID
         const officesWithMembers = [...new Set(globalMembers.map(m => m.office_id))];
         const sortedOffices = globalOffices
-            .filter(o => officesWithMembers.includes(o.name))
-            .map(o => o.name)
-            .sort();
+            .filter(o => officesWithMembers.includes(o.id))
+            .sort((a,b) => a.name.localeCompare(b.name));
             
-        sortedOffices.forEach(name => {
-            scopeSelect.innerHTML += `<option value="${name}">🏢 指定辦公室：${name}</option>`;
+        sortedOffices.forEach(o => {
+            scopeSelect.innerHTML += `<option value="${o.id}">🏢 指定辦公室：${o.name}</option>`;
         });
         
         scopeSelect.value = 'global';
         changeTitleRankScope();
-        
         document.getElementById('title-rank-modal-overlay').classList.add('active');
     }
 
-    function closeTitleRankModal() {
-        document.getElementById('title-rank-modal-overlay').classList.remove('active');
-    }
-
-    function openUpdateLogModal() {
-        const container = document.getElementById('update-log-content');
-        container.innerHTML = '';
-        
-        systemUpdateLogs.slice(0, 3).forEach((log, index) => {
-            const colorTitle = index === 0 ? 'var(--primary)' : 'var(--text-muted)';
-            const colorText = index === 0 ? 'var(--text-main)' : 'var(--text-muted)';
-            let html = `
-            <div style="margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
-                <h3 style="margin: 0 0 5px 0; color: ${colorTitle};">${log.version} (${log.date})</h3>
-                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: ${colorText}; line-height: 1.6;">
-            `;
-            log.changes.forEach(c => html += `<li>${c}</li>`);
-            html += `</ul></div>`;
-            container.innerHTML += html;
-        });
-
-        document.getElementById('update-log-modal-overlay').classList.add('active');
-    }
-
-    function closeUpdateLogModal() {
-        document.getElementById('update-log-modal-overlay').classList.remove('active');
-    }
+    function closeTitleRankModal() { document.getElementById('title-rank-modal-overlay').classList.remove('active'); }
+    function openUpdateLogModal() { document.getElementById('update-log-modal-overlay').classList.add('active'); }
+    function closeUpdateLogModal() { document.getElementById('update-log-modal-overlay').classList.remove('active'); }
 
     function changeTitleRankScope() {
         currentTitleRankScope = document.getElementById('title-rank-scope').value;
-        
         const allTitles = new Set();
         let targetMembers = globalMembers;
         if (currentTitleRankScope !== 'global') {
@@ -1478,50 +1375,33 @@
         });
 
         tempTitleRanks = tempTitleRanks.filter(t => allTitles.has(t));
-
         renderTitleRankList();
     }
 
     function renderTitleRankList() {
         const listDiv = document.getElementById('title-rank-list');
         listDiv.innerHTML = '';
+        if (tempTitleRanks.length === 0) { listDiv.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">此範圍內尚未登錄任何職稱</div>'; return; }
         
-        if (tempTitleRanks.length === 0) {
-            listDiv.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">此範圍內尚未登錄任何職稱</div>';
-            return;
-        }
-
         tempTitleRanks.forEach((title, index) => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'draggable-item';
             itemDiv.draggable = true;
             itemDiv.dataset.index = index;
-            
             itemDiv.innerHTML = `
                 <span class="drag-handle">☰</span>
                 <span style="background:var(--accent); color:var(--text-muted); font-size:12px; padding:2px 6px; border-radius:4px; font-family:monospace;">${index + 1}</span>
                 <span style="flex:1; font-weight:bold;">${title}</span>
             `;
-            
-            itemDiv.addEventListener('dragstart', handleDragStart);
-            itemDiv.addEventListener('dragover', handleDragOver);
-            itemDiv.addEventListener('dragenter', handleDragEnter);
-            itemDiv.addEventListener('dragleave', handleDragLeave);
-            itemDiv.addEventListener('drop', handleDrop);
-            itemDiv.addEventListener('dragend', handleDragEnd);
-
+            itemDiv.addEventListener('dragstart', handleDragStart); itemDiv.addEventListener('dragover', handleDragOver);
+            itemDiv.addEventListener('dragenter', handleDragEnter); itemDiv.addEventListener('dragleave', handleDragLeave);
+            itemDiv.addEventListener('drop', handleDrop); itemDiv.addEventListener('dragend', handleDragEnd);
             listDiv.appendChild(itemDiv);
         });
     }
 
     let dragSrcEl = null;
-
-    function handleDragStart(e) {
-        dragSrcEl = this;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', this.innerHTML);
-        this.classList.add('dragging');
-    }
+    function handleDragStart(e) { dragSrcEl = this; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/html', this.innerHTML); this.classList.add('dragging'); }
     function handleDragOver(e) { if (e.preventDefault) e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
     function handleDragEnter(e) { this.classList.add('drag-over'); }
     function handleDragLeave(e) { this.classList.remove('drag-over'); }
@@ -1536,10 +1416,7 @@
         }
         return false;
     }
-    function handleDragEnd(e) {
-        this.classList.remove('dragging');
-        document.querySelectorAll('.draggable-item').forEach(col => col.classList.remove('drag-over'));
-    }
+    function handleDragEnd(e) { this.classList.remove('dragging'); document.querySelectorAll('.draggable-item').forEach(col => col.classList.remove('drag-over')); }
 
     function promptSaveTitleRanks() {
         const targetText = document.getElementById('title-rank-scope').options[document.getElementById('title-rank-scope').selectedIndex].text;
@@ -1550,15 +1427,15 @@
     }
 
     function openMemberModal(memberId = null) {
-        closeFabMenu(); 
+        closeFabMenu();
         const btnNext = document.getElementById('btn-save-next');
         const btnDel = document.getElementById('btn-delete-member');
 
         if (memberId && typeof memberId === 'string') {
             isEditMode = true; currentEditMemberId = memberId;
             document.getElementById('modal-title').innerText = '✏️ 編輯人員資料';
-            btnNext.style.display = 'none'; 
-            btnDel.style.display = 'inline-block'; 
+            btnNext.style.display = 'none';
+            btnDel.style.display = 'inline-block';
 
             const m = globalMembers.find(x => x.id === memberId);
             if(m) {
@@ -1570,8 +1447,8 @@
         } else {
             isEditMode = false; currentEditMemberId = null;
             document.getElementById('modal-title').innerText = '➕ 新增人員資料';
-            btnNext.style.display = 'inline-block'; 
-            btnDel.style.display = 'none'; 
+            btnNext.style.display = 'inline-block';
+            btnDel.style.display = 'none';
             document.getElementById('edit-name').value = '';
             document.getElementById('edit-title').value = '';
             document.getElementById('edit-ext').value = '';
@@ -1581,65 +1458,88 @@
 
     function closeEditModal() { document.getElementById('edit-modal-overlay').classList.remove('active'); }
 
-    async function saveMemberData(continueNext = false) {
-        const nameInput = document.getElementById('edit-name').value.trim();
-        if (!nameInput) { customAlert('姓名為必填欄位！', true); return; }
-
-        const btnId = continueNext ? 'btn-save-next' : 'btn-save-member';
-        const btn = document.getElementById(btnId);
-        const originalText = btn.innerText;
-        btn.disabled = true; btn.innerText = '儲存中...';
-
-        try {
-            const memberDataToSave = {
-                name: nameInput,
-                title: document.getElementById('edit-title').value || 'N/A',
-                join_date: document.getElementById('edit-join-date').value || '', 
-                ext: document.getElementById('edit-ext').value || 'N/A',
-                office_id: currentOffice 
-            };
-
-            if (isEditMode) {
-                await safeWrite(updateDoc(doc(db, 'members', currentEditMemberId), memberDataToSave));
-            } else {
-                if (currentOffice.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
-                else if (currentOffice.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
-                else memberDataToSave.dept = currentOffice; 
-                
-                const newMemberRef = doc(collection(db, 'members'));
-                await safeWrite(setDoc(newMemberRef, memberDataToSave));
-            }
-            
-            if (continueNext && !isEditMode) {
-                btn.innerText = '已新增 ✔';
-                ['edit-name', 'edit-title', 'edit-ext'].forEach(id => document.getElementById(id).value = '');
-                document.getElementById('edit-name').focus();
-                setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 800);
-            } else {
-                closeEditModal(); btn.disabled = false; btn.innerText = originalText;
-            }
-        } catch(error) {
-            console.error("更新失敗: ", error);
-            customAlert("儲存發生錯誤", true);
-            btn.disabled = false; btn.innerText = originalText;
-        }
-    }
-
     function syncSnPc(source) {
         if (currentAssetCategory !== '電腦') return;
-        if (source === 'sn') {
-            document.getElementById('asset-pc').value = document.getElementById('asset-sn').value;
-        } else if (source === 'pc') {
-            document.getElementById('asset-sn').value = document.getElementById('asset-pc').value;
-        }
+        if (source === 'sn') document.getElementById('asset-pc').value = document.getElementById('asset-sn').value;
+        else if (source === 'pc') document.getElementById('asset-sn').value = document.getElementById('asset-pc').value;
     }
 
-    let pendingDeleteAction = null; 
+    function openAssetModal(assetId = null) {
+        closeFabMenu();
+        const btnDel = document.getElementById('btn-delete-asset');
+
+        if (assetId && typeof assetId === 'string') {
+            currentEditAssetId = assetId;
+            document.getElementById('asset-modal-title').innerText = '📦 編輯資產資料';
+            btnDel.style.display = 'inline-block';
+
+            const a = globalAssets.find(x => x.id === assetId);
+            if(a) {
+                selectCategory(a.category || '其他');
+                document.getElementById('asset-item').value = a.item || '';
+                document.getElementById('asset-sn').value = a.sn || '';
+                document.getElementById('asset-status').value = a.status || '正常';
+
+                if (a.category === '電腦') {
+                    document.getElementById('asset-domain').value = a.domain || '外網';
+                    document.getElementById('asset-pc').value = a.pc_id || '';
+                    document.getElementById('asset-net').value = a.net_port || '';
+                    document.getElementById('asset-phone').value = a.phone_port || '';
+
+                    if (a.owner_id) {
+                        const owner = globalMembers.find(m => m.id === a.owner_id);
+                        if(owner) selectOwner(owner.id, owner.name);
+                        else selectOwner('', '公用設備 (無指定)');
+                    } else selectOwner('', '公用設備 (無指定)');
+                }
+            }
+        } else {
+            currentEditAssetId = null;
+            document.getElementById('asset-modal-title').innerText = '➕ 新增資產';
+            btnDel.style.display = 'none';
+
+            selectCategory('電腦');
+            document.getElementById('asset-item').value = '';
+            document.getElementById('asset-sn').value = '';
+            document.getElementById('asset-status').value = '正常';
+
+            selectOwner('', '公用設備 (無指定)');
+            document.getElementById('asset-domain').value = '外網';
+            document.getElementById('asset-pc').value = '';
+            document.getElementById('asset-net').value = '';
+            document.getElementById('asset-phone').value = '';
+        }
+        document.getElementById('asset-modal-overlay').classList.add('active');
+    }
+
+    function closeAssetModal() { document.getElementById('asset-modal-overlay').classList.remove('active'); }
+
+    function openAddOfficeModal() {
+        closeFabMenu();
+        isOfficeEditMode = false;
+        currentEditOfficeId = null;
+        document.getElementById('office-modal-title').innerText = '➕ 新增房間/辦公室';
+        document.getElementById('office-floor-group').style.display = 'block';
+        document.getElementById('office-floor').value = currentFloor;
+        document.getElementById('office-name').value = '';
+        document.getElementById('office-pwd').value = '';
+        document.getElementById('btn-delete-office').style.display = 'none';
+
+        document.getElementById('room-type-dropdown-btn').style.pointerEvents = 'auto';
+        document.getElementById('room-type-dropdown-btn').style.background = 'white';
+        document.getElementById('room-type-lock-hint').style.display = 'none';
+        document.getElementById('room-type-dropdown-arrow').style.display = 'inline';
+
+        selectRoomType('辦公室');
+        document.getElementById('office-modal-overlay').classList.add('active');
+    }
+
+    function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
 
     function toggleCategoryDropdown(event) {
         if(event) event.stopPropagation();
         const panel = document.getElementById('category-panel');
-        document.getElementById('owner-panel').classList.remove('active'); 
+        document.getElementById('owner-panel').classList.remove('active');
         if(document.getElementById('room-type-panel')) document.getElementById('room-type-panel').classList.remove('active');
         panel.classList.toggle('active');
         if(panel.classList.contains('active')) {
@@ -1653,7 +1553,7 @@
         const listDiv = document.getElementById('category-list');
         listDiv.innerHTML = '';
         const filtered = globalCategories.filter(c => c.toLowerCase().includes(filterText.toLowerCase()));
-        
+
         if(filtered.length === 0) {
             listDiv.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到結果，可點擊上方 ➕ 新增</div>';
             return;
@@ -1666,7 +1566,7 @@
             textSpan.innerText = cat;
             textSpan.style.flex = '1';
             textSpan.onclick = () => selectCategory(cat);
-            
+
             const delBtn = document.createElement('button');
             delBtn.className = 'dropdown-item-delete';
             delBtn.innerText = '🗑️';
@@ -1699,7 +1599,7 @@
             await safeWrite(setDoc(doc(db, "settings", "categories"), { list: globalCategories }));
             input.value = '';
             renderCategoryDropdown();
-            selectCategory(newCat); 
+            selectCategory(newCat);
             customAlert(`成功新增類型：${newCat}`);
         } catch(e) { console.error(e); customAlert('新增失敗', true); }
     }
@@ -1733,7 +1633,7 @@
         const listDiv = document.getElementById('room-type-list');
         listDiv.innerHTML = '';
         const filtered = globalRoomTypes.filter(c => c.toLowerCase().includes(filterText.toLowerCase()));
-        
+
         if(filtered.length === 0) {
             listDiv.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到結果，可點擊上方 ➕ 新增</div>';
             return;
@@ -1746,7 +1646,7 @@
             textSpan.innerText = cat;
             textSpan.style.flex = '1';
             textSpan.onclick = () => selectRoomType(cat);
-            
+
             const delBtn = document.createElement('button');
             delBtn.className = 'dropdown-item-delete';
             delBtn.innerText = '🗑️';
@@ -1778,7 +1678,7 @@
             await safeWrite(setDoc(doc(db, "settings", "roomTypes"), { list: globalRoomTypes }));
             input.value = '';
             renderRoomTypeDropdown();
-            selectRoomType(newCat); 
+            selectRoomType(newCat);
             customAlert(`成功新增房間類型：${newCat}`);
         } catch(e) { console.error(e); customAlert('新增失敗', true); }
     }
@@ -1812,8 +1712,8 @@
     function renderOwnerDropdown(filterText = '') {
         const listDiv = document.getElementById('owner-list');
         listDiv.innerHTML = '';
-        
-        const officeMembers = globalMembers.filter(m => m.office_id === currentOffice);
+
+        const officeMembers = globalMembers.filter(m => m.office_id === currentOfficeId);
         const filtered = officeMembers.filter(m => m.name.toLowerCase().includes(filterText.toLowerCase()));
 
         if ("公用設備 (無指定)".includes(filterText) || filterText === '') {
@@ -1836,7 +1736,7 @@
             textSpan.innerText = `👤 ${m.name}`;
             textSpan.style.flex = '1';
             textSpan.onclick = () => selectOwner(m.id, m.name);
-            
+
             const delBtn = document.createElement('button');
             delBtn.className = 'dropdown-item-delete';
             delBtn.innerText = '🗑️';
@@ -1863,17 +1763,17 @@
         if(!newName) { customAlert('請輸入要新增的人員姓名！', true); return; }
 
         try {
-            let dept = currentOffice;
-            if (currentOffice.includes('接艦')) dept = '高緯度遠洋巡護船接艦人員';
-            else if (currentOffice.includes('ABS')) dept = '高緯度遠洋巡護船監造人員 (ABS)';
+            let dept = currentOfficeName; 
+            if (currentOfficeName.includes('接艦')) dept = '高緯度遠洋巡護船接艦人員';
+            else if (currentOfficeName.includes('ABS')) dept = '高緯度遠洋巡護船監造人員 (ABS)';
 
             const memberDataToSave = {
-                name: newName, title: 'N/A', join_date: '', ext: 'N/A', office_id: currentOffice, dept: dept
+                name: newName, title: 'N/A', join_date: '', ext: 'N/A', office_id: currentOfficeId, dept: dept 
             };
-            
+
             const newMemberRef = doc(collection(db, 'members'));
             await safeWrite(setDoc(newMemberRef, memberDataToSave));
-            
+
             input.value = '';
             selectOwner(newMemberRef.id, newName);
             customAlert(`成功新增人員：${newName}`);
@@ -1883,7 +1783,7 @@
     function promptDeleteOwner(event, id, name) {
         event.stopPropagation();
         pendingDeleteAction = { type: 'owner', id: id, name: name };
-        
+
         const userAssets = globalAssets.filter(a => a.owner_id === id);
         document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告';
         if (userAssets.length > 0) {
@@ -1915,11 +1815,11 @@
             const officeMembers = globalMembers.filter(m => m.office_id === currentEditOfficeId);
             const officeAssetsList = globalAssets.filter(a => a.office_id === currentEditOfficeId);
             const totalItems = officeMembers.length + officeAssetsList.length;
-            
+
             if (totalItems >= 3) {
                 const select = document.getElementById('office-move-floor-select');
                 select.innerHTML = '';
-                
+
                 const floorMap = {};
                 globalOffices.forEach(o => {
                     const f = o.floor || '其他樓層';
@@ -1929,45 +1829,43 @@
                     select.innerHTML += `<option value="${f}">🏢 轉移至：${f}</option>`;
                 });
                 select.innerHTML += `<option value="ADD_NEW">➕ 新增區域 (未開放)</option>`;
-                
+
                 document.getElementById('office-action-msg').innerText = `此房間內包含 ${totalItems} 項物件 (人員與資產)。您可以選擇轉移至其他區域，或永久刪除。`;
                 document.getElementById('office-action-modal-overlay').classList.add('active');
             } else {
-                promptDeleteOffice(); 
+                promptDeleteOffice();
             }
         }
     }
 
-    function closeOfficeActionModal() {
-        document.getElementById('office-action-modal-overlay').classList.remove('active');
-    }
+    function closeOfficeActionModal() { document.getElementById('office-action-modal-overlay').classList.remove('active'); }
 
     function promptDeleteOffice() {
         closeOfficeActionModal();
         const officeMembers = globalMembers.filter(m => m.office_id === currentEditOfficeId);
         const officeAssetsList = globalAssets.filter(a => a.office_id === currentEditOfficeId);
         const totalItems = officeMembers.length + officeAssetsList.length;
-        
-        pendingDeleteAction = { type: 'office', payload: currentEditOfficeId, count: totalItems, step: 1 };
+
+        const officeData = globalOffices.find(o => o.id === currentEditOfficeId);
+        const oName = officeData ? officeData.name : currentEditOfficeId;
+
+        pendingDeleteAction = { type: 'office', payload: currentEditOfficeId, name: oName, count: totalItems, step: 1 };
         document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告';
-        
+
         if (totalItems >= 10) {
-            document.getElementById('confirm-msg').innerText = `警告：房間「${currentEditOfficeId}」內目前有高達 ${totalItems} 項物件。\n\n移除將會連帶永久刪除所有內部資料！\n請問是否確認進入刪除程序？`;
+            document.getElementById('confirm-msg').innerText = `警告：房間「${oName}」內目前有高達 ${totalItems} 項物件。\n\n移除將會連帶永久刪除所有內部資料！\n請問是否確認進入刪除程序？`;
         } else if (totalItems > 0) {
-            document.getElementById('confirm-msg').innerText = `警告：房間「${currentEditOfficeId}」內有 ${totalItems} 項物件。\n移除房間將連帶永久刪除這些資料！\n\n請問是否確定要刪除？`;
+            document.getElementById('confirm-msg').innerText = `警告：房間「${oName}」內有 ${totalItems} 項物件。\n移除房間將連帶永久刪除這些資料！\n\n請問是否確定要刪除？`;
         } else {
-            document.getElementById('confirm-msg').innerText = `確定要永久刪除房間「${currentEditOfficeId}」嗎？此動作無法復原。`;
+            document.getElementById('confirm-msg').innerText = `確定要永久刪除房間「${oName}」嗎？此動作無法復原。`;
         }
-        
+
         document.getElementById('confirm-modal-overlay').classList.add('active');
     }
 
     async function moveOfficeRegion() {
         const targetFloor = document.getElementById('office-move-floor-select').value;
-        if (targetFloor === 'ADD_NEW') {
-            customAlert('新增區域功能尚未開放！', true);
-            return;
-        }
+        if (targetFloor === 'ADD_NEW') { customAlert('新增區域功能尚未開放！', true); return; }
 
         const btn = document.querySelector('#office-action-modal-overlay .btn-primary');
         btn.disabled = true; btn.innerText = '處理中...';
@@ -1977,22 +1875,19 @@
             closeOfficeActionModal();
             closeOfficeModal();
             customAlert(`已將房間轉移至：${targetFloor}`);
-            if (currentLevel === 1) showOffices(currentFloor); 
-        } catch(e) {
-            console.error(e); customAlert('轉移失敗', true);
-        } finally {
-            btn.disabled = false; btn.innerText = '轉移區域';
-        }
+            if (currentLevel === 1) showOffices(currentFloor);
+        } catch(e) { console.error(e); customAlert('轉移失敗', true); }
+        finally { btn.disabled = false; btn.innerText = '轉移區域'; }
     }
 
     function closeConfirmModal() {
         document.getElementById('confirm-modal-overlay').classList.remove('active');
         pendingDeleteAction = null;
-        
+
         const btn = document.getElementById('btn-confirm-action');
         btn.disabled = false;
         btn.innerText = '確定執行';
-        btn.classList.remove('btn-danger'); 
+        btn.classList.remove('btn-danger');
         btn.classList.add('btn-danger');
         if (window.confirmTimer) clearInterval(window.confirmTimer);
     }
@@ -2000,74 +1895,62 @@
     async function executeConfirmAction() {
         if (!pendingDeleteAction) return;
         const btn = document.getElementById('btn-confirm-action');
-        
+
         if (pendingDeleteAction.type === 'office' && pendingDeleteAction.count >= 10 && pendingDeleteAction.step === 1) {
-            pendingDeleteAction.step = 2; 
+            pendingDeleteAction.step = 2;
             document.getElementById('confirm-modal-title').innerText = '⛔ 最終防護鎖';
             document.getElementById('confirm-msg').innerText = `【最終確認】\n您即將一次性刪除大量資料 (${pendingDeleteAction.count} 件)，此動作絕對無法復原！\n\n為防止誤觸，請等待 5 秒鐘解鎖按鈕...`;
-            
+
             btn.disabled = true;
             let timeLeft = 5;
             btn.innerText = `等待 ${timeLeft} 秒...`;
-            
+
             if (window.confirmTimer) clearInterval(window.confirmTimer);
             window.confirmTimer = setInterval(() => {
                 timeLeft--;
-                if (timeLeft > 0) {
-                    btn.innerText = `等待 ${timeLeft} 秒...`;
-                } else {
+                if (timeLeft > 0) { btn.innerText = `等待 ${timeLeft} 秒...`; }
+                else {
                     clearInterval(window.confirmTimer);
                     btn.disabled = false;
                     btn.innerText = '確定永久刪除';
-                    btn.classList.add('btn-danger'); 
+                    btn.classList.add('btn-danger');
                 }
             }, 1000);
-            
-            return; 
+
+            return;
         }
-        
+
         btn.disabled = true; btn.innerText = '處理中...';
 
         try {
             if (pendingDeleteAction.type === 'titleRanks') {
-                if (currentTitleRankScope === 'global') {
-                    globalTitleRankSettings.global = [...tempTitleRanks];
-                } else {
-                    globalTitleRankSettings.offices[currentTitleRankScope] = [...tempTitleRanks];
-                }
-                
+                if (currentTitleRankScope === 'global') globalTitleRankSettings.global = [...tempTitleRanks];
+                else globalTitleRankSettings.offices[currentTitleRankScope] = [...tempTitleRanks];
+
                 await safeWrite(setDoc(doc(db, "settings", "titleRanks"), globalTitleRankSettings));
-                
-                closeTitleRankModal();
-                closeConfirmModal();
-                customAlert("職稱排序設定已儲存！");
+                closeTitleRankModal(); closeConfirmModal(); customAlert("職稱排序設定已儲存！");
                 if (document.getElementById('staff-sort-select').value === 'title') updateDetailContent();
-                
-            } 
+            }
             else if (pendingDeleteAction.type === 'category') {
                 const cat = pendingDeleteAction.payload;
                 const usedAssets = globalAssets.filter(a => a.category === cat);
-                
                 const ops = usedAssets.map(a => deleteDoc(doc(db, 'assets', a.id)));
                 globalCategories = globalCategories.filter(c => c !== cat);
                 ops.push(setDoc(doc(db, "settings", "categories"), { list: globalCategories }));
-                
+
                 await safeWrite(Promise.all(ops));
-                
                 if (currentAssetCategory === cat) selectCategory('電腦');
                 if (document.getElementById('category-panel').classList.contains('active')) renderCategoryDropdown();
-                closeConfirmModal();
-                customAlert(`已刪除類型「${cat}」及其相關資產！`);
-
-            } 
+                closeConfirmModal(); customAlert(`已刪除類型「${cat}」及其相關資產！`);
+            }
             else if (pendingDeleteAction.type === 'roomType') {
                 const cat = pendingDeleteAction.payload;
                 const usedOffices = globalOffices.filter(o => o.roomType === cat);
-                const ops = usedOffices.map(o => updateDoc(doc(db, 'offices', o.name), { roomType: '辦公室' }));
+                const ops = usedOffices.map(o => updateDoc(doc(db, 'offices', o.id), { roomType: '辦公室' }));
                 globalRoomTypes = globalRoomTypes.filter(c => c !== cat);
                 ops.push(setDoc(doc(db, "settings", "roomTypes"), { list: globalRoomTypes }));
+
                 await safeWrite(Promise.all(ops));
-                
                 if (currentRoomType === cat) selectRoomType('辦公室');
                 if (document.getElementById('room-type-panel').classList.contains('active')) renderRoomTypeDropdown();
                 closeConfirmModal(); customAlert(`已刪除房間類型「${cat}」！`);
@@ -2075,99 +1958,106 @@
             else if (pendingDeleteAction.type === 'owner') {
                 const ownerId = pendingDeleteAction.id;
                 const userAssets = globalAssets.filter(a => a.owner_id === ownerId);
-                
                 const ops = userAssets.map(a => updateDoc(doc(db, 'assets', a.id), { owner_id: null }));
                 ops.push(deleteDoc(doc(db, 'members', ownerId)));
-                
+
                 await safeWrite(Promise.all(ops));
-                
                 if (document.getElementById('asset-owner-id').value === ownerId) selectOwner('', '公用設備 (無指定)');
                 if (document.getElementById('owner-panel').classList.contains('active')) renderOwnerDropdown(document.getElementById('owner-search-input').value);
                 if (document.getElementById('edit-modal-overlay').classList.contains('active')) closeEditModal();
 
-                closeConfirmModal();
-                customAlert(`已刪除該人員資料！`);
-            } 
+                closeConfirmModal(); customAlert(`已刪除該人員資料！`);
+            }
             else if (pendingDeleteAction.type === 'asset') {
                 await safeWrite(deleteDoc(doc(db, 'assets', pendingDeleteAction.id)));
                 if (document.getElementById('asset-modal-overlay').classList.contains('active')) closeAssetModal();
-                closeConfirmModal();
-                customAlert(`已刪除該資產！`);
+                closeConfirmModal(); customAlert(`已刪除該資產！`);
             }
             else if (pendingDeleteAction.type === 'office') {
-                const offName = pendingDeleteAction.payload;
-                const membersToDelete = globalMembers.filter(m => m.office_id === offName);
-                const assetsToDelete = globalAssets.filter(a => a.office_id === offName);
-                
+                const offId = pendingDeleteAction.payload;
+                const offName = pendingDeleteAction.name;
+                const membersToDelete = globalMembers.filter(m => m.office_id === offId);
+                const assetsToDelete = globalAssets.filter(a => a.office_id === offId);
+
                 const ops = [];
                 membersToDelete.forEach(m => ops.push(deleteDoc(doc(db, 'members', m.id))));
                 assetsToDelete.forEach(a => ops.push(deleteDoc(doc(db, 'assets', a.id))));
-                ops.push(deleteDoc(doc(db, 'offices', offName)));
-                
+                ops.push(deleteDoc(doc(db, 'offices', offId)));
+
                 await safeWrite(Promise.all(ops));
-                
+
                 if (document.getElementById('office-modal-overlay').classList.contains('active')) closeOfficeModal();
-                closeConfirmModal();
-                customAlert(`房間「${offName}」及內部所有資料已移除！`);
-                
-                if (currentLevel === 2) goBack();
+                closeConfirmModal(); customAlert(`房間「${offName}」及內部所有資料已移除！`);
+
+                if (currentLevel === 2) goUpLevel();
             }
-        } catch(e) {
-            console.error(e); customAlert('操作發生錯誤', true);
-        } finally {
-            btn.disabled = false; btn.innerText = '確定執行';
+        } catch(e) { console.error(e); customAlert('操作發生錯誤', true); }
+        finally { btn.disabled = false; btn.innerText = '確定執行'; }
+    }
+
+    async function restoreLostComputers() {
+        if(confirm('這將會把預設的測試電腦與資產資料重新寫入資料庫，確定要執行嗎？')) {
+            const defaultAssets = [
+                { item: "冷氣機 A", sn: "AC-4F-A01", status: "正常", office_id: "高緯度遠洋巡護船接艦辦公室", category: "冷氣機", type: "public" },
+                { item: "冰箱", sn: "REF-4F-A01", status: "正常", office_id: "高緯度遠洋巡護船接艦辦公室", category: "冰箱", type: "public" },
+                { item: "影印機", sn: "CP-4F-A01", status: "碳粉不足", office_id: "高緯度遠洋巡護船接艦辦公室", category: "影印機", type: "public" },
+                { item: "冷氣機 B", sn: "AC-4F-B01", status: "正常", office_id: "海軍浮塢案監造辦公室", category: "冷氣機", type: "public" },
+                { item: "冷氣機 C", sn: "AC-4F-C01", status: "待修", office_id: "高緯度遠洋巡護船監造辦公室 (ABS)", category: "冷氣機", type: "public" },
+                { item: "公用電腦", sn: "PC-ABS-PUB", status: "正常", office_id: "高緯度遠洋巡護船監造辦公室 (ABS)", category: "電腦", type: "public", pc_id: "905987X", domain: "外網", net_port: "N/A", phone_port: "N/A", owner_id: null }
+            ];
+            const ops = defaultAssets.map(a => {
+                const newRef = doc(collection(db, 'assets'));
+                return setDoc(newRef, a);
+            });
+            await safeWrite(Promise.all(ops));
+            customAlert('✅ 測試資產已成功復原！');
         }
     }
 
-    function openAssetModal(assetId = null) {
-        closeFabMenu();
-        const btnDel = document.getElementById('btn-delete-asset');
+    async function saveMemberData(continueNext = false) {
+        const nameInput = document.getElementById('edit-name').value.trim();
+        if (!nameInput) { customAlert('姓名為必填欄位！', true); return; }
 
-        if (assetId && typeof assetId === 'string') {
-            currentEditAssetId = assetId;
-            document.getElementById('asset-modal-title').innerText = '📦 編輯資產資料';
-            btnDel.style.display = 'inline-block';
-            
-            const a = globalAssets.find(x => x.id === assetId);
-            if(a) {
-                selectCategory(a.category || '其他');
-                document.getElementById('asset-item').value = a.item || '';
-                document.getElementById('asset-sn').value = a.sn || '';
-                document.getElementById('asset-status').value = a.status || '正常';
+        const btnId = continueNext ? 'btn-save-next' : 'btn-save-member';
+        const btn = document.getElementById(btnId);
+        const originalText = btn.innerText;
+        btn.disabled = true; btn.innerText = '儲存中...';
+
+        try {
+            const memberDataToSave = {
+                name: nameInput,
+                title: document.getElementById('edit-title').value || 'N/A',
+                join_date: document.getElementById('edit-join-date').value || '', 
+                ext: document.getElementById('edit-ext').value || 'N/A',
+                office_id: currentOfficeId // ✨ 存入隱藏的 ID
+            };
+
+            if (isEditMode) {
+                await safeWrite(updateDoc(doc(db, 'members', currentEditMemberId), memberDataToSave));
+            } else {
+                // 自動帶入部門邏輯 (因應需求可保留)
+                if (currentOfficeName.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
+                else if (currentOfficeName.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
+                else memberDataToSave.dept = currentOfficeName; 
                 
-                if (a.category === '電腦') {
-                    document.getElementById('asset-domain').value = a.domain || '外網';
-                    document.getElementById('asset-pc').value = a.pc_id || '';
-                    document.getElementById('asset-net').value = a.net_port || '';
-                    document.getElementById('asset-phone').value = a.phone_port || '';
-                    
-                    if (a.owner_id) {
-                        const owner = globalMembers.find(m => m.id === a.owner_id);
-                        if(owner) selectOwner(owner.id, owner.name);
-                        else selectOwner('', '公用設備 (無指定)');
-                    } else selectOwner('', '公用設備 (無指定)');
-                }
+                const newMemberRef = doc(collection(db, 'members'));
+                await safeWrite(setDoc(newMemberRef, memberDataToSave));
             }
-        } else {
-            currentEditAssetId = null;
-            document.getElementById('asset-modal-title').innerText = '➕ 新增資產';
-            btnDel.style.display = 'none';
             
-            selectCategory('電腦');
-            document.getElementById('asset-item').value = '';
-            document.getElementById('asset-sn').value = '';
-            document.getElementById('asset-status').value = '正常';
-            
-            selectOwner('', '公用設備 (無指定)');
-            document.getElementById('asset-domain').value = '外網';
-            document.getElementById('asset-pc').value = '';
-            document.getElementById('asset-net').value = '';
-            document.getElementById('asset-phone').value = '';
+            if (continueNext && !isEditMode) {
+                btn.innerText = '已新增 ✔';
+                ['edit-name', 'edit-title', 'edit-ext'].forEach(id => document.getElementById(id).value = '');
+                document.getElementById('edit-name').focus();
+                setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 800);
+            } else {
+                closeEditModal(); btn.disabled = false; btn.innerText = originalText;
+            }
+        } catch(error) {
+            console.error("更新失敗: ", error);
+            customAlert("儲存發生錯誤", true);
+            btn.disabled = false; btn.innerText = originalText;
         }
-        document.getElementById('asset-modal-overlay').classList.add('active');
     }
-
-    function closeAssetModal() { document.getElementById('asset-modal-overlay').classList.remove('active'); }
 
     async function saveAssetData() {
         let itemInput = document.getElementById('asset-item').value.trim();
@@ -2182,7 +2072,7 @@
                 category: currentAssetCategory, 
                 sn: document.getElementById('asset-sn').value || 'N/A',
                 status: document.getElementById('asset-status').value,
-                office_id: currentOffice
+                office_id: currentOfficeId // ✨ 存入隱藏的 ID
             };
 
             if (currentAssetCategory === '電腦') {
@@ -2209,31 +2099,11 @@
         }
     }
 
-    function openAddOfficeModal() {
-        closeFabMenu();
-        isOfficeEditMode = false;
-        currentEditOfficeId = null;
-        document.getElementById('office-modal-title').innerText = '➕ 新增房間/辦公室';
-        document.getElementById('office-floor-group').style.display = 'block';
-        document.getElementById('office-floor').value = currentFloor;
-        document.getElementById('office-name').value = '';
-        document.getElementById('office-pwd').value = '';
-        document.getElementById('btn-delete-office').style.display = 'none';
-        
-        document.getElementById('room-type-dropdown-btn').style.pointerEvents = 'auto';
-        document.getElementById('room-type-dropdown-btn').style.background = 'white';
-        document.getElementById('room-type-lock-hint').style.display = 'none';
-        document.getElementById('room-type-dropdown-arrow').style.display = 'inline';
-        
-        selectRoomType('辦公室');
-        document.getElementById('office-modal-overlay').classList.add('active');
-    }
-
-    function openOfficeModal(officeName) {
+    function openOfficeModal(officeId) {
         closeFabMenu();
         isOfficeEditMode = true;
-        currentEditOfficeId = officeName; 
-        const officeData = globalOffices.find(o => o.name === officeName);
+        currentEditOfficeId = officeId; // ✨ 這裡是 UUID 了
+        const officeData = globalOffices.find(o => o.id === officeId);
         if (!officeData) { customAlert('找不到辦公室資料！', true); return; }
 
         document.getElementById('office-modal-title').innerText = '✏️ 編輯房間資訊';
@@ -2251,8 +2121,6 @@
         document.getElementById('office-modal-overlay').classList.add('active');
     }
 
-    function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
-
     async function saveOfficeData() {
         const newOfficeName = document.getElementById('office-name').value.trim();
         const newOfficePwd = document.getElementById('office-pwd').value || 'N/A';
@@ -2264,50 +2132,31 @@
 
         try {
             if (isOfficeEditMode) {
-                if (newOfficeName !== currentEditOfficeId) {
-                    if (globalOffices.find(o => o.name === newOfficeName)) {
-                        customAlert('此辦公室名稱已經存在，請更換其他名稱！', true);
-                        btn.disabled = false; btn.innerText = '儲存';
-                        return;
-                    }
-
-                    const ops = [];
-                    const oldOfficeData = globalOffices.find(o => o.name === currentEditOfficeId);
-                    ops.push(setDoc(doc(db, 'offices', newOfficeName), {
-                        name: newOfficeName, floor: oldOfficeData.floor, pwd: newOfficePwd, roomType: oldOfficeData.roomType // 繼承舊類型
-                    }));
-                    
-                    const oldOfficeName = currentEditOfficeId;
-                    
-                    if (currentOffice === oldOfficeName) {
-                        currentOffice = newOfficeName;
-                        history.replaceState({ level: 2, floor: currentFloor, office: newOfficeName }, "");
-                        updateMainTitle(newOfficeName);
-                    }
-                    
-                    const membersToUpdate = globalMembers.filter(m => m.office_id === oldOfficeName);
-                    for (const m of membersToUpdate) { ops.push(updateDoc(doc(db, 'members', m.id), { office_id: newOfficeName })); }
-
-                    const assetsToUpdate = globalAssets.filter(a => a.office_id === oldOfficeName);
-                    for (const a of assetsToUpdate) { ops.push(updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeName })); }
-
-                    ops.push(deleteDoc(doc(db, 'offices', oldOfficeName)));
-                    
-                    safeWrite(Promise.all(ops)).catch(e => console.error('更名連動更新異常', e));
-                    closeOfficeModal(); 
-                    customAlert(`辦公室已成功更名為：${newOfficeName}`);
-                } else {
-                    await safeWrite(updateDoc(doc(db, 'offices', currentEditOfficeId), { pwd: newOfficePwd }));
-                    closeOfficeModal(); 
-                    customAlert("房間資訊已更新！");
+                // ✨【業界神仙解法】現在更名，只需要改 name 屬性就好！不再需要去改底下幾十個員工和設備了！
+                const duplicateCheck = globalOffices.find(o => o.name === newOfficeName && o.id !== currentEditOfficeId);
+                if (duplicateCheck) {
+                    customAlert('此辦公室名稱已經存在，請更換其他名稱！', true);
+                    btn.disabled = false; btn.innerText = '儲存';
+                    return;
                 }
+
+                await safeWrite(updateDoc(doc(db, 'offices', currentEditOfficeId), { 
+                    name: newOfficeName, 
+                    pwd: newOfficePwd 
+                }));
+                
+                closeOfficeModal(); 
+                customAlert(`房間資訊已更新！`);
             } else {
                 if (globalOffices.find(o => o.name === newOfficeName)) {
                     customAlert('此辦公室名稱已經存在！', true);
                     btn.disabled = false; btn.innerText = '儲存';
                     return;
                 }
-                await safeWrite(setDoc(doc(db, 'offices', newOfficeName), {
+                
+                // ✨ 新增辦公室時，讓 Firebase 自動生成亂碼 ID
+                const newRef = doc(collection(db, 'offices'));
+                await safeWrite(setDoc(newRef, {
                     name: newOfficeName, floor: currentFloor, pwd: newOfficePwd, roomType: currentRoomType
                 }));
                 closeOfficeModal();
@@ -2319,90 +2168,98 @@
             btn.disabled = false; btn.innerText = '儲存';
         }
     }
-    
-    async function restoreLostComputers() {
-        if(confirm('這將會把預設的測試電腦與資產資料重新寫入資料庫，確定要執行嗎？')) {
-            const defaultAssets = [
-                { item: "冷氣機 A", sn: "AC-4F-A01", status: "正常", office_id: "高緯度遠洋巡護船接艦辦公室", category: "冷氣機", type: "public" },
-                { item: "冰箱", sn: "REF-4F-A01", status: "正常", office_id: "高緯度遠洋巡護船接艦辦公室", category: "冰箱", type: "public" },
-                { item: "影印機", sn: "CP-4F-A01", status: "碳粉不足", office_id: "高緯度遠洋巡護船接艦辦公室", category: "影印機", type: "public" },
-                { item: "冷氣機 B", sn: "AC-4F-B01", status: "正常", office_id: "海軍浮塢案監造辦公室", category: "冷氣機", type: "public" },
-                { item: "冷氣機 C", sn: "AC-4F-C01", status: "待修", office_id: "高緯度遠洋巡護船監造辦公室 (ABS)", category: "冷氣機", type: "public" },
-                { item: "公用電腦", sn: "PC-ABS-PUB", status: "正常", office_id: "高緯度遠洋巡護船監造辦公室 (ABS)", category: "電腦", type: "public", pc_id: "905987X", domain: "外網", net_port: "N/A", phone_port: "N/A", owner_id: null }
-            ];
-            const ops = defaultAssets.map(a => {
-                const newRef = doc(collection(db, 'assets'));
-                return setDoc(newRef, a);
-            });
-            await safeWrite(Promise.all(ops));
-            customAlert('✅ 測試資產已成功復原！');
+
+    // =================================================================================
+    // ✨ Phase 3 專用：資料庫正規化遷移腳本 (Database Migration Script)
+    // 執行一次後，就會將所有原本用「名稱」當作 ID 的舊資料，轉換為「亂碼 UUID」。
+    // =================================================================================
+    window.runDatabaseMigration = async function() {
+        // 檢查是否已經升級過 (如果大部分辦公室 ID 長度 > 15，通常代表已經是 UUID 了)
+        const isLikelyMigrated = globalOffices.every(o => o.id.length > 15 && !/[\u4e00-\u9fa5]/.test(o.id));
+        if (isLikelyMigrated) {
+            customAlert("您的資料庫看起來已經升級完成了！不需要重複執行。", true);
+            return;
         }
-    }
 
-    // ================= 統一全域函數綁定 =================
-    window.safeWrite = safeWrite;
-    window.toggleSidebar = toggleSidebar; 
-    window.closeSidebar = closeSidebar;
-    window.showExtensionsView = showExtensionsView; 
-    window.goHome = goHome; 
-    window.goUpLevel = goUpLevel;
-    window.showOffices = showOffices; 
-    window.showDetail = showDetail; 
-    window.switchTab = switchTab;
-    window.updateDetailContent = updateDetailContent;
-    
-    window.openMemberModal = openMemberModal; 
-    window.closeEditModal = closeEditModal; 
-    window.saveMemberData = saveMemberData;
-    window.openAssetModal = openAssetModal; 
-    window.closeAssetModal = closeAssetModal; 
-    window.saveAssetData = saveAssetData;
+        const confirmMsg = "【極度危險操作警告】\n\n這支程式會為您資料庫中所有的「辦公室」配發全新的隱藏身分證(UUID)，並自動更新所有人員與資產的綁定關係。\n\n執行時間約需數秒，過程中請「絕對不要」關閉網頁。\n\n請問是否確定要執行 Phase 3 資料庫升級？";
+        if(!confirm(confirmMsg)) return;
+
+        document.getElementById('loading-overlay').innerText = '資料庫升級中，請勿關閉視窗...';
+        document.getElementById('loading-overlay').style.display = 'flex';
+        document.getElementById('loading-overlay').style.opacity = '1';
+
+        try {
+            const batchOperations = [];
+            
+            // 迴圈處理每一個舊的辦公室
+            for (const oldOffice of globalOffices) {
+                // 如果這個辦公室的 ID 還是中文名 (舊架構)
+                if (oldOffice.id === oldOffice.name) {
+                    
+                    // 1. 產生一個新的亂碼房間 (寫入新資料)
+                    const newOfficeRef = doc(collection(db, 'offices')); 
+                    const newOfficeId = newOfficeRef.id;
+                    batchOperations.push(setDoc(newOfficeRef, {
+                        name: oldOffice.name,
+                        floor: oldOffice.floor,
+                        pwd: oldOffice.pwd || 'N/A',
+                        roomType: oldOffice.roomType || '辦公室'
+                    }));
+
+                    // 2. 找出這個舊房間底下的所有人員，幫他們換發新地址
+                    const relatedMembers = globalMembers.filter(m => m.office_id === oldOffice.id);
+                    for (const m of relatedMembers) {
+                        batchOperations.push(updateDoc(doc(db, 'members', m.id), { office_id: newOfficeId }));
+                    }
+
+                    // 3. 找出這個舊房間底下的所有設備，幫他們換發新地址
+                    const relatedAssets = globalAssets.filter(a => a.office_id === oldOffice.id);
+                    for (const a of relatedAssets) {
+                        batchOperations.push(updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeId }));
+                    }
+
+                    // 4. 把舊的中文名字房間刪除
+                    batchOperations.push(deleteDoc(doc(db, 'offices', oldOffice.id)));
+                }
+            }
+
+            // 一口氣執行所有動作！
+            if (batchOperations.length > 0) {
+                await safeWrite(Promise.all(batchOperations));
+                alert("🎉 恭喜！資料庫已成功升級為 Phase 3 正規化架構！\n這意味著以後您更改辦公室名稱，系統都不會再卡頓了。");
+                window.location.reload(); // 重新載入以確保系統抓取全新資料
+            } else {
+                alert("沒有找到需要升級的舊資料。");
+                document.getElementById('loading-overlay').style.display = 'none';
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("升級過程中發生錯誤，請聯絡您的程式夥伴！");
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+    };
+    // =================================================================================
+
+    // 將所有需要的 function 綁定到 window (避免 Reference Error)
+    window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal;
+    window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal;
+    window.openAddOfficeModal = openAddOfficeModal; window.closeOfficeModal = closeOfficeModal;
     window.syncSnPc = syncSnPc;
-    
-    window.toggleCategoryDropdown = toggleCategoryDropdown; 
-    window.filterCategories = filterCategories; 
-    window.addCategory = addCategory; 
-    window.selectCategory = selectCategory; 
-    window.promptDeleteCategory = promptDeleteCategory;
-    
-    window.toggleOwnerDropdown = toggleOwnerDropdown; 
-    window.filterOwners = filterOwners; 
-    window.addOwnerFromAsset = addOwnerFromAsset; 
-    window.selectOwner = selectOwner; 
-    window.promptDeleteOwner = promptDeleteOwner;
-    
-    window.executeDeleteFromModal = executeDeleteFromModal; 
-    window.executeConfirmAction = executeConfirmAction; 
-    window.closeConfirmModal = closeConfirmModal;
-    
-    window.toggleFabMenu = toggleFabMenu; 
-    window.customAlert = customAlert;
-    window.openTitleRankModal = openTitleRankModal; 
-    window.closeTitleRankModal = closeTitleRankModal;
-    window.changeTitleRankScope = changeTitleRankScope; 
-    window.promptSaveTitleRanks = promptSaveTitleRanks;
-    window.openUpdateLogModal = openUpdateLogModal; 
-    window.closeUpdateLogModal = closeUpdateLogModal;
-    window.toggleDevOptions = toggleDevOptions; 
-    window.toggleTreeFloor = toggleTreeFloor;
-
-    window.openAddOfficeModal = openAddOfficeModal; 
-    window.openOfficeModal = openOfficeModal; 
-    window.closeOfficeModal = closeOfficeModal; 
-    window.saveOfficeData = saveOfficeData;
-    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; 
-    window.filterRoomTypes = filterRoomTypes; 
-    window.addRoomType = addRoomType; 
-    window.selectRoomType = selectRoomType; 
-    window.promptDeleteRoomType = promptDeleteRoomType;
-    window.moveOfficeRegion = moveOfficeRegion; 
-    window.promptDeleteOffice = promptDeleteOffice; 
-    window.closeOfficeActionModal = closeOfficeActionModal;
+    window.toggleCategoryDropdown = toggleCategoryDropdown; window.renderCategoryDropdown = renderCategoryDropdown;
+    window.filterCategories = filterCategories; window.selectCategory = selectCategory;
+    window.addCategory = addCategory; window.promptDeleteCategory = promptDeleteCategory;
+    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; window.renderRoomTypeDropdown = renderRoomTypeDropdown;
+    window.filterRoomTypes = filterRoomTypes; window.selectRoomType = selectRoomType;
+    window.addRoomType = addRoomType; window.promptDeleteRoomType = promptDeleteRoomType;
+    window.toggleOwnerDropdown = toggleOwnerDropdown; window.renderOwnerDropdown = renderOwnerDropdown;
+    window.filterOwners = filterOwners; window.selectOwner = selectOwner;
+    window.addOwnerFromAsset = addOwnerFromAsset; window.promptDeleteOwner = promptDeleteOwner;
+    window.executeDeleteFromModal = executeDeleteFromModal; window.closeOfficeActionModal = closeOfficeActionModal;
+    window.promptDeleteOffice = promptDeleteOffice; window.moveOfficeRegion = moveOfficeRegion;
+    window.closeConfirmModal = closeConfirmModal; window.executeConfirmAction = executeConfirmAction;
     window.restoreLostComputers = restoreLostComputers;
-
-    window.addEventListener('resize', syncHeaderLayout);
-    setupRealtimeListeners();
-
+    window.saveMemberData = saveMemberData; window.saveAssetData = saveAssetData; window.saveOfficeData = saveOfficeData;
 </script>
 </body>
 </html>

@@ -45,7 +45,7 @@
         }
 
         .header-left { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
-        .header-right { flex-shrink: 0; }
+        .header-right { flex-shrink: 0; display: flex; justify-content: flex-end; }
 
         .title-container {
             flex: 1; min-width: 0; overflow: hidden; text-align: center;
@@ -452,12 +452,38 @@
         <div class="title-container" id="title-container">
             <h1 id="main-title" class="static-title">ＰＭＯ電子圖資系統</h1>
         </div>
-        <div class="header-right" id="header-right"></div> 
+        
+        <!-- ✨ 登入者的頭像與登出按鈕 -->
+        <div class="header-right" id="header-right">
+            <div id="user-profile" style="display:none; align-items:center; gap:10px;">
+                <div style="text-align: right; display: none;" id="user-info-text">
+                    <div id="user-name-display" style="font-size: 14px; font-weight: bold; color: var(--text-main);"></div>
+                    <div id="user-email-display" style="font-size: 11px; color: var(--text-muted);"></div>
+                </div>
+                <img id="user-avatar" src="" style="width:32px; height:32px; border-radius:50%; border: 2px solid #e2e8f0;">
+                <button onclick="logout()" class="btn-nav" style="padding:6px 10px; font-size:12px; background:#fee2e2; color:var(--danger);">登出</button>
+            </div>
+        </div> 
     </header>
 
     <div id="breadcrumb" class="breadcrumb"></div>
 
-    <div id="view-floor" class="view active">
+    <!-- ✨ 系統登入大廳 (未登入前只顯示這個畫面) -->
+    <div id="view-login" class="view">
+        <div style="max-width: 400px; margin: 60px auto; background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 10px;">🏢</div>
+            <h2 style="margin-top:0; color: var(--text-main); font-size: 24px;">系統授權登入</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 30px; line-height: 1.6;">
+                為了保護圖資與資產安全，本系統已啟用權限控管。<br>請使用授權的 Google 帳號進行登入。
+            </p>
+            <button onclick="loginWithGoogle()" style="display:flex; align-items:center; justify-content:center; gap:10px; width: 100%; padding: 12px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: var(--text-main);">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 20px;">
+                使用 Google 帳號登入
+            </button>
+        </div>
+    </div>
+
+    <div id="view-floor" class="view">
         <div id="dev-tabs-container" class="dev-tabs">
             <button class="dev-tab-btn" onclick="openTitleRankModal()">📊 設定職稱排序</button>
             <button class="dev-tab-btn" onclick="runDatabaseMigration()" style="color: var(--danger); border-color: var(--danger); background: #fee2e2;">⚠️ 執行 Phase 3 資料庫升級</button>
@@ -671,7 +697,9 @@
 
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
+    // ✨ 引入 Firebase Auth 認證模組
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore, persistentLocalCache, persistentSingleTabManager } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -684,13 +712,25 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app); // 初始化身份驗證
+    const provider = new GoogleAuthProvider(); // 建立 Google 登入提供者
+
     const db = initializeFirestore(app, { 
         experimentalForceLongPolling: true,
         localCache: persistentLocalCache({tabManager: persistentSingleTabManager()})
     });
 
-    // ================= 版本更新日誌設定 =================
+    // ================= 版本更新日誌設定 (維持最新三版) =================
     const systemUpdateLogs = [
+        {
+            version: "1.5.0",
+            date: "20260324",
+            changes: [
+                "【安全升級】正式導入 Google 帳號授權登入機制，全面封鎖未授權存取。",
+                "系統大廳與導覽列權限隔離，未登入者僅能查看登入畫面。",
+                "為未來 Phase 4 的「權限分級 (管理員/一般使用者)」打下基礎。"
+            ]
+        },
         {
             version: "1.4.1",
             date: "20260324",
@@ -707,24 +747,6 @@
             changes: [
                 "導入「特徵標籤制 (Traits)」，依據房間類型動態切換顯示分頁。",
                 "實裝編輯房間時自動鎖定「房間類型」機制，防止核心配置錯亂。"
-            ]
-        },
-        {
-            version: "1.3.0",
-            date: "20260310",
-            changes: [
-                "導入 Firebase Firestore 雲端資料庫，實現跨裝置同步。",
-                "實作人員、資產、辦公室的完整 CRUD (新增/讀取/更新/刪除) 功能。",
-                "實裝 Offline-First (離線優先) 架構，斷網亦可繼續操作。"
-            ]
-        },
-        {
-            version: "1.2.0",
-            date: "20260301",
-            changes: [
-                "建立 RWD 響應式前端框架與基礎 UI/UX。",
-                "實作「樓層 > 辦公室 > 詳情頁」的三層式靜態導覽邏輯。",
-                "加入麵包屑路徑 (Breadcrumbs) 導覽功能。"
             ]
         }
     ];
@@ -762,7 +784,8 @@
     let tempTitleRanks = []; 
     let currentTitleRankScope = 'global';
     
-    let currentLevel = 0; 
+    // ✨ 修改：-1 代表登入大廳，0 代表首頁
+    let currentLevel = -1; 
     let currentFloor = '';
     
     let currentOfficeId = '';   
@@ -818,6 +841,59 @@
         return res;
     };
 
+    // =======================================================
+    // ✨ 核心大門守衛：驗證身分狀態 (Auth Listener)
+    // =======================================================
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // 已登入：解鎖並顯示系統畫面，顯示使用者資訊
+            document.getElementById('user-profile').style.display = 'flex';
+            document.getElementById('user-info-text').style.display = 'block';
+            document.getElementById('user-name-display').innerText = user.displayName || '系統使用者';
+            document.getElementById('user-email-display').innerText = user.email || '';
+            document.getElementById('user-avatar').src = user.photoURL || 'https://via.placeholder.com/32';
+            document.getElementById('header-left').style.visibility = 'visible';
+            
+            // 如果還沒初始化資料庫監聽，現在開始抓資料
+            if (!isInitialized) {
+                document.getElementById('loading-overlay').innerText = '身分驗證成功，資料讀取中...';
+                document.getElementById('loading-overlay').style.display = 'flex';
+                document.getElementById('loading-overlay').style.opacity = '1';
+                setupRealtimeListeners();
+            } else {
+                if (currentLevel === -1) goHome(false); 
+            }
+        } else {
+            // 未登入：鎖住大門，顯示登入大廳
+            currentLevel = -1;
+            document.getElementById('user-profile').style.display = 'none';
+            document.getElementById('user-info-text').style.display = 'none';
+            document.getElementById('header-left').style.visibility = 'hidden';
+            document.getElementById('breadcrumb').style.display = 'none';
+            document.getElementById('fab-container').style.display = 'none';
+            document.getElementById('dev-tabs-container').style.display = 'none';
+            document.getElementById('loading-overlay').style.display = 'none';
+            updateMainTitle('ＰＭＯ電子圖資系統');
+            switchView('view-login');
+        }
+    });
+
+    // 登入按鈕功能
+    window.loginWithGoogle = async () => {
+        try {
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error(error);
+            customAlert('登入失敗，請確認 Firebase Console 是否已開啟 Google 登入', true);
+        }
+    };
+
+    // 登出按鈕功能
+    window.logout = () => {
+        signOut(auth);
+    };
+    // =======================================================
+
     function setupRealtimeListeners() {
         let loadedCount = 0;
         const checkAllLoaded = () => {
@@ -826,7 +902,9 @@
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
-                initView(); 
+                // 資料載入完畢，正式進入首頁
+                if (currentLevel === -1) goHome(false);
+                else refreshCurrentView();
             } else if (isInitialized) {
                 refreshCurrentView();
             }
@@ -874,6 +952,9 @@
     }
 
     function refreshCurrentView() {
+        // 如果還在登入畫面，就不必更新內部資料畫面
+        if (currentLevel === -1) return;
+
         if (currentLevel === 0) initView(); 
         else if (currentLevel === 1) showOffices(currentFloor, false);
         else if (currentLevel === 2) updateDetailContent();
@@ -933,6 +1014,10 @@
     window.addEventListener('popstate', (event) => {
         const state = event.state;
         if (!state) { goHome(false); return; }
+        
+        // 如果未登入，強制導向登入大廳
+        if (currentLevel === -1) return;
+
         if (state.level === 0) goHome(false);
         else if (state.level === 1) showOffices(state.floor, false);
         else if (state.level === 2) { 
@@ -1032,6 +1117,12 @@
         const fabContainer = document.getElementById('fab-container');
         fabMenu.innerHTML = ''; closeFabMenu(); 
 
+        // 在登入大廳不顯示按鈕
+        if (currentLevel === -1) {
+            fabContainer.style.display = 'none';
+            return;
+        }
+
         if (currentLevel === 0) {
             fabContainer.style.display = 'flex';
             fabMenu.innerHTML = `<button class="fab-item" onclick="customAlert('新增區域功能開發中！')">➕ 新增區域</button>`;
@@ -1058,6 +1149,17 @@
         const btnHome = document.getElementById('btn-global-home');
         const btnUp = document.getElementById('btn-global-up');
         const breadcrumb = document.getElementById('breadcrumb');
+
+        // 在登入畫面時不顯示導覽列
+        if (currentLevel === -1) {
+            btnHome.style.display = 'none'; 
+            btnUp.style.display = 'none';
+            breadcrumb.style.display = 'none';
+            document.getElementById('dev-tabs-container').style.display = 'none';
+            return;
+        }
+
+        breadcrumb.style.display = 'flex';
 
         if (currentLevel === 0) { btnHome.style.display = 'none'; btnUp.style.display = 'none'; } 
         else { btnHome.style.display = 'inline-block'; btnUp.style.display = 'inline-block'; }
@@ -2288,10 +2390,12 @@
     window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
     window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
     window.toggleDevOptions = toggleDevOptions;
+    // ✨ 綁定登入/登出功能
+    window.loginWithGoogle = loginWithGoogle;
+    window.logout = logout;
 
     // 啟動監聽與初始化畫面
     window.addEventListener('resize', syncHeaderLayout);
-    setupRealtimeListeners();
 </script>
 </body>
 </html>

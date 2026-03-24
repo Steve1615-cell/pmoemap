@@ -728,6 +728,7 @@
             changes: [
                 "【安全升級】正式導入 Google 帳號授權登入機制，全面封鎖未授權存取。",
                 "系統大廳與導覽列權限隔離，未登入者僅能查看登入畫面。",
+                "優化 Google 登入錯誤捕捉機制，幫助排除網域授權問題。",
                 "為未來 Phase 4 的「權限分級 (管理員/一般使用者)」打下基礎。"
             ]
         },
@@ -878,13 +879,21 @@
         }
     });
 
-    // 登入按鈕功能
+    // 登入按鈕功能 - 加入更清楚的錯誤捕捉
     window.loginWithGoogle = async () => {
         try {
             await signInWithPopup(auth, provider);
         } catch (error) {
-            console.error(error);
-            customAlert('登入失敗，請確認 Firebase Console 是否已開啟 Google 登入', true);
+            console.error("Google 登入錯誤：", error);
+            
+            // 針對未授權網域給出明確提示
+            if (error.code === 'auth/unauthorized-domain') {
+                customAlert('登入失敗：目前執行的網址未獲 Firebase 授權！請下載檔案至本機執行。', true);
+            } else if (error.code === 'auth/popup-closed-by-user') {
+                customAlert('登入取消：您關閉了登入視窗。', true);
+            } else {
+                customAlert('登入失敗：' + error.message, true);
+            }
         }
     };
 

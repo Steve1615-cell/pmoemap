@@ -277,6 +277,13 @@
         .fab-btn { width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: white; font-size: 30px; border: none; box-shadow: 0 4px 15px rgba(37,99,235,0.4); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: transform 0.3s ease; }
         .fab-container.active .fab-btn { transform: rotate(45deg); background: var(--danger); }
 
+        /* ✨ 頭貼下拉選單 CSS */
+        .avatar-dropdown-item {
+            padding: 12px 15px; font-size: 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 10px;
+        }
+        .avatar-dropdown-item:hover { background: var(--accent); color: var(--primary); }
+        .avatar-dropdown-item:last-child { border-bottom: none; }
+
         /* 針對觸控設備 (手機/平板) 的專屬設定 */
         @media (hover: none) {
             .app-container { padding: 10px 15px; }
@@ -294,7 +301,7 @@
         #loading-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: var(--bg); display: flex; justify-content: center; align-items: center;
-            z-index: 2000; font-size: 20px; font-weight: bold; color: var(--primary); transition: opacity 0.3s; flex-direction: column; gap: 15px;
+            z-index: 5000; font-size: 20px; font-weight: bold; color: var(--primary); transition: opacity 0.3s; flex-direction: column; gap: 15px;
         }
         #custom-toast {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
@@ -349,19 +356,42 @@
             <button class="btn-close" onclick="closeWhitelistModal()">×</button>
         </div>
         <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">
-            加入清單的 Google 帳號才能登入系統。您的帳號 (<b style="color:var(--text-main);">steve1615@gmail.com</b>) 為最高權限，不受此限，以防誤觸鎖死。
+            在此輸入信箱即可將其加入白名單並獲取登入權限。<br>最高管理員 (<b style="color:var(--text-main);">steve1615@gmail.com</b>) 不受此限。
         </div>
         
         <div class="dropdown-search-row" style="margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-            <input type="email" id="whitelist-input" placeholder="輸入要授權的 Google 信箱..." style="border:none; box-shadow:none; flex:1;">
-            <button class="btn-primary" onclick="addWhitelistEmail()" style="padding: 4px 12px; flex-shrink: 0;">新增</button>
+            <input type="email" id="whitelist-input" placeholder="輸入要授權的 Google 信箱..." style="border:none; box-shadow:none; flex:1; padding: 10px;">
+            <button class="btn-primary" onclick="addWhitelistEmail()" style="padding: 6px 16px; flex-shrink: 0; font-size: 14px;">新增授權</button>
         </div>
 
-        <div id="whitelist-list" style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
-            <!-- JS 動態生成 -->
+        <!-- ✨ 僅管理員可見的清單區塊 -->
+        <div id="whitelist-admin-container" style="display:none; margin-top: 20px; border-top: 1px dashed #cbd5e1; padding-top: 15px;">
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: var(--primary);">已授權帳號列表 (僅管理員可見)</div>
+            <div id="whitelist-list" style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
+                <!-- JS 動態生成 -->
+            </div>
         </div>
+
         <div class="modal-footer" style="margin-top: 15px;">
             <button class="btn-secondary" onclick="closeWhitelistModal()">關閉</button>
+        </div>
+    </div>
+</div>
+
+<!-- ✨ 設定個人暱稱表單 (Modal) -->
+<div id="nickname-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeNicknameModal()" style="z-index: 3600;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>✏️ 設定個人暱稱</span>
+            <button class="btn-close" onclick="closeNicknameModal()">×</button>
+        </div>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">此暱稱將在管理員的授權名單中顯示，以方便辨識您的身分。</p>
+        <div class="form-group">
+            <input type="text" id="nickname-input" placeholder="輸入您的暱稱 (例如: 王小明)">
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeNicknameModal()">取消</button>
+            <button class="btn-primary" onclick="saveNickname()">儲存</button>
         </div>
     </div>
 </div>
@@ -482,15 +512,21 @@
             <h1 id="main-title" class="static-title">ＰＭＯ電子圖資系統</h1>
         </div>
         
-        <!-- ✨ 登入者的頭像與登出按鈕 -->
+        <!-- ✨ 登入者的頭像與隱藏式下拉選單 -->
         <div class="header-right" id="header-right">
-            <div id="user-profile" style="display:none; align-items:center; gap:10px;">
+            <div id="user-profile" style="display:none; align-items:center; gap:10px; cursor: pointer; position: relative;" onclick="toggleAvatarMenu(event)">
                 <div style="text-align: right; display: none;" id="user-info-text">
                     <div id="user-name-display" style="font-size: 14px; font-weight: bold; color: var(--text-main);"></div>
                     <div id="user-email-display" style="font-size: 11px; color: var(--text-muted);"></div>
                 </div>
-                <img id="user-avatar" src="" style="width:32px; height:32px; border-radius:50%; border: 2px solid #e2e8f0;">
-                <button id="btn-logout" onclick="logout()" class="btn-nav" style="padding:6px 10px; font-size:12px; background:#fee2e2; color:var(--danger); transition: all 0.2s;">登出</button>
+                <img id="user-avatar" src="" style="width:32px; height:32px; border-radius:50%; border: 2px solid #e2e8f0; transition: transform 0.2s;">
+                
+                <!-- 下拉選單 -->
+                <div id="avatar-dropdown" style="position: absolute; top: 45px; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 180px; display: none; flex-direction: column; overflow: hidden; z-index: 3100;">
+                    <div class="avatar-dropdown-item" onclick="openNicknameModal()">✏️ 設定個人暱稱</div>
+                    <div class="avatar-dropdown-item" onclick="openWhitelistModal()">🛡️ 系統授權管理</div>
+                    <div class="avatar-dropdown-item" id="btn-logout" onclick="logout()" style="color: var(--danger);">🚪 登出系統</div>
+                </div>
             </div>
         </div> 
     </header>
@@ -503,10 +539,9 @@
             <div style="font-size: 48px; margin-bottom: 10px;">🏢</div>
             <h2 style="margin-top:0; color: var(--text-main); font-size: 24px;">系統授權登入</h2>
             <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
-                為了保護圖資與資產安全，本系統已啟用權限控管。<br>請使用授權的 Google 帳號進行登入。
+                為了保護圖資與資產安全，本系統已啟用權限控管。<br>請使用您的 Google 帳號進行登入。
             </p>
             
-            <!-- ✨ 記住我選項 -->
             <div style="margin-bottom: 25px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <input type="checkbox" id="remember-me" checked style="width: 16px; height: 16px; cursor: pointer;">
                 <label for="remember-me" style="font-size: 14px; color: var(--text-muted); cursor: pointer; user-select: none;">保持登入狀態 (記住我)</label>
@@ -519,13 +554,23 @@
         </div>
     </div>
 
+    <!-- ✨ 待授權大廳 (已登入但不包含在白名單) -->
+    <div id="view-unauthorized" class="view">
+        <div style="max-width: 500px; margin: 60px auto; background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 10px;">🔒</div>
+            <h2 style="margin-top:0; color: var(--text-main); font-size: 24px;">等待系統授權</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
+                您已成功登入 Google 帳號，但目前信箱尚未加入系統白名單。<br><br>
+                請點擊右上角「您的頭貼」 ➔ 「🛡️ 系統授權管理」<br>將您的信箱輸入白名單中以獲得系統權限。
+            </p>
+        </div>
+    </div>
+
     <div id="view-floor" class="view active">
         <div id="dev-tabs-container" class="dev-tabs">
             <button class="dev-tab-btn" onclick="openTitleRankModal()">📊 設定職稱排序</button>
             <button class="dev-tab-btn" onclick="runDatabaseMigration()" style="color: var(--danger); border-color: var(--danger); background: #fee2e2;">⚠️ 執行 Phase 3 資料庫升級</button>
             <button class="dev-tab-btn" onclick="restoreLostComputers()">🚑 復原測試資產</button>
-            <!-- ✨ 解鎖權限管理工具 -->
-            <button class="dev-tab-btn" onclick="openWhitelistModal()" style="color: var(--primary); border-color: var(--primary); background: #e0e7ff;">🛡️ 權限白名單管理</button>
         </div>
 
         <div class="grid-nav"></div>
@@ -561,7 +606,7 @@
 
     <div id="view-extensions" class="view"><div id="ext-container"></div></div>
 
-    <!-- ✨ 讓版本號與日誌在全域可見，包含未登入畫面 -->
+    <!-- 讓版本號與日誌在全域可見，包含未登入畫面 -->
     <div class="version-footer" onclick="openUpdateLogModal()">
         <!-- 由 JS 動態填入最新版本號 -->
     </div>
@@ -756,12 +801,21 @@
     // ================= 版本更新日誌設定 (維持最新三版) =================
     const systemUpdateLogs = [
         {
+            version: "1.6.0",
+            date: "20260325",
+            changes: [
+                "【權限進化】開放系統登入大廳，支援全體 Google 帳號登入與自訂頭貼選單。",
+                "新增「個人暱稱」設定功能，管理員可於白名單清單中透過視覺化色塊快速辨識身分。",
+                "優化白名單架構：支援非授權者自我送出邀請與綁定；最高管理員專屬查看清單與剔除權限。",
+                "實裝離線登出防護機制與無縫自動解鎖體驗。"
+            ]
+        },
+        {
             version: "1.5.0",
             date: "20260324",
             changes: [
                 "【安全升級】實作動態白名單過濾 (Dynamic Authorization)，可直接於網頁內建工具增刪授權帳號。",
                 "新增「記住我」功能，可自動記憶登入狀態，無需頻繁重新授權。",
-                "優化斷網體驗：離線模式下自動「鎖定登出按鈕」，防止使用者誤觸後無法登回系統。",
                 "開放未登入者也可於登入大廳查看系統當前版本與更新日誌。"
             ]
         },
@@ -771,16 +825,7 @@
             changes: [
                 "修復「上一層」按鈕導覽邏輯異常，確保可正確返回區域列表。",
                 "修復版本日誌顯示功能，並補回先前的更新紀錄。",
-                "重新梳理並修復全域 Modal (彈出視窗) 的點擊關閉邏輯與按鈕綁定。",
                 "優化資料庫升級腳本後的資料參照邏輯。"
-            ]
-        },
-        {
-            version: "1.4.0",
-            date: "20260319",
-            changes: [
-                "導入「特徵標籤制 (Traits)」，依據房間類型動態切換顯示分頁。",
-                "實裝編輯房間時自動鎖定「房間類型」機制，防止核心配置錯亂。"
             ]
         }
     ];
@@ -826,6 +871,7 @@
     let tempTitleRanks = []; 
     let currentTitleRankScope = 'global';
     
+    // ✨ -1 代表未登入大廳, -2 代表已登入但待授權大廳, 0 代表首頁
     let currentLevel = -1; 
     let currentFloor = '';
     
@@ -844,8 +890,9 @@
     let confirmTimer = null;
     let pendingDeleteAction = null; 
     
-    // ✨ 新增全域動態白名單變數
+    // ✨ 新增全域動態白名單與使用者名冊陣列
     let globalWhitelist = [];
+    let globalUsers = [];
 
     // ✨ 獨立出離線鎖定登出的檢查機制
     function checkOfflineLogoutLock() {
@@ -853,15 +900,15 @@
         if (!btnLogout) return;
 
         if (!navigator.onLine) {
-            btnLogout.disabled = true;
             btnLogout.style.opacity = '0.5';
             btnLogout.style.cursor = 'not-allowed';
-            btnLogout.innerText = '🔒 離線無法登出';
+            btnLogout.style.pointerEvents = 'none';
+            btnLogout.innerHTML = '🔒 離線無法登出';
         } else {
-            btnLogout.disabled = false;
             btnLogout.style.opacity = '1';
             btnLogout.style.cursor = 'pointer';
-            btnLogout.innerText = '登出';
+            btnLogout.style.pointerEvents = 'auto';
+            btnLogout.innerHTML = '🚪 登出系統';
         }
     }
 
@@ -908,66 +955,30 @@
     };
 
     // =======================================================
-    // ✨ 動態白名單檢查邏輯
+    // ✨ 核心大門守衛：驗證身分與開放登入
     // =======================================================
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            // 顯示正在檢查權限的載入畫面
-            document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '正在驗證系統授權...';
-            document.getElementById('loading-overlay').style.display = 'flex';
-            document.getElementById('loading-overlay').style.opacity = '1';
-
-            // ✨ 修正信箱為 steve1615@gmail.com
-            const superAdmin = 'steve1615@gmail.com';
-            let isAllowed = false;
-
-            if (user.email === superAdmin) {
-                isAllowed = true;
-            } else {
-                try {
-                    // 去資料庫抓取白名單
-                    const wlSnap = await getDoc(doc(db, 'settings', 'whitelist'));
-                    if (wlSnap.exists()) {
-                        const emails = wlSnap.data().emails || [];
-                        isAllowed = emails.includes(user.email);
-                    } else {
-                        // 如果這是全新系統，自動把超級管理員寫進去建立第一筆資料
-                        await setDoc(doc(db, 'settings', 'whitelist'), { emails: [superAdmin] });
-                    }
-                } catch (error) {
-                    console.error('讀取白名單失敗', error);
-                    // 若因為斷網無法確認白名單，且非最高權限，則為了安全先擋住
-                    customAlert('無法連接資料庫驗證權限，請確認網路狀態！', true);
-                    document.getElementById('loading-overlay').style.display = 'none';
-                    signOut(auth);
-                    return;
-                }
-            }
-
-            if (!isAllowed) {
-                customAlert(`⛔ 存取遭拒：您的帳號 (${user.email}) 未獲系統授權，請聯繫管理員！`, true);
-                document.getElementById('loading-overlay').style.display = 'none';
-                signOut(auth); 
-                return;
-            }
-
-            // 已登入且獲授權：解鎖並顯示系統畫面
+            // 已登入：顯示右上角頭貼與基礎選單
             document.getElementById('user-profile').style.display = 'flex';
             document.getElementById('user-info-text').style.display = 'block';
             document.getElementById('user-name-display').innerText = user.displayName || '系統使用者';
             document.getElementById('user-email-display').innerText = user.email || '';
             document.getElementById('user-avatar').src = user.photoURL || 'https://via.placeholder.com/32';
-            document.getElementById('header-left').style.visibility = 'visible';
             
             checkOfflineLogoutLock(); 
 
-            // 初始化資料庫即時監聽
+            // 將登入的使用者記錄至使用者名冊 (為了支援暱稱設定)
+            await safeWrite(setDoc(doc(db, 'users', user.email), { email: user.email }, { merge: true }));
+
+            // 初始化所有資料庫監聽器
             if (!isInitialized) {
-                document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '授權成功！資料讀取中...';
+                document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '載入系統資料...';
+                document.getElementById('loading-overlay').style.display = 'flex';
+                document.getElementById('loading-overlay').style.opacity = '1';
                 setupRealtimeListeners();
             } else {
-                if (currentLevel === -1) goHome(false); 
-                document.getElementById('loading-overlay').style.display = 'none';
+                enforceAuthorization();
             }
         } else {
             // 未登入：鎖住大門
@@ -979,10 +990,44 @@
             document.getElementById('fab-container').style.display = 'none';
             document.getElementById('dev-tabs-container').style.display = 'none';
             document.getElementById('loading-overlay').style.display = 'none';
+            
+            const dropdown = document.getElementById('avatar-dropdown');
+            if (dropdown) dropdown.style.display = 'none';
+
             updateMainTitle('ＰＭＯ電子圖資系統');
             switchView('view-login');
         }
     });
+
+    // ✨ 檢查並導引授權狀態 (無縫自動解鎖核心)
+    function enforceAuthorization() {
+        const user = auth.currentUser;
+        if (!user) return;
+        
+        const superAdmin = 'steve1615@gmail.com';
+        const isAuth = globalWhitelist.includes(user.email) || user.email === superAdmin;
+
+        if (isAuth) {
+            // 已獲授權：顯示導覽列並進入首頁或恢復原本畫面
+            document.getElementById('header-left').style.visibility = 'visible';
+            document.getElementById('breadcrumb').style.display = 'flex';
+            
+            if (currentLevel === -1 || currentLevel === -2) {
+                goHome(false); 
+            } else {
+                refreshCurrentView();
+            }
+        } else {
+            // 已登入但未獲授權：進入待授權大廳
+            currentLevel = -2;
+            document.getElementById('header-left').style.visibility = 'hidden';
+            document.getElementById('breadcrumb').style.display = 'none';
+            document.getElementById('fab-container').style.display = 'none';
+            document.getElementById('dev-tabs-container').style.display = 'none';
+            updateMainTitle('ＰＭＯ電子圖資系統');
+            switchView('view-unauthorized');
+        }
+    }
 
     window.loginWithGoogle = async () => {
         try {
@@ -1008,32 +1053,42 @@
 
     function setupRealtimeListeners() {
         let loadedCount = 0;
-        // ✨ 因為多了一個白名單監聽器，所以需要等 7 個設定載入完畢
+        // ✨ 新增 users 集合，所以要等 8 個快取讀取完成
         const checkAllLoaded = () => {
             loadedCount++;
-            if (loadedCount >= 7 && !isInitialized) { 
+            if (loadedCount >= 8 && !isInitialized) { 
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
-                if (currentLevel === -1) goHome(false);
-                else refreshCurrentView();
+                enforceAuthorization();
             } else if (isInitialized) {
-                refreshCurrentView();
+                enforceAuthorization();
             }
         };
 
-        // ✨ 監聽白名單變更
+        // 監聽白名單變更
         onSnapshot(doc(db, "settings", "whitelist"), (docSnap) => {
             if(docSnap.exists()) {
                 globalWhitelist = docSnap.data().emails || [];
             } else {
-                // ✨ 修正信箱
                 safeWrite(setDoc(doc(db, "settings", "whitelist"), { emails: ['steve1615@gmail.com'] }));
                 globalWhitelist = ['steve1615@gmail.com'];
             }
-            if(document.getElementById('whitelist-modal-overlay').classList.contains('active')) {
-                renderWhitelist();
+            if(document.getElementById('whitelist-modal-overlay').classList.contains('active')) renderWhitelist();
+            checkAllLoaded();
+        });
+
+        // 監聽使用者名冊變更 (處理暱稱)
+        onSnapshot(collection(db, "users"), (snapshot) => {
+            globalUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+            // 若為登入者且有暱稱，即時更新右上角顯示
+            if (auth.currentUser) {
+                const myProfile = globalUsers.find(u => u.id === auth.currentUser.email);
+                if (myProfile && myProfile.nickname) {
+                    document.getElementById('user-name-display').innerText = myProfile.nickname;
+                }
             }
+            if(document.getElementById('whitelist-modal-overlay').classList.contains('active')) renderWhitelist();
             checkAllLoaded();
         });
 
@@ -1079,7 +1134,7 @@
     }
 
     function refreshCurrentView() {
-        if (currentLevel === -1) return;
+        if (currentLevel === -1 || currentLevel === -2) return;
 
         if (currentLevel === 0) initView(); 
         else if (currentLevel === 1) showOffices(currentFloor, false);
@@ -1095,12 +1150,53 @@
     }
 
     // =======================================================
-    // ✨ 動態白名單 UI 功能
+    // ✨ 個人化頭貼選單與暱稱設定
+    // =======================================================
+    window.toggleAvatarMenu = (event) => {
+        event.stopPropagation();
+        const dropdown = document.getElementById('avatar-dropdown');
+        const isVisible = dropdown.style.display === 'flex';
+        dropdown.style.display = isVisible ? 'none' : 'flex';
+    };
+
+    window.openNicknameModal = () => {
+        const userProfile = globalUsers.find(u => u.id === auth.currentUser.email);
+        document.getElementById('nickname-input').value = userProfile?.nickname || '';
+        document.getElementById('nickname-modal-overlay').classList.add('active');
+        document.getElementById('avatar-dropdown').style.display = 'none';
+    };
+
+    window.closeNicknameModal = () => {
+        document.getElementById('nickname-modal-overlay').classList.remove('active');
+    };
+
+    window.saveNickname = async () => {
+        const nickname = document.getElementById('nickname-input').value.trim();
+        try {
+            await safeWrite(setDoc(doc(db, 'users', auth.currentUser.email), { nickname: nickname }, { merge: true }));
+            customAlert('暱稱設定成功！');
+            closeNicknameModal();
+        } catch (e) {
+            console.error(e); customAlert('暱稱設定失敗', true);
+        }
+    };
+
+    // =======================================================
+    // ✨ 動態白名單 UI 功能 (開放全員進入，但依權限隱藏清單)
     // =======================================================
     window.openWhitelistModal = () => {
         closeSidebar();
+        document.getElementById('avatar-dropdown').style.display = 'none';
         document.getElementById('whitelist-input').value = '';
-        renderWhitelist();
+        
+        const isAdmin = auth.currentUser && auth.currentUser.email === 'steve1615@gmail.com';
+        if (isAdmin) {
+            document.getElementById('whitelist-admin-container').style.display = 'block';
+            renderWhitelist();
+        } else {
+            document.getElementById('whitelist-admin-container').style.display = 'none';
+        }
+        
         document.getElementById('whitelist-modal-overlay').classList.add('active');
     };
 
@@ -1117,19 +1213,29 @@
         }
         
         globalWhitelist.forEach(email => {
+            const userProfile = globalUsers.find(u => u.id === email);
+            const nickname = userProfile && userProfile.nickname ? userProfile.nickname : null;
+
             const itemDiv = document.createElement('div');
             itemDiv.className = 'dropdown-item';
+            itemDiv.style.display = 'flex';
+            itemDiv.style.alignItems = 'center';
+            itemDiv.style.gap = '10px';
             
             let delBtnHtml = '';
-            // ✨ 修正信箱比對
             if (email !== 'steve1615@gmail.com') {
-                delBtnHtml = `<button class="dropdown-item-delete" onclick="promptDeleteWhitelist('${email}')">🗑️</button>`;
+                delBtnHtml = `<button class="dropdown-item-delete" onclick="promptDeleteWhitelist('${email}')" style="padding:4px 8px; font-size:16px;">🗑️</button>`;
             } else {
-                delBtnHtml = `<span style="font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 6px; border-radius:4px;">最高權限</span>`;
+                delBtnHtml = `<span style="font-size:12px; color:var(--text-muted); background:var(--accent); padding:4px 8px; border-radius:4px; flex-shrink: 0;">最高權限</span>`;
             }
 
+            let nicknameHtml = nickname ? `<span style="font-size:12px; color:white; background:var(--primary); padding:2px 8px; border-radius:12px; font-weight:bold; white-space: nowrap;">${nickname}</span>` : '';
+
             itemDiv.innerHTML = `
-                <span style="flex:1; font-weight:bold;">${email}</span>
+                <div style="flex:1; display:flex; align-items:center; flex-wrap: wrap; gap:8px;">
+                    <span style="font-weight:bold; font-size:14px;">${email}</span>
+                    ${nicknameHtml}
+                </div>
                 ${delBtnHtml}
             `;
             listDiv.appendChild(itemDiv);
@@ -1144,7 +1250,7 @@
             customAlert('請輸入有效的信箱格式！', true); 
             return; 
         }
-        if (globalWhitelist.includes(email)) { 
+        if (globalWhitelist.includes(email) || email === 'steve1615@gmail.com') { 
             customAlert('此信箱已在白名單中！', true); 
             return; 
         }
@@ -1156,7 +1262,7 @@
             customAlert(`成功將 ${email} 加入白名單！`);
         } catch(e) { 
             console.error(e); 
-            customAlert('新增失敗', true); 
+            customAlert('授權失敗，請確認網路連線。', true); 
         }
     };
 
@@ -1239,7 +1345,7 @@
     window.addEventListener('popstate', (event) => {
         const state = event.state;
         if (!state) { goHome(false); return; }
-        if (currentLevel === -1) return;
+        if (currentLevel === -1 || currentLevel === -2) return;
 
         if (state.level === 0) goHome(false);
         else if (state.level === 1) showOffices(state.floor, false);
@@ -1312,12 +1418,18 @@
         if (ownerPanel && ownerPanel.classList.contains('active') && !e.target.closest('.form-group')) ownerPanel.classList.remove('active');
         const roomPanel = document.getElementById('room-type-panel');
         if (roomPanel && roomPanel.classList.contains('active') && !e.target.closest('.form-group')) roomPanel.classList.remove('active');
+        
+        // 點擊空白處關閉頭貼選單
+        const avatarMenu = document.getElementById('avatar-dropdown');
+        if (avatarMenu && !e.target.closest('#user-profile')) {
+            avatarMenu.style.display = 'none';
+        }
     });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeFabMenu(); closeEditModal(); closeAssetModal(); closeOfficeModal(); closeSidebar(); closeAddOfficeModal();
-            closeTitleRankModal(); closeUpdateLogModal(); closeOfficeActionModal(); window.closeWhitelistModal();
+            closeTitleRankModal(); closeUpdateLogModal(); closeOfficeActionModal(); window.closeWhitelistModal(); window.closeNicknameModal();
             document.getElementById('category-panel').classList.remove('active');
             document.getElementById('owner-panel').classList.remove('active');
             if(document.getElementById('room-type-panel')) document.getElementById('room-type-panel').classList.remove('active');
@@ -1340,7 +1452,7 @@
         const fabContainer = document.getElementById('fab-container');
         fabMenu.innerHTML = ''; closeFabMenu(); 
 
-        if (currentLevel === -1) {
+        if (currentLevel === -1 || currentLevel === -2) {
             fabContainer.style.display = 'none';
             return;
         }
@@ -1372,7 +1484,7 @@
         const btnUp = document.getElementById('btn-global-up');
         const breadcrumb = document.getElementById('breadcrumb');
 
-        if (currentLevel === -1) {
+        if (currentLevel === -1 || currentLevel === -2) {
             btnHome.style.display = 'none'; 
             btnUp.style.display = 'none';
             breadcrumb.style.display = 'none';
@@ -2276,7 +2388,6 @@
         btn.disabled = true; btn.innerText = '處理中...';
 
         try {
-            // ✨ 新增白名單刪除處理
             if (pendingDeleteAction.type === 'whitelist') {
                 const targetEmail = pendingDeleteAction.payload;
                 const newWl = globalWhitelist.filter(e => e !== targetEmail);
@@ -2535,98 +2646,4 @@
             return;
         }
 
-        const confirmMsg = "【極度危險操作警告】\n\n這支程式會為您資料庫中所有的「辦公室」配發全新的隱藏身分證(UUID)，並自動更新所有人員與資產的綁定關係。\n\n執行時間約需數秒，過程中請「絕對不要」關閉網頁。\n\n請問是否確定要執行 Phase 3 資料庫升級？";
-        if(!confirm(confirmMsg)) return;
-
-        document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '資料庫升級中，請勿關閉視窗...';
-        document.getElementById('loading-overlay').style.display = 'flex';
-        document.getElementById('loading-overlay').style.opacity = '1';
-
-        try {
-            const batchOperations = [];
-            
-            for (const oldOffice of globalOffices) {
-                if (oldOffice.id === oldOffice.name) {
-                    
-                    const newOfficeRef = doc(collection(db, 'offices')); 
-                    const newOfficeId = newOfficeRef.id;
-                    batchOperations.push(setDoc(newOfficeRef, {
-                        name: oldOffice.name,
-                        floor: oldOffice.floor,
-                        pwd: oldOffice.pwd || 'N/A',
-                        roomType: oldOffice.roomType || '辦公室'
-                    }));
-
-                    const relatedMembers = globalMembers.filter(m => m.office_id === oldOffice.id);
-                    for (const m of relatedMembers) {
-                        batchOperations.push(updateDoc(doc(db, 'members', m.id), { office_id: newOfficeId }));
-                    }
-
-                    const relatedAssets = globalAssets.filter(a => a.office_id === oldOffice.id);
-                    for (const a of relatedAssets) {
-                        batchOperations.push(updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeId }));
-                    }
-
-                    batchOperations.push(deleteDoc(doc(db, 'offices', oldOffice.id)));
-                }
-            }
-
-            if (batchOperations.length > 0) {
-                await safeWrite(Promise.all(batchOperations));
-                alert("🎉 恭喜！資料庫已成功升級為 Phase 3 正規化架構！\n這意味著以後您更改辦公室名稱，系統都不會再卡頓了。");
-                window.location.reload(); 
-            } else {
-                alert("沒有找到需要升級的舊資料。");
-                document.getElementById('loading-overlay').style.display = 'none';
-            }
-
-        } catch (error) {
-            console.error(error);
-            alert("升級過程中發生錯誤，請聯絡您的程式夥伴！");
-            document.getElementById('loading-overlay').style.display = 'none';
-        }
-    };
-
-    // 將所有需要的 function 綁定到 window (避免 Reference Error)
-    window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal;
-    window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal;
-    window.openAddOfficeModal = openAddOfficeModal; window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal;
-    window.syncSnPc = syncSnPc;
-    window.toggleCategoryDropdown = toggleCategoryDropdown; window.renderCategoryDropdown = renderCategoryDropdown;
-    window.filterCategories = filterCategories; window.selectCategory = selectCategory;
-    window.addCategory = addCategory; window.promptDeleteCategory = promptDeleteCategory;
-    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; window.renderRoomTypeDropdown = renderRoomTypeDropdown;
-    window.filterRoomTypes = filterRoomTypes; window.selectRoomType = selectRoomType;
-    window.addRoomType = addRoomType; window.promptDeleteRoomType = promptDeleteRoomType;
-    window.toggleOwnerDropdown = toggleOwnerDropdown; window.renderOwnerDropdown = renderOwnerDropdown;
-    window.filterOwners = filterOwners; window.selectOwner = selectOwner;
-    window.addOwnerFromAsset = addOwnerFromAsset; window.promptDeleteOwner = promptDeleteOwner;
-    window.executeDeleteFromModal = executeDeleteFromModal; window.closeOfficeActionModal = closeOfficeActionModal;
-    window.promptDeleteOffice = promptDeleteOffice; window.moveOfficeRegion = moveOfficeRegion;
-    window.closeConfirmModal = closeConfirmModal; window.executeConfirmAction = executeConfirmAction;
-    window.restoreLostComputers = restoreLostComputers;
-    window.saveMemberData = saveMemberData; window.saveAssetData = saveAssetData; window.saveOfficeData = saveOfficeData;
-    window.goHome = goHome; window.goUpLevel = goUpLevel;
-    window.showOffices = showOffices; window.showDetail = showDetail;
-    window.switchTab = switchTab; window.updateDetailContent = updateDetailContent;
-    window.showExtensionsView = showExtensionsView; window.toggleSidebar = toggleSidebar;
-    window.closeSidebar = closeSidebar; window.toggleTreeFloor = toggleTreeFloor;
-    window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
-    window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal;
-    window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
-    window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
-    window.toggleDevOptions = toggleDevOptions;
-    window.loginWithGoogle = loginWithGoogle; window.logout = logout;
-    
-    // ✨ 動態白名單綁定
-    window.openWhitelistModal = openWhitelistModal;
-    window.closeWhitelistModal = closeWhitelistModal;
-    window.renderWhitelist = renderWhitelist;
-    window.addWhitelistEmail = addWhitelistEmail;
-    window.promptDeleteWhitelist = promptDeleteWhitelist;
-
-    // 啟動監聽與初始化畫面
-    window.addEventListener('resize', syncHeaderLayout);
-</script>
-</body>
-</html>
+        const confirmMsg = "【極度危險操作警告】\n\n這支程式會為您資料庫中所有的「辦公室」配發全新的隱藏身分證(UUID)，並自動更新所有人員與資產的綁定關係。\n\n執行時間約需

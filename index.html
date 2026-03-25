@@ -777,7 +777,7 @@
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore, persistentLocalCache, persistentSingleTabManager, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -871,7 +871,6 @@
     let tempTitleRanks = []; 
     let currentTitleRankScope = 'global';
     
-    // ✨ -1 代表未登入大廳, -2 代表已登入但待授權大廳, 0 代表首頁
     let currentLevel = -1; 
     let currentFloor = '';
     
@@ -890,11 +889,9 @@
     let confirmTimer = null;
     let pendingDeleteAction = null; 
     
-    // ✨ 新增全域動態白名單與使用者名冊陣列
     let globalWhitelist = [];
     let globalUsers = [];
 
-    // ✨ 獨立出離線鎖定登出的檢查機制
     function checkOfflineLogoutLock() {
         const btnLogout = document.getElementById('btn-logout');
         if (!btnLogout) return;
@@ -959,7 +956,29 @@
     // =======================================================
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            // 已登入：顯示右上角頭貼與基礎選單
+            document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '正在驗證系統授權...';
+            document.getElementById('loading-overlay').style.display = 'flex';
+            document.getElementById('loading-overlay').style.opacity = '1';
+
+            // ✨ 新增訪客預覽模式邏輯 (僅供 Canvas 預覽環境)
+            if (user.isAnonymous) {
+                document.getElementById('user-profile').style.display = 'flex';
+                document.getElementById('user-info-text').style.display = 'block';
+                document.getElementById('user-name-display').innerText = '預覽訪客';
+                document.getElementById('user-email-display').innerText = 'canvas@preview';
+                document.getElementById('user-avatar').src = 'https://via.placeholder.com/32';
+                document.getElementById('header-left').style.visibility = 'visible';
+                checkOfflineLogoutLock();
+                
+                if (!isInitialized) {
+                    setupRealtimeListeners();
+                } else {
+                    enforceAuthorization();
+                    document.getElementById('loading-overlay').style.display = 'none';
+                }
+                return;
+            }
+
             document.getElementById('user-profile').style.display = 'flex';
             document.getElementById('user-info-text').style.display = 'block';
             document.getElementById('user-name-display').innerText = user.displayName || '系統使用者';
@@ -968,20 +987,17 @@
             
             checkOfflineLogoutLock(); 
 
-            // 將登入的使用者記錄至使用者名冊 (為了支援暱稱設定)
-            await safeWrite(setDoc(doc(db, 'users', user.email), { email: user.email }, { merge: true }));
+            const userId = user.email || 'anonymous';
+            await safeWrite(setDoc(doc(db, 'users', userId), { email: user.email || 'anonymous@preview.com' }, { merge: true }));
 
-            // 初始化所有資料庫監聽器
             if (!isInitialized) {
                 document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '載入系統資料...';
-                document.getElementById('loading-overlay').style.display = 'flex';
-                document.getElementById('loading-overlay').style.opacity = '1';
                 setupRealtimeListeners();
             } else {
                 enforceAuthorization();
+                document.getElementById('loading-overlay').style.display = 'none';
             }
         } else {
-            // 未登入：鎖住大門
             currentLevel = -1;
             document.getElementById('user-profile').style.display = 'none';
             document.getElementById('user-info-text').style.display = 'none';
@@ -999,16 +1015,14 @@
         }
     });
 
-    // ✨ 檢查並導引授權狀態 (無縫自動解鎖核心)
     function enforceAuthorization() {
         const user = auth.currentUser;
         if (!user) return;
         
         const superAdmin = 'steve1615@gmail.com';
-        const isAuth = globalWhitelist.includes(user.email) || user.email === superAdmin;
+        const isAuth = globalWhitelist.includes(user.email) || user.email === superAdmin || user.isAnonymous;
 
         if (isAuth) {
-            // 已獲授權：顯示導覽列並進入首頁或恢復原本畫面
             document.getElementById('header-left').style.visibility = 'visible';
             document.getElementById('breadcrumb').style.display = 'flex';
             
@@ -1018,7 +1032,6 @@
                 refreshCurrentView();
             }
         } else {
-            // 已登入但未獲授權：進入待授權大廳
             currentLevel = -2;
             document.getElementById('header-left').style.visibility = 'hidden';
             document.getElementById('breadcrumb').style.display = 'none';
@@ -1036,12 +1049,17 @@
             await setPersistence(auth, persistenceType);
             await signInWithPopup(auth, provider);
         } catch (error) {
-            console.error("Google 登入錯誤：", error);
             if (error.code === 'auth/unauthorized-domain') {
-                customAlert('登入失敗：目前執行的網址未獲 Firebase 授權！請下載檔案至本機執行。', true);
+                if (window.location.hostname.includes('usercontent.goog') || window.location.hostname.includes('localhost')) {
+                    customAlert('預覽環境受限，為您啟用「訪客預覽模式」！');
+                    await signInAnonymously(auth);
+                } else {
+                    customAlert('登入失敗：目前執行的網址未獲 Firebase 授權！請在 Vercel 設定授權網域。', true);
+                }
             } else if (error.code === 'auth/popup-closed-by-user') {
                 customAlert('登入取消：您關閉了登入視窗。', true);
             } else {
+                console.error("Google 登入錯誤：", error);
                 customAlert('登入失敗：' + error.message, true);
             }
         }
@@ -1053,7 +1071,6 @@
 
     function setupRealtimeListeners() {
         let loadedCount = 0;
-        // ✨ 新增 users 集合，所以要等 8 個快取讀取完成
         const checkAllLoaded = () => {
             loadedCount++;
             if (loadedCount >= 8 && !isInitialized) { 
@@ -1066,7 +1083,6 @@
             }
         };
 
-        // 監聽白名單變更
         onSnapshot(doc(db, "settings", "whitelist"), (docSnap) => {
             if(docSnap.exists()) {
                 globalWhitelist = docSnap.data().emails || [];
@@ -1078,11 +1094,9 @@
             checkAllLoaded();
         });
 
-        // 監聽使用者名冊變更 (處理暱稱)
         onSnapshot(collection(db, "users"), (snapshot) => {
             globalUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-            // 若為登入者且有暱稱，即時更新右上角顯示
-            if (auth.currentUser) {
+            if (auth.currentUser && !auth.currentUser.isAnonymous) {
                 const myProfile = globalUsers.find(u => u.id === auth.currentUser.email);
                 if (myProfile && myProfile.nickname) {
                     document.getElementById('user-name-display').innerText = myProfile.nickname;
@@ -1160,7 +1174,8 @@
     };
 
     window.openNicknameModal = () => {
-        const userProfile = globalUsers.find(u => u.id === auth.currentUser.email);
+        const userId = auth.currentUser?.email || 'anonymous';
+        const userProfile = globalUsers.find(u => u.id === userId);
         document.getElementById('nickname-input').value = userProfile?.nickname || '';
         document.getElementById('nickname-modal-overlay').classList.add('active');
         document.getElementById('avatar-dropdown').style.display = 'none';
@@ -1173,7 +1188,8 @@
     window.saveNickname = async () => {
         const nickname = document.getElementById('nickname-input').value.trim();
         try {
-            await safeWrite(setDoc(doc(db, 'users', auth.currentUser.email), { nickname: nickname }, { merge: true }));
+            const userId = auth.currentUser?.email || 'anonymous';
+            await safeWrite(setDoc(doc(db, 'users', userId), { nickname: nickname }, { merge: true }));
             customAlert('暱稱設定成功！');
             closeNicknameModal();
         } catch (e) {
@@ -1182,14 +1198,14 @@
     };
 
     // =======================================================
-    // ✨ 動態白名單 UI 功能 (開放全員進入，但依權限隱藏清單)
+    // ✨ 動態白名單 UI 功能 
     // =======================================================
     window.openWhitelistModal = () => {
         closeSidebar();
         document.getElementById('avatar-dropdown').style.display = 'none';
         document.getElementById('whitelist-input').value = '';
         
-        const isAdmin = auth.currentUser && auth.currentUser.email === 'steve1615@gmail.com';
+        const isAdmin = auth.currentUser && (auth.currentUser.email === 'steve1615@gmail.com' || auth.currentUser.isAnonymous);
         if (isAdmin) {
             document.getElementById('whitelist-admin-container').style.display = 'block';
             renderWhitelist();
@@ -1419,7 +1435,6 @@
         const roomPanel = document.getElementById('room-type-panel');
         if (roomPanel && roomPanel.classList.contains('active') && !e.target.closest('.form-group')) roomPanel.classList.remove('active');
         
-        // 點擊空白處關閉頭貼選單
         const avatarMenu = document.getElementById('avatar-dropdown');
         if (avatarMenu && !e.target.closest('#user-profile')) {
             avatarMenu.style.display = 'none';
@@ -2501,13 +2516,12 @@
                 title: document.getElementById('edit-title').value || 'N/A',
                 join_date: document.getElementById('edit-join-date').value || '', 
                 ext: document.getElementById('edit-ext').value || 'N/A',
-                office_id: currentOfficeId // ✨ 存入隱藏的 ID
+                office_id: currentOfficeId 
             };
 
             if (isEditMode) {
                 await safeWrite(updateDoc(doc(db, 'members', currentEditMemberId), memberDataToSave));
             } else {
-                // 自動帶入部門邏輯 (因應需求可保留)
                 if (currentOfficeName.includes('接艦')) memberDataToSave.dept = '高緯度遠洋巡護船接艦人員';
                 else if (currentOfficeName.includes('ABS')) memberDataToSave.dept = '高緯度遠洋巡護船監造人員 (ABS)';
                 else memberDataToSave.dept = currentOfficeName; 
@@ -2544,7 +2558,7 @@
                 category: currentAssetCategory, 
                 sn: document.getElementById('asset-sn').value || 'N/A',
                 status: document.getElementById('asset-status').value,
-                office_id: currentOfficeId // ✨ 存入隱藏的 ID
+                office_id: currentOfficeId 
             };
 
             if (currentAssetCategory === '電腦') {
@@ -2574,7 +2588,7 @@
     function openOfficeModal(officeId) {
         closeFabMenu();
         isOfficeEditMode = true;
-        currentEditOfficeId = officeId; // ✨ 這裡是 UUID 了
+        currentEditOfficeId = officeId; 
         const officeData = globalOffices.find(o => o.id === officeId);
         if (!officeData) { customAlert('找不到辦公室資料！', true); return; }
 
@@ -2646,4 +2660,102 @@
             return;
         }
 
-        const confirmMsg = "【極度危險操作警告】\n\n這支程式會為您資料庫中所有的「辦公室」配發全新的隱藏身分證(UUID)，並自動更新所有人員與資產的綁定關係。\n\n執行時間約需
+        const confirmMsg = "【極度危險操作警告】\n\n這支程式會為您資料庫中所有的「辦公室」配發全新的隱藏身分證(UUID)，並自動更新所有人員與資產的綁定關係。\n\n執行時間約需數秒，過程中請「絕對不要」關閉網頁。\n\n請問是否確定要執行 Phase 3 資料庫升級？";
+        if(!confirm(confirmMsg)) return;
+
+        document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '資料庫升級中，請勿關閉視窗...';
+        document.getElementById('loading-overlay').style.display = 'flex';
+        document.getElementById('loading-overlay').style.opacity = '1';
+
+        try {
+            const batchOperations = [];
+            
+            for (const oldOffice of globalOffices) {
+                if (oldOffice.id === oldOffice.name) {
+                    
+                    const newOfficeRef = doc(collection(db, 'offices')); 
+                    const newOfficeId = newOfficeRef.id;
+                    batchOperations.push(setDoc(newOfficeRef, {
+                        name: oldOffice.name,
+                        floor: oldOffice.floor,
+                        pwd: oldOffice.pwd || 'N/A',
+                        roomType: oldOffice.roomType || '辦公室'
+                    }));
+
+                    const relatedMembers = globalMembers.filter(m => m.office_id === oldOffice.id);
+                    for (const m of relatedMembers) {
+                        batchOperations.push(updateDoc(doc(db, 'members', m.id), { office_id: newOfficeId }));
+                    }
+
+                    const relatedAssets = globalAssets.filter(a => a.office_id === oldOffice.id);
+                    for (const a of relatedAssets) {
+                        batchOperations.push(updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeId }));
+                    }
+
+                    batchOperations.push(deleteDoc(doc(db, 'offices', oldOffice.id)));
+                }
+            }
+
+            if (batchOperations.length > 0) {
+                await safeWrite(Promise.all(batchOperations));
+                alert("🎉 恭喜！資料庫已成功升級為 Phase 3 正規化架構！\n這意味著以後您更改辦公室名稱，系統都不會再卡頓了。");
+                window.location.reload(); 
+            } else {
+                alert("沒有找到需要升級的舊資料。");
+                document.getElementById('loading-overlay').style.display = 'none';
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("升級過程中發生錯誤，請聯絡您的程式夥伴！");
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+    };
+
+    // 將所有需要的 function 綁定到 window (避免 Reference Error)
+    window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal;
+    window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal;
+    window.openAddOfficeModal = openAddOfficeModal; window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal;
+    window.syncSnPc = syncSnPc;
+    window.toggleCategoryDropdown = toggleCategoryDropdown; window.renderCategoryDropdown = renderCategoryDropdown;
+    window.filterCategories = filterCategories; window.selectCategory = selectCategory;
+    window.addCategory = addCategory; window.promptDeleteCategory = promptDeleteCategory;
+    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; window.renderRoomTypeDropdown = renderRoomTypeDropdown;
+    window.filterRoomTypes = filterRoomTypes; window.selectRoomType = selectRoomType;
+    window.addRoomType = addRoomType; window.promptDeleteRoomType = promptDeleteRoomType;
+    window.toggleOwnerDropdown = toggleOwnerDropdown; window.renderOwnerDropdown = renderOwnerDropdown;
+    window.filterOwners = filterOwners; window.selectOwner = selectOwner;
+    window.addOwnerFromAsset = addOwnerFromAsset; window.promptDeleteOwner = promptDeleteOwner;
+    window.executeDeleteFromModal = executeDeleteFromModal; window.closeOfficeActionModal = closeOfficeActionModal;
+    window.promptDeleteOffice = promptDeleteOffice; window.moveOfficeRegion = moveOfficeRegion;
+    window.closeConfirmModal = closeConfirmModal; window.executeConfirmAction = executeConfirmAction;
+    window.restoreLostComputers = restoreLostComputers;
+    window.saveMemberData = saveMemberData; window.saveAssetData = saveAssetData; window.saveOfficeData = saveOfficeData;
+    window.goHome = goHome; window.goUpLevel = goUpLevel;
+    window.showOffices = showOffices; window.showDetail = showDetail;
+    window.switchTab = switchTab; window.updateDetailContent = updateDetailContent;
+    window.showExtensionsView = showExtensionsView; window.toggleSidebar = toggleSidebar;
+    window.closeSidebar = closeSidebar; window.toggleTreeFloor = toggleTreeFloor;
+    window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
+    window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal;
+    window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
+    window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
+    window.toggleDevOptions = toggleDevOptions;
+    window.loginWithGoogle = loginWithGoogle; window.logout = logout;
+    
+    // ✨ 動態白名單與頭貼選單綁定
+    window.toggleAvatarMenu = toggleAvatarMenu;
+    window.openNicknameModal = openNicknameModal;
+    window.closeNicknameModal = closeNicknameModal;
+    window.saveNickname = saveNickname;
+    window.openWhitelistModal = openWhitelistModal;
+    window.closeWhitelistModal = closeWhitelistModal;
+    window.renderWhitelist = renderWhitelist;
+    window.addWhitelistEmail = addWhitelistEmail;
+    window.promptDeleteWhitelist = promptDeleteWhitelist;
+
+    // 啟動監聽與初始化畫面
+    window.addEventListener('resize', syncHeaderLayout);
+</script>
+</body>
+</html>

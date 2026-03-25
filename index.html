@@ -187,8 +187,9 @@
             cursor: pointer; font-weight: bold; font-size: 13px; color: var(--text-main);
             transition: all 0.2s;
         }
-        .dev-tab-btn:hover:not(.locked) { background: var(--accent); color: var(--primary); border-color: var(--primary); }
-        .dev-tab-btn.locked { color: #94a3b8; cursor: not-allowed; background: #f1f5f9; border-color: #e2e8f0; opacity: 0.7;}
+        .dev-tab-btn:hover:not(.disabled):not(.locked) { background: var(--accent); color: var(--primary); border-color: var(--primary); }
+        .dev-tab-btn.disabled { color: #94a3b8; cursor: not-allowed; background: #f1f5f9; }
+        .dev-tab-btn.locked { color: #94a3b8; cursor: not-allowed; background: #f8fafc; opacity: 0.6; border-style: dashed; }
 
         /* 電腦版：懸浮預覽與詳情 */
         .preview-list { max-height: 0; opacity: 0; overflow: hidden; list-style: none; padding: 0; margin: 0; transition: all 0.3s ease; font-size: 14px; color: var(--text-muted); }
@@ -285,6 +286,14 @@
         .avatar-dropdown-item:hover { background: var(--accent); color: var(--primary); }
         .avatar-dropdown-item:last-child { border-bottom: none; }
 
+        /* ✨ 管理員迎新動畫 */
+        @keyframes flashCrown {
+            0% { transform: scale(1); text-shadow: 0 0 10px gold; }
+            50% { transform: scale(1.3); text-shadow: 0 0 20px gold, 0 0 30px yellow; }
+            100% { transform: scale(1); text-shadow: 0 0 10px gold; }
+        }
+        .crown-flash { animation: flashCrown 1.5s infinite; display: inline-block; }
+
         /* ✨ 針對觸控設備 (手機/平板) 的專屬設定 (隱藏名字，保留頭貼與王冠) */
         @media (max-width: 600px) {
             #user-info-text { display: none !important; }
@@ -339,6 +348,21 @@
 
 <div id="custom-toast"></div>
 
+<!-- ✨ 管理員迎新視窗 (首登限定) -->
+<div id="admin-welcome-modal-overlay" class="modal-overlay" style="z-index: 5000;">
+    <div class="modal-content" style="text-align: center; padding: 40px 20px;">
+        <div class="crown-flash" style="font-size: 60px; margin-bottom: 20px;">👑</div>
+        <h2 style="margin-top: 0; color: var(--primary);">管理員授權開通</h2>
+        <p style="color: var(--text-muted); line-height: 1.6; font-size: 15px; margin-bottom: 30px;">
+            歡迎成為此系統的管理者之一！<br><br>
+            即刻起，您可使用多種進階功能，例如：<br>
+            <b style="color: var(--text-main);">開發人員選項、權限白名單管理、資料庫工具</b><br>
+            以及未來新增且被標註為「管理員限定」的所有功能。
+        </p>
+        <button class="btn-primary" style="width: 100%; padding: 12px; font-size: 16px;" onclick="closeAdminWelcomeModal()">開始使用</button>
+    </div>
+</div>
+
 <!-- 共用防呆警告對話框 -->
 <div id="confirm-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeConfirmModal()" style="z-index: 4000;">
     <div class="modal-content" style="max-width: 450px;">
@@ -347,10 +371,10 @@
         </div>
         <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
         
-        <!-- ✨ 雙重確認防呆輸入框 -->
+        <!-- ✨ 雙重確認防呆輸入框 (動態檢查) -->
         <div id="strict-input-container" style="display: none; margin-bottom: 20px;">
-            <label style="font-size: 12px; color: var(--danger); font-weight: bold;">請輸入完整的信箱位址以確認：</label>
-            <input type="email" id="strict-confirm-input" style="width: 100%; padding: 8px; border: 1px solid var(--danger); border-radius: 6px; margin-top: 5px;" placeholder="輸入信箱以解鎖按鈕">
+            <label style="font-size: 12px; color: var(--danger); font-weight: bold;">請輸入完整的信箱位址以解鎖確認按鈕：</label>
+            <input type="email" id="strict-confirm-input" style="width: 100%; padding: 8px; border: 1px solid var(--danger); border-radius: 6px; margin-top: 5px;" placeholder="請輸入對方信箱...">
         </div>
 
         <div class="modal-footer">
@@ -599,7 +623,7 @@
             <h2 style="margin-top:0; color: var(--text-main); font-size: 24px;">等待系統授權</h2>
             <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
                 您已成功登入 Google 帳號，但目前信箱尚未加入系統白名單。<br><br>
-                請聯繫您的專案管理員，或點擊下方按鈕進行邀請與開通設定。
+                請聯繫您的專案管理員，或點擊上方「您的頭貼」 ➔ 「🔗 分享與邀請」<br>將您的信箱輸入白名單中以獲得系統權限。
             </p>
         </div>
     </div>
@@ -647,6 +671,7 @@
 
     <div id="view-extensions" class="view"><div id="ext-container"></div></div>
 
+    <!-- 讓版本號與日誌在全域可見，包含未登入畫面 -->
     <div class="version-footer" onclick="openUpdateLogModal()">
         <!-- 由 JS 動態填入最新版本號 -->
     </div>
@@ -840,13 +865,22 @@
 
     const systemUpdateLogs = [
         {
+            version: "1.6.1",
+            date: "20260325",
+            changes: [
+                "【系統優化】綜合修復網頁渲染與預覽環境的授權存取問題。",
+                "深化管理員權限控制：包含動態字串防呆驗證、孤島防護機制與迎新動畫。",
+                "完善個人化選單、暱稱系統與「分享與邀請」自助授權流程。"
+            ]
+        },
+        {
             version: "1.6.0",
             date: "20260325",
             changes: [
-                "【權限進化】支援全體 Google 帳號自由登入，並實作直覺的「分享與邀請」自助授權功能。",
-                "新增「個人暱稱」設定功能與「管理員上帝視角」，白名單清單可視覺化辨識使用者身分。",
-                "優化白名單架構：最高管理員機制確立，支援指派最多 5 位一般管理員。",
-                "實裝防呆機制：管理員移除與授權需強制輸入信箱雙重確認，並搭配 5 秒延遲安全鎖。"
+                "【權限進化】開放系統登入大廳，支援全體 Google 帳號登入與自訂頭貼選單。",
+                "新增「個人暱稱」設定功能，管理員可於白名單清單中透過視覺化色塊快速辨識身分。",
+                "優化白名單架構：支援非授權者自我送出邀請與綁定；最高管理員專屬查看清單與剔除權限。",
+                "實裝離線登出防護機制與無縫自動解鎖體驗。"
             ]
         },
         {
@@ -854,17 +888,7 @@
             date: "20260324",
             changes: [
                 "【安全升級】實作動態白名單過濾 (Dynamic Authorization)，僅允許授權帳號登入系統。",
-                "新增「記住我」功能，可自動記憶登入狀態，無需頻繁重新授權。",
-                "開放未登入者也可於登入大廳查看系統當前版本與更新日誌。"
-            ]
-        },
-        {
-            version: "1.4.1",
-            date: "20260324",
-            changes: [
-                "修復「上一層」按鈕導覽邏輯異常，確保可正確返回區域列表。",
-                "修復版本日誌顯示功能，並補回先前的更新紀錄。",
-                "優化資料庫升級腳本後的資料參照邏輯。"
+                "新增「記住我」功能，可自動記憶登入狀態，無需頻繁重新授權。"
             ]
         }
     ];
@@ -920,13 +944,17 @@
     let isEditMode = false; 
     let isOfficeEditMode = false;
 
-    let confirmTimer = null;
     let pendingDeleteAction = null; 
+    let strictCountdownTimer = null; 
     
     let globalWhitelist = [];
     let globalUsers = [];
-    let globalAdmins = []; // ✨ 儲存管理員名單
-    const SUPER_ADMIN = 'steve1615@gmail.com'; // ✨ 系統最高權限擁有者，絕對防呆
+    let globalAdmins = []; 
+    const SUPER_ADMIN = 'steve1615@gmail.com'; 
+
+    window.closeAdminWelcomeModal = () => {
+        document.getElementById('admin-welcome-modal-overlay').classList.remove('active');
+    }
 
     function checkOfflineLogoutLock() {
         const btnLogout = document.getElementById('btn-logout');
@@ -984,16 +1012,12 @@
         return res;
     };
 
-    // =======================================================
-    // ✨ 核心大門守衛：開放登入，進入授權驗證
-    // =======================================================
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '正在驗證系統授權...';
             document.getElementById('loading-overlay').style.display = 'flex';
             document.getElementById('loading-overlay').style.opacity = '1';
 
-            // 處理 Canvas 預覽環境的匿名登入
             if (user.isAnonymous) {
                 document.getElementById('user-profile').style.display = 'flex';
                 document.getElementById('user-info-text').style.display = 'block';
@@ -1015,7 +1039,7 @@
             
             checkOfflineLogoutLock(); 
 
-            const userId = user.email;
+            const userId = user.email || 'anonymous@preview.com';
             await safeWrite(setDoc(doc(db, 'users', userId), { email: user.email }, { merge: true }));
 
             if (!isInitialized) {
@@ -1034,7 +1058,7 @@
             document.getElementById('fab-container').style.display = 'none';
             document.getElementById('dev-tabs-container').style.display = 'none';
             document.getElementById('loading-overlay').style.display = 'none';
-            document.getElementById('admin-crown').style.display = 'none'; // 隱藏王冠
+            document.getElementById('admin-crown').style.display = 'none'; 
             
             const dropdown = document.getElementById('avatar-dropdown');
             if (dropdown) dropdown.style.display = 'none';
@@ -1044,20 +1068,27 @@
         }
     });
 
-    // ✨ 檢查並導引授權狀態，更新管理員 UI 
     function enforceAuthorization() {
         const user = auth.currentUser;
         if (!user) return;
         
-        const isSuperAdmin = user.email === SUPER_ADMIN;
-        const isAdmin = globalAdmins.includes(user.email) || isSuperAdmin || user.isAnonymous; // 預覽訪客視同擁有管理權限方便測試
-        const isAuth = globalWhitelist.includes(user.email) || isAdmin;
+        const userEmail = user.email || 'anonymous@preview.com';
+        const isSuperAdmin = userEmail === SUPER_ADMIN;
+        const isAdmin = globalAdmins.includes(userEmail) || isSuperAdmin || user.isAnonymous; 
+        const isAuth = globalWhitelist.includes(userEmail) || isAdmin;
 
-        // 更新管理員專屬 UI (王冠與開發者按鈕)
         if (isAdmin) {
             document.getElementById('admin-crown').style.display = 'inline-block';
             const btnDevWhitelist = document.getElementById('btn-dev-whitelist');
             if(btnDevWhitelist) btnDevWhitelist.classList.remove('locked');
+            
+            if (!user.isAnonymous) {
+                const myProfile = globalUsers.find(u => u.id === userEmail);
+                if (myProfile && myProfile.hasSeenAdminWelcome !== true) {
+                    document.getElementById('admin-welcome-modal-overlay').classList.add('active');
+                    safeWrite(setDoc(doc(db, 'users', userEmail), { hasSeenAdminWelcome: true }, { merge: true }));
+                }
+            }
         } else {
             document.getElementById('admin-crown').style.display = 'none';
             const btnDevWhitelist = document.getElementById('btn-dev-whitelist');
@@ -1089,8 +1120,8 @@
             await signInWithPopup(auth, provider);
         } catch (error) {
             if (error.code === 'auth/unauthorized-domain') {
-                if (window.location.hostname.includes('usercontent.goog') || window.location.hostname.includes('localhost')) {
-                    customAlert('預覽環境受限，為您啟用「訪客預覽模式」！');
+                if (window.location.hostname.includes('usercontent.goog') || window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1')) {
+                    customAlert('預覽環境或本地端受限，為您啟用「訪客預覽模式」！');
                     await signInAnonymously(auth);
                 } else {
                     customAlert('登入失敗：目前執行的網址未獲 Firebase 授權！請在 Vercel 設定授權網域。', true);
@@ -1110,7 +1141,7 @@
         let loadedCount = 0;
         const checkAllLoaded = () => {
             loadedCount++;
-            if (loadedCount >= 9 && !isInitialized) { // 增加至 9 個集合
+            if (loadedCount >= 9 && !isInitialized) { 
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
@@ -1120,7 +1151,6 @@
             }
         };
 
-        // 監聽管理員名單
         onSnapshot(doc(db, "settings", "admins"), (docSnap) => {
             if(docSnap.exists()) {
                 globalAdmins = docSnap.data().emails || [];
@@ -1132,7 +1162,6 @@
             checkAllLoaded();
         });
 
-        // 監聽白名單變更
         onSnapshot(doc(db, "settings", "whitelist"), (docSnap) => {
             if(docSnap.exists()) {
                 globalWhitelist = docSnap.data().emails || [];
@@ -1144,11 +1173,11 @@
             checkAllLoaded();
         });
 
-        // 監聽使用者名冊變更 (處理暱稱)
         onSnapshot(collection(db, "users"), (snapshot) => {
             globalUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
             if (auth.currentUser && !auth.currentUser.isAnonymous) {
-                const myProfile = globalUsers.find(u => u.id === auth.currentUser.email);
+                const userEmail = auth.currentUser.email || 'anonymous@preview.com';
+                const myProfile = globalUsers.find(u => u.id === userEmail);
                 if (myProfile && myProfile.nickname) {
                     document.getElementById('user-name-display').innerText = myProfile.nickname;
                 }
@@ -1199,6 +1228,7 @@
 
     function refreshCurrentView() {
         if (currentLevel === -1 || currentLevel === -2) return;
+
         if (currentLevel === 0) initView(); 
         else if (currentLevel === 1) showOffices(currentFloor, false);
         else if (currentLevel === 2) updateDetailContent();
@@ -1212,9 +1242,6 @@
         }
     }
 
-    // =======================================================
-    // ✨ 個人化頭貼選單與分享邀請
-    // =======================================================
     window.toggleAvatarMenu = (event) => {
         event.stopPropagation();
         const dropdown = document.getElementById('avatar-dropdown');
@@ -1244,7 +1271,6 @@
         }
     };
 
-    // ✨ 分享與邀請 Modal
     window.openShareModal = () => {
         document.getElementById('avatar-dropdown').style.display = 'none';
         document.getElementById('share-link-input').value = window.location.origin + window.location.pathname;
@@ -1274,13 +1300,10 @@
         } catch(e) { console.error(e); customAlert('授權失敗，請確認網路狀態。', true); }
     };
 
-    // =======================================================
-    // ✨ 管理員專屬白名單管理 (含防呆移除與授權管理)
-    // =======================================================
     window.openWhitelistModal = () => {
         closeSidebar();
-        
-        const isAdmin = globalAdmins.includes(auth.currentUser?.email) || auth.currentUser?.email === SUPER_ADMIN || auth.currentUser?.isAnonymous;
+        const userEmail = auth.currentUser?.email || 'anonymous@preview.com';
+        const isAdmin = globalAdmins.includes(userEmail) || userEmail === SUPER_ADMIN || auth.currentUser?.isAnonymous;
         if (!isAdmin) {
             customAlert('⛔ 此功能僅限系統管理員訪問', true);
             return;
@@ -1295,14 +1318,13 @@
         const listDiv = document.getElementById('whitelist-list');
         listDiv.innerHTML = '';
         
-        // 為了讓超級管理員排第一，整理排序
         let displayList = [...globalWhitelist];
         if (!displayList.includes(SUPER_ADMIN)) displayList.unshift(SUPER_ADMIN);
         
         displayList.forEach(email => {
             const userProfile = globalUsers.find(u => u.id === email);
             const nickname = userProfile && userProfile.nickname ? userProfile.nickname : null;
-            const isUserAdmin = globalAdmins.includes(email);
+            const isUserAdmin = globalAdmins.includes(email) || email === SUPER_ADMIN;
 
             const itemDiv = document.createElement('div');
             itemDiv.className = 'draggable-item'; 
@@ -1312,7 +1334,7 @@
             let infoHtml = `
                 <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:180px;">
                     <span style="font-size:14px;">${email}</span>
-                    ${nickname ? `<span style="font-size:11px; color:white; background:var(--primary); padding:2px 8px; border-radius:12px; font-weight:bold;">${nickname}</span>` : ''}
+                    ${nickname ? `<span style="font-size:11px; color:white; background:var(--primary); padding:2px 8px; border-radius:12px; font-weight:bold; white-space: nowrap;">${nickname}</span>` : ''}
                 </div>
             `;
 
@@ -1322,7 +1344,7 @@
             } else if (isUserAdmin) {
                 actionsHtml = `
                     <div style="display:flex; gap:5px; align-items:center;">
-                        <span style="font-size:12px; background:var(--accent); color:var(--text-main); font-weight:bold; padding:4px 8px; border-radius:4px; margin-right:5px;">👑 管理員</span>
+                        <span style="font-size:12px; background:var(--accent); color:var(--text-main); font-weight:bold; padding:4px 8px; border-radius:4px; margin-right:5px; flex-shrink: 0;">👑 管理員</span>
                         <button class="btn-edit" style="color:var(--danger); border-color:var(--danger);" onclick="promptStrictAction('removeAdmin', '${email}')">🗑️ 降級移除</button>
                     </div>
                 `;
@@ -1340,65 +1362,96 @@
         });
     };
 
-    // ✨ 高風險操作嚴格確認
     window.promptStrictAction = (actionType, email) => {
+        const userEmail = auth.currentUser?.email || 'anonymous@preview.com';
+        if (actionType === 'removeAdmin' && email === userEmail) {
+            if (globalAdmins.length <= 1) {
+                customAlert('無法移除：您是目前唯一的一般管理員！為避免無人管理，請先指派其他管理員。', true);
+                return;
+            }
+        }
+
         pendingDeleteAction = { type: actionType, payload: email, strict: true };
         const confirmInputContainer = document.getElementById('strict-input-container');
         const confirmInput = document.getElementById('strict-confirm-input');
         const titleEl = document.getElementById('confirm-modal-title');
         const msgEl = document.getElementById('confirm-msg');
+        const btn = document.getElementById('btn-confirm-action');
         
         confirmInputContainer.style.display = 'block';
         confirmInput.value = '';
         
         if (actionType === 'promoteAdmin') {
-            if (globalAdmins.length >= 5 && auth.currentUser?.email !== SUPER_ADMIN) {
-                customAlert('一般管理員名額已滿 (最多5位)！', true);
+            if (globalAdmins.length >= 5 && userEmail !== SUPER_ADMIN) {
+                customAlert('一般管理員名額已滿 (最多 5 位)！', true);
                 return;
             }
             titleEl.innerText = '⚠️ 授權系統管理員';
-            msgEl.innerText = `您即將賦予「${email}」管理員權限。\n管理員可以刪除資料與剔除其他使用者。\n此操作需要雙重確認。`;
+            msgEl.innerText = `您即將賦予「${email}」管理員權限。\n管理員可以刪除資料與剔除其他使用者。`;
         } else if (actionType === 'removeAdmin') {
             titleEl.innerText = '⛔ 剝奪管理員權限';
-            msgEl.innerText = `您即將剝奪「${email}」的管理權限並將其從系統中完全踢出。\n此操作需要雙重確認。`;
+            msgEl.innerText = `您即將剝奪「${email}」的管理權限並將其從系統中完全踢出。`;
         } else if (actionType === 'removeUser') {
             titleEl.innerText = '🗑️ 踢出使用者';
-            msgEl.innerText = `您即將從白名單移除「${email}」。\n對方將立刻被登出並無法再進入系統。\n此操作需要雙重確認。`;
+            msgEl.innerText = `您即將從白名單移除「${email}」。\n對方將立刻被登出並無法再進入系統。`;
         }
 
-        const btn = document.getElementById('btn-confirm-action');
         btn.disabled = true;
-        let timeLeft = 5;
-        btn.innerText = `等待 ${timeLeft} 秒...`;
+        btn.innerText = '請輸入完整信箱以解鎖';
+        btn.classList.remove('btn-danger');
 
-        if (window.confirmTimer) clearInterval(window.confirmTimer);
-        window.confirmTimer = setInterval(() => {
+        confirmInput.oninput = (e) => {
+            if (e.target.value.trim().toLowerCase() === email.toLowerCase()) {
+                startStrictCountdown();
+            } else {
+                stopStrictCountdown();
+            }
+        };
+
+        document.getElementById('confirm-modal-overlay').classList.add('active');
+    };
+
+    function startStrictCountdown() {
+        const btn = document.getElementById('btn-confirm-action');
+        if (!btn.disabled && btn.innerText === '確認執行') return; 
+        if (strictCountdownTimer) return; 
+        
+        let timeLeft = 5;
+        btn.disabled = true;
+        btn.innerText = `等待 ${timeLeft} 秒...`;
+        
+        strictCountdownTimer = setInterval(() => {
             timeLeft--;
-            if (timeLeft > 0) { btn.innerText = `等待 ${timeLeft} 秒...`; }
-            else {
-                clearInterval(window.confirmTimer);
+            if (timeLeft > 0) {
+                btn.innerText = `等待 ${timeLeft} 秒...`;
+            } else {
+                clearInterval(strictCountdownTimer);
+                strictCountdownTimer = null;
                 btn.disabled = false;
                 btn.innerText = '確認執行';
                 btn.classList.add('btn-danger');
             }
         }, 1000);
+    }
 
-        document.getElementById('confirm-modal-overlay').classList.add('active');
-    };
+    function stopStrictCountdown() {
+        if (strictCountdownTimer) {
+            clearInterval(strictCountdownTimer);
+            strictCountdownTimer = null;
+        }
+        const btn = document.getElementById('btn-confirm-action');
+        btn.disabled = true;
+        btn.innerText = '請輸入完整信箱以解鎖';
+        btn.classList.remove('btn-danger');
+    }
 
     function closeConfirmModal() {
         document.getElementById('confirm-modal-overlay').classList.remove('active');
         document.getElementById('strict-input-container').style.display = 'none';
         pendingDeleteAction = null;
-
-        const btn = document.getElementById('btn-confirm-action');
-        btn.disabled = false;
-        btn.innerText = '確定執行';
-        btn.classList.remove('btn-danger');
-        btn.classList.add('btn-danger');
+        stopStrictCountdown();
         if (window.confirmTimer) clearInterval(window.confirmTimer);
     }
-    // =======================================================
 
     function initView() {
         const gridNav = document.querySelector('#view-floor .grid-nav');
@@ -2470,14 +2523,13 @@
         finally { btn.disabled = false; btn.innerText = '轉移區域'; }
     }
 
-    // ✨ 執行確認動作：加入了 Strict 防呆校驗邏輯
     async function executeConfirmAction() {
         if (!pendingDeleteAction) return;
         const btn = document.getElementById('btn-confirm-action');
 
         if (pendingDeleteAction.strict) {
-            const inputVal = document.getElementById('strict-confirm-input').value.trim();
-            if (inputVal !== pendingDeleteAction.payload) {
+            const inputVal = document.getElementById('strict-confirm-input').value.trim().toLowerCase();
+            if (inputVal !== pendingDeleteAction.payload.toLowerCase()) {
                 customAlert('輸入的信箱不相符，請重新確認！', true);
                 return;
             }
@@ -2510,7 +2562,6 @@
         btn.disabled = true; btn.innerText = '處理中...';
 
         try {
-            // ✨ 新增：管理員拔權與授權、踢出使用者
             if (pendingDeleteAction.type === 'promoteAdmin') {
                 const targetEmail = pendingDeleteAction.payload;
                 const newAdmins = [...globalAdmins, targetEmail];
@@ -2521,13 +2572,9 @@
             else if (pendingDeleteAction.type === 'removeAdmin') {
                 const targetEmail = pendingDeleteAction.payload;
                 const newAdmins = globalAdmins.filter(e => e !== targetEmail);
-                const newWl = globalWhitelist.filter(e => e !== targetEmail);
-                await safeWrite(Promise.all([
-                    setDoc(doc(db, 'settings', 'admins'), { emails: newAdmins }),
-                    setDoc(doc(db, 'settings', 'whitelist'), { emails: newWl })
-                ]));
+                await safeWrite(setDoc(doc(db, 'settings', 'admins'), { emails: newAdmins }));
                 closeConfirmModal();
-                customAlert(`已剝奪「${targetEmail}」權限並將其踢出系統！`);
+                customAlert(`已剝奪「${targetEmail}」的管理員權限！`);
             }
             else if (pendingDeleteAction.type === 'removeUser') {
                 const targetEmail = pendingDeleteAction.payload;
@@ -2838,6 +2885,7 @@
         }
     };
 
+    // 將所有需要的 function 綁定到 window
     window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal;
     window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal;
     window.openAddOfficeModal = openAddOfficeModal; window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal;
@@ -2854,7 +2902,7 @@
     window.executeDeleteFromModal = executeDeleteFromModal; window.closeOfficeActionModal = closeOfficeActionModal;
     window.promptDeleteOffice = promptDeleteOffice; window.moveOfficeRegion = moveOfficeRegion;
     
-    // ✨ 將防呆相關功能綁定
+    // 防呆相關功能綁定
     window.promptStrictAction = promptStrictAction;
     window.closeConfirmModal = closeConfirmModal; 
     window.executeConfirmAction = executeConfirmAction;
@@ -2873,6 +2921,8 @@
     window.toggleDevOptions = toggleDevOptions;
     window.loginWithGoogle = loginWithGoogle; window.logout = logout;
     
+    // 動態白名單與頭貼選單綁定
+    window.closeAdminWelcomeModal = closeAdminWelcomeModal;
     window.toggleAvatarMenu = toggleAvatarMenu;
     window.openNicknameModal = openNicknameModal;
     window.closeNicknameModal = closeNicknameModal;
@@ -2881,14 +2931,13 @@
     window.closeWhitelistModal = closeWhitelistModal;
     window.renderWhitelist = renderWhitelist;
     
-    // ✨ 綁定分享邀請
+    // 綁定分享邀請
     window.openShareModal = openShareModal;
     window.closeShareModal = closeShareModal;
     window.copyShareLink = copyShareLink;
     window.inviteUser = inviteUser;
     
     window.addWhitelistEmail = addWhitelistEmail;
-    window.promptDeleteWhitelist = promptDeleteWhitelist;
 
     window.addEventListener('resize', syncHeaderLayout);
 </script>

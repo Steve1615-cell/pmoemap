@@ -294,9 +294,9 @@
         }
         .crown-ping { animation: crownPing 0.6s ease-out; display: inline-block; }
 
-        /* ✨ 置頂卡片與登入畫面網格 CSS */
+        /* ✨ 置頂卡片 CSS */
         .pinned-full-card {
-            position: relative; cursor: grab; background: var(--card); padding: 25px 20px; text-align: center; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 2px solid transparent; transition: all 0.2s;
+            position: relative; cursor: grab; background: var(--card); padding: 20px 15px; text-align: center; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 2px solid transparent; transition: all 0.2s;
         }
         .pinned-full-card:hover { border-color: var(--warning); transform: translateY(-5px); }
         .pinned-full-card:active { cursor: grabbing; }
@@ -304,30 +304,34 @@
         .pinned-full-card.drag-over { border: 2px dashed var(--primary); }
         
         .unpin-btn {
-            position: absolute; top: 10px; right: 10px; background: #fee2e2; border: none; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; opacity: 0.5; transition: all 0.2s; z-index: 20; color: var(--danger); font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 16px;
+            position: absolute; top: 8px; right: 8px; background: #fee2e2; border: none; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; opacity: 0.5; transition: all 0.2s; z-index: 20; color: var(--danger); font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 14px;
         }
         .pinned-full-card:hover .unpin-btn { opacity: 1; transform: scale(1.1); }
         .unpin-btn:hover { background: var(--danger); color: white; }
 
+        /* ✨ 登入大廳 圓形軌道 UI */
         .login-wrapper {
-            display: flex; justify-content: center; align-items: flex-start; gap: 40px; margin: 40px auto; max-width: 1100px;
+            position: relative; width: 100%; height: calc(100vh - 150px); min-height: 500px; display: flex; justify-content: center; align-items: center; overflow: hidden;
         }
-        .login-links-side {
-            flex: 1; max-width: 260px; display: none; flex-direction: column; gap: 12px;
+        .login-center-box {
+            width: 40%; max-width: 450px; aspect-ratio: 1 / 1; border-radius: 50%; background: #f4f7fb; 
+            box-shadow: 20px 20px 60px #d0d3d6, -20px -20px 60px #ffffff; /* Neumorphism 半立體設計 */
+            display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; z-index: 10; text-align: center;
         }
-        .friendly-link-card {
-            background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; text-decoration: none; color: var(--text-main); font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: all 0.2s; display: flex; align-items: center; gap: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        .orbit-link {
+            position: absolute; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-decoration: none; color: var(--text-main); font-size: 13px; transition: transform 0.3s, box-shadow 0.3s, border-color 0.2s; display: flex; flex-direction: column; gap: 5px; z-index: 5; max-width: 150px; pointer-events: auto; transform-origin: center;
         }
-        .friendly-link-card:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .friendly-link-icon { font-size: 20px; background: var(--accent); padding: 8px; border-radius: 8px; flex-shrink: 0; }
+        .orbit-link:hover { z-index: 20 !important; border-color: var(--primary); box-shadow: 0 8px 20px rgba(37,99,235,0.2); }
+        .orbit-link-name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .orbit-link-url { font-size: 10px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        @media (min-width: 950px) {
-            .login-links-side { display: flex; }
-        }
-
-        /* 針對觸控設備 (手機/平板) 的專屬設定 */
-        @media (max-width: 600px) {
+        /* 針對觸控設備與手機的專屬設定 */
+        @media (max-width: 768px) {
             #user-info-text { display: none !important; }
+            .login-wrapper { flex-direction: column; height: auto; padding-top: 40px; gap: 30px; justify-content: flex-start; }
+            .login-center-box { width: 90%; aspect-ratio: auto; border-radius: 16px; padding: 30px 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+            #login-orbit-container { position: relative !important; width: 100%; height: auto; display: flex; flex-direction: column; gap: 10px; padding: 0 20px; box-sizing: border-box;}
+            .orbit-link { position: relative !important; left: auto !important; top: auto !important; transform: none !important; width: 100%; max-width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
         }
 
         @media (hover: none) {
@@ -358,14 +362,12 @@
         #custom-toast.show { opacity: 1; visibility: visible; top: 60px; }
         #custom-toast.danger { background: #ef4444; } 
 
-        /* 版本更新與頁腳 */
         .version-footer {
             text-align: center; color: #9ca3af; font-size: 11px; padding: 20px 0 10px; 
             margin-top: 20px; border-top: 1px dashed #e2e8f0; cursor: pointer; transition: color 0.2s;
         }
         .version-footer:hover { color: var(--primary); }
 
-        /* 特徵鎖定提示面板 */
         .locked-feature-panel {
             grid-column: 1/-1; text-align: center; padding: 50px 20px; 
             background: white; border-radius: 12px; border: 1px dashed #cbd5e1; color: var(--text-muted);
@@ -380,6 +382,7 @@
 
 <div id="custom-toast"></div>
 
+<!-- 管理員動態迎新視窗 -->
 <div id="admin-welcome-modal-overlay" class="modal-overlay" style="z-index: 5000;">
     <div class="modal-content" style="text-align: center; padding: 30px 20px; width: 85%; max-width: 360px;">
         <div style="font-size: 50px; margin-bottom: 15px;">👑</div>
@@ -395,6 +398,7 @@
     </div>
 </div>
 
+<!-- 共用防呆警告對話框 -->
 <div id="confirm-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeConfirmModal()" style="z-index: 4000;">
     <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header" style="color: var(--danger);">
@@ -402,6 +406,7 @@
         </div>
         <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
         
+        <!-- 雙重確認防呆輸入框 -->
         <div id="strict-input-container" style="display: none; margin-bottom: 20px;">
             <label style="font-size: 12px; color: var(--danger); font-weight: bold;">請輸入完整的信箱位址以解鎖確認按鈕：</label>
             <input type="email" id="strict-confirm-input" style="width: 100%; padding: 8px; border: 1px solid var(--danger); border-radius: 6px; margin-top: 5px;" autocomplete="off" placeholder="請輸入對方信箱...">
@@ -414,6 +419,23 @@
     </div>
 </div>
 
+<!-- ✨ 新增置頂項目的獨立彈窗 (Modal) 取代下拉選單 -->
+<div id="pin-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closePinModal()" style="z-index: 3600;">
+    <div class="modal-content" style="max-width: 400px; height: 80vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="flex-shrink: 0;">
+            <span>📌 搜尋並加入置頂</span>
+            <button class="btn-close" onclick="closePinModal()">×</button>
+        </div>
+        <div style="flex-shrink: 0; margin-bottom: 10px;">
+            <input type="text" id="pin-search-modal-input" placeholder="搜尋區域、辦公室、人員、資產..." oninput="filterPinItemsModal()" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+        </div>
+        <div id="pin-modal-list" style="flex: 1; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px;">
+            <!-- JS 動態產生選項 -->
+        </div>
+    </div>
+</div>
+
+<!-- 分享與邀請表單 -->
 <div id="share-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeShareModal()" style="z-index: 3600;">
     <div class="modal-content">
         <div class="modal-header">
@@ -446,6 +468,7 @@
     </div>
 </div>
 
+<!-- 系統授權白名單管理表單 (僅限管理員) -->
 <div id="whitelist-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeWhitelistModal()" style="z-index: 3500;">
     <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header">
@@ -457,7 +480,8 @@
         </div>
 
         <div id="whitelist-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
-            </div>
+            <!-- JS 動態生成 -->
+        </div>
 
         <div class="modal-footer" style="margin-top: 15px;">
             <button class="btn-secondary" onclick="closeWhitelistModal()">關閉</button>
@@ -465,6 +489,7 @@
     </div>
 </div>
 
+<!-- 設定個人暱稱表單 -->
 <div id="nickname-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeNicknameModal()" style="z-index: 3600;">
     <div class="modal-content">
         <div class="modal-header">
@@ -482,7 +507,7 @@
     </div>
 </div>
 
-<!-- ✨ 新增：友站連結管理表單 (Modal) -->
+<!-- 友站連結管理表單 (Modal) -->
 <div id="friendly-link-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeFriendlyLinkModal()" style="z-index: 3600;">
     <div class="modal-content">
         <div class="modal-header">
@@ -515,7 +540,7 @@
         <div class="form-group">
             <label>選擇套用範圍：</label>
             <select id="title-rank-scope" onchange="changeTitleRankScope()">
-                </select>
+            </select>
         </div>
 
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">請按住 ☰ 拖曳項目來調整高低順序 (越上方排序越優先)。</p>
@@ -539,7 +564,7 @@
         <div class="form-group">
             <label>將此辦公室轉移至：</label>
             <select id="office-move-floor-select" style="background: var(--accent); font-weight:bold;">
-                </select>
+            </select>
         </div>
 
         <div class="modal-footer" style="justify-content: space-between; margin-top: 30px;">
@@ -559,7 +584,7 @@
             <button class="btn-close" onclick="closeUpdateLogModal()">×</button>
         </div>
         <div id="update-log-content" style="max-height: 60vh; overflow-y: auto; text-align: left;">
-            </div>
+        </div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeUpdateLogModal()">關閉</button>
         </div>
@@ -598,7 +623,6 @@
         <div class="menu-item disabled tooltip-container" data-tooltip="縮時相機管理開發中！">📷 縮時相機管理</div>
         <div class="menu-item" onclick="showExtensionsView()">📞 辦公室分機表</div>
 
-        <!-- ✨ 側邊欄友站連結區塊 -->
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
         <div style="padding: 10px 20px 5px 20px; font-size: 12px; font-weight: bold; color: var(--text-muted);">🔗 友站連結</div>
         <div id="sidebar-friendly-links"></div>
@@ -614,6 +638,7 @@
             <button class="btn-nav btn-menu" onclick="toggleSidebar()">☰</button>
             <button class="btn-nav" id="btn-global-home" style="display:none;" onclick="goHome()">🏠 首頁</button>
             <button class="btn-nav" id="btn-global-up" style="display:none;" onclick="goUpLevel()">← 上一層</button>
+            <!-- 初始不顯示置頂區切換按鈕，若無置頂項才會在 JS 裡開啟顯示 -->
             <button class="btn-nav" id="btn-global-pin" onclick="togglePinSection()" style="display:none; color: var(--warning); border: 1px solid var(--warning); background: white;">📌 置頂區</button>
         </div>
         <div class="title-container" id="title-container">
@@ -641,32 +666,29 @@
 
     <div id="breadcrumb" class="breadcrumb"></div>
 
-    <!-- ✨ 系統登入大廳 (加入左右友站連結排版) -->
+    <!-- ✨ 系統登入大廳 (Neumorphism 圓形排列軌道) -->
     <div id="view-login" class="view">
         <div class="login-wrapper">
-            <!-- 左側友站連結 -->
-            <div id="login-links-left" class="login-links-side"></div>
+            <!-- 軌道友站連結區域 (桌面版顯示絕對定位軌道，手機版回退清單) -->
+            <div id="login-orbit-container" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none;"></div>
             
-            <div style="width: 100%; max-width: 400px; background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; flex-shrink:0;">
+            <div class="login-center-box" style="pointer-events: auto;">
                 <div style="font-size: 48px; margin-bottom: 10px;">🏢</div>
-                <h2 style="margin-top:0; color: var(--text-main); font-size: 24px;">系統授權登入</h2>
+                <h2 style="margin-top:0; color: var(--text-main); font-size: 24px; white-space: nowrap;">系統授權登入</h2>
                 <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
                     為了保護圖資與資產安全，本系統已啟用權限控管。<br>請使用您的 Google 帳號進行登入。
                 </p>
                 
                 <div style="margin-bottom: 25px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <input type="checkbox" id="remember-me" checked style="width: 16px; height: 16px; cursor: pointer;">
-                    <label for="remember-me" style="font-size: 14px; color: var(--text-muted); cursor: pointer; user-select: none;">保持登入狀態 (記住我)</label>
+                    <label for="remember-me" style="font-size: 14px; color: var(--text-muted); cursor: pointer; user-select: none;">保持登入狀態</label>
                 </div>
 
-                <button onclick="loginWithGoogle()" style="display:flex; align-items:center; justify-content:center; gap:10px; width: 100%; padding: 12px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: var(--text-main);">
+                <button onclick="loginWithGoogle()" style="display:flex; align-items:center; justify-content:center; gap:10px; width: 100%; padding: 12px; background: #fff; border: 1px solid #cbd5e1; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: var(--text-main);">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 20px;">
                     使用 Google 帳號登入
                 </button>
             </div>
-
-            <!-- 右側友站連結 -->
-            <div id="login-links-right" class="login-links-side"></div>
         </div>
     </div>
 
@@ -695,7 +717,6 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
                 <div style="font-size: 16px; font-weight: bold; color: var(--warning); display:flex; align-items:center; gap:8px;">📌 我的常用置頂 <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(拖曳排序，最多 5 項)</span></div>
             </div>
-            
             <div id="pinned-items-wrapper" class="grid-nav">
                 <!-- Pinned full cards will be injected here -->
             </div>
@@ -731,8 +752,7 @@
 
     <div id="view-extensions" class="view"><div id="ext-container"></div></div>
 
-    <div class="version-footer" onclick="openUpdateLogModal()">
-        </div>
+    <div class="version-footer" onclick="openUpdateLogModal()"></div>
 </div>
 
 <div class="fab-container" id="fab-container">
@@ -923,13 +943,13 @@
 
     const systemUpdateLogs = [
         {
-            version: "1.6.4",
+            version: "1.6.5",
             date: "20260327",
             changes: [
-                "【首頁進化】置頂功能大升級：置頂物件將直接顯示「完整資訊卡片」，並且首頁會自動常駐顯示您的置頂清單。",
-                "【全域擴充】新增「友站連結」功能，使用者可於側邊欄自由新增常用系統網址 (上限20個)，並於登入大廳兩側同步展示快速入口。",
-                "側邊欄擴充：預載「📷 縮時相機管理」為未來模組開發建立接口。",
-                "修復變數遺失錯誤，確保彈出視窗(Modal) 關閉與按鈕點擊等全域功能穩定運作。"
+                "【首頁進化】置頂功能全面升級：支援顯示完整資訊卡片。當有置頂物件時，首頁強制展開置頂區並隱藏按鈕，維持版面俐落。",
+                "優化置頂新增操作：廢除易衝突之選單，改以「獨立搜尋彈窗」操作，杜絕背景干擾。",
+                "【登入大廳翻新】採用 Neumorphism (半立體擬物化) 圓形設計，並實作行星軌道 (Orbit) 友站連結佈局。",
+                "導入智慧動態軌道：友站圖示將依據全站點擊次數自動縮放顯示大小，重點資源一目了然。"
             ]
         },
         {
@@ -1009,13 +1029,13 @@
     let globalWhitelist = [];
     let globalUsers = [];
     let globalAdmins = []; 
-    let globalFriendlyLinks = []; // ✨ 友站連結全域變數
+    let globalFriendlyLinks = []; 
     const SUPER_ADMIN = 'steve1615@gmail.com'; 
 
     let myPinnedItems = [];
     let isPinSectionVisible = false;
 
-    // ✨ 獨立的公用監聽器：確保登入大廳就能讀到友站連結
+    // ✨ 系統一啟動就監聽公用資料流 (不用登入也能拿到的設定)
     function setupPublicListeners() {
         onSnapshot(doc(db, "settings", "friendlyLinks"), (docSnap) => {
             if(docSnap.exists()) {
@@ -1026,7 +1046,7 @@
             renderFriendlyLinks();
         });
     }
-    setupPublicListeners(); // 系統一起動立刻執行
+    setupPublicListeners(); 
 
     window.openAdminWelcomeModal = (e) => {
         if(e) e.stopPropagation();
@@ -1207,7 +1227,7 @@
             if (dropdown) dropdown.style.display = 'none';
 
             updateMainTitle('ＰＭＯ電子圖資系統');
-            renderFriendlyLinks(); // 確保未登入時也會渲染側邊與首頁友站
+            renderFriendlyLinks(); 
             switchView('view-login');
         }
     });
@@ -1239,7 +1259,7 @@
             if(btnDevWhitelist) btnDevWhitelist.classList.add('locked');
         }
 
-        renderFriendlyLinks(); // 登入狀態確認後，重繪友站連結權限按鈕
+        renderFriendlyLinks(); 
 
         if (isAuth) {
             document.getElementById('header-left').style.visibility = 'visible';
@@ -1269,7 +1289,7 @@
         } catch (error) {
             if (error.code === 'auth/unauthorized-domain') {
                 if (window.location.hostname.includes('usercontent.goog') || window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1')) {
-                    customAlert('預覽環境或本地端受限，為您啟用「訪客預覽模式」！');
+                    customAlert('預覽環境受限，為您啟用「訪客預覽模式」！');
                     await signInAnonymously(auth);
                 } else {
                     customAlert('登入失敗：目前執行的網址未獲 Firebase 授權！請在 Vercel 設定授權網域。', true);
@@ -1329,7 +1349,7 @@
                 if (myProfile) {
                     if (myProfile.nickname) document.getElementById('user-name-display').innerText = myProfile.nickname;
                     myPinnedItems = myProfile.pinnedItems || [];
-                    if (currentLevel === 0) renderPinnedItems(); // 即時更新首頁置頂
+                    if (currentLevel === 0) renderPinnedItems(); 
                 }
             }
             if(document.getElementById('whitelist-modal-overlay').classList.contains('active')) renderWhitelist();
@@ -1345,7 +1365,7 @@
                     updateMainTitle(currentOfficeName);
                 }
             }
-            if (currentLevel === 0) renderPinnedItems(); // 更新可能被更名的卡片
+            if (currentLevel === 0) renderPinnedItems(); 
             renderSidebarTree(); checkAllLoaded();
         });
         onSnapshot(collection(db, "members"), (snapshot) => {
@@ -1396,7 +1416,7 @@
     }
 
     // =======================================================
-    // ✨ 友站連結邏輯 (Friendly Links)
+    // ✨ 友站連結邏輯 (Friendly Links) - 支援環繞動畫
     // =======================================================
     window.renderFriendlyLinks = () => {
         const isAuth = auth.currentUser && (globalWhitelist.includes(auth.currentUser.email) || globalAdmins.includes(auth.currentUser.email) || auth.currentUser.email === SUPER_ADMIN || auth.currentUser.isAnonymous);
@@ -1408,7 +1428,7 @@
             globalFriendlyLinks.forEach((link, idx) => {
                 let delBtn = isAuth ? `<button onclick="promptDeleteFriendlyLink(${idx})" style="background:none; border:none; cursor:pointer; color:var(--danger); opacity:0.5; font-size:16px; padding:0 5px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5">×</button>` : '';
                 html += `<div class="menu-item" style="font-size: 14px; font-weight: normal; padding: 10px 25px; display:flex; align-items:center;">
-                            <a href="${link.url}" target="_blank" style="color: var(--text-main); text-decoration: none; flex:1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🌍 ${link.name}</a>
+                            <a href="#" onclick="trackLinkClick(${idx}, '${link.url}')" style="color: var(--text-main); text-decoration: none; flex:1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🌍 ${link.name}</a>
                             ${delBtn}
                          </div>`;
             });
@@ -1418,24 +1438,49 @@
             sidebarList.innerHTML = html;
         }
 
-        // 登入畫面左右側渲染
-        const leftContainer = document.getElementById('login-links-left');
-        const rightContainer = document.getElementById('login-links-right');
-        if (leftContainer && rightContainer) {
-            leftContainer.innerHTML = '';
-            rightContainer.innerHTML = '';
+        // ✨ 登入畫面環繞渲染 (Neumorphism Orbit)
+        const orbitContainer = document.getElementById('login-orbit-container');
+        if (orbitContainer && currentLevel === -1) {
+            orbitContainer.innerHTML = '';
+            const totalLinks = globalFriendlyLinks.length;
+            if (totalLinks === 0) return;
+
+            const maxClicks = Math.max(...globalFriendlyLinks.map(l => l.clicks || 0), 1);
             
-            const half = Math.ceil(globalFriendlyLinks.length / 2);
-            globalFriendlyLinks.forEach((link, idx) => {
-                const aHTML = `
-                    <a href="${link.url}" target="_blank" class="friendly-link-card" title="${link.name}">
-                        <div class="friendly-link-icon">🌍</div>
-                        <div style="overflow:hidden; text-overflow:ellipsis;">${link.name}</div>
-                    </a>`;
-                if (idx < half) leftContainer.innerHTML += aHTML;
-                else rightContainer.innerHTML += aHTML;
+            globalFriendlyLinks.forEach((link, i) => {
+                const angle = (i / totalLinks) * 2 * Math.PI;
+                const radiusX = window.innerWidth > 768 ? window.innerWidth * 0.28 : 0; // 橢圓軌道 X
+                const radiusY = window.innerWidth > 768 ? window.innerHeight * 0.35 : 0; // 橢圓軌道 Y
+                
+                const clicks = link.clicks || 0;
+                let scale = 0.8 + (clicks / maxClicks) * 0.7; 
+                if (scale > 1.5) scale = 1.5;
+
+                const a = document.createElement('a');
+                a.href = "#";
+                a.className = "orbit-link";
+                a.innerHTML = `<div class="orbit-link-name">🌍 ${link.name}</div><div class="orbit-link-url">${link.url}</div>`;
+                
+                if (window.innerWidth > 768) {
+                    const x = `calc(50% + ${Math.cos(angle) * radiusX}px)`;
+                    const y = `calc(50% + ${Math.sin(angle) * radiusY}px)`;
+                    a.style.left = x;
+                    a.style.top = y;
+                    a.style.transform = `translate(-50%, -50%) scale(${scale})`;
+                }
+                
+                a.onclick = (e) => { e.preventDefault(); trackLinkClick(i, link.url); };
+                orbitContainer.appendChild(a);
             });
         }
+    };
+
+    window.trackLinkClick = async (index, url) => {
+        const newLinks = [...globalFriendlyLinks];
+        newLinks[index].clicks = (newLinks[index].clicks || 0) + 1;
+        // 寫入資料庫但不等待，直接幫使用者跳轉
+        setDoc(doc(db, 'settings', 'friendlyLinks'), { list: newLinks }).catch(e => console.log('Link track error', e));
+        window.open(url, '_blank');
     };
 
     window.openFriendlyLinkModal = () => {
@@ -1455,7 +1500,7 @@
         if (!/^https?:\/\//i.test(url)) { url = 'https://' + url; }
         if (globalFriendlyLinks.length >= 20) { customAlert('友站連結已達 20 個上限！', true); return; }
 
-        const newLinks = [...globalFriendlyLinks, { name, url }];
+        const newLinks = [...globalFriendlyLinks, { name, url, clicks: 0 }];
         try {
             await safeWrite(setDoc(doc(db, 'settings', 'friendlyLinks'), { list: newLinks }));
             customAlert('成功新增友站連結！');
@@ -1477,7 +1522,7 @@
     };
 
     // =======================================================
-    // ✨ 📌 置頂功能 (Pin Feature) 完整卡片進化版
+    // ✨ 📌 置頂功能 (獨立 Modal 版，防止點擊衝突)
     // =======================================================
     window.togglePinSection = () => {
         isPinSectionVisible = !isPinSectionVisible;
@@ -1486,20 +1531,21 @@
         if (isPinSectionVisible) renderPinnedItems();
     };
 
-    window.togglePinDropdown = (event) => {
-        if(event) event.stopPropagation();
-        const panel = document.getElementById('pin-dropdown-panel');
-        panel.classList.toggle('active');
-        if(panel.classList.contains('active')) {
-            document.getElementById('pin-search-input').value = '';
-            filterPinItems();
-            document.getElementById('pin-search-input').focus();
-        }
+    // 改用獨立的 Modal 來新增置頂
+    window.openPinModal = () => {
+        document.getElementById('pin-search-modal-input').value = '';
+        filterPinItemsModal();
+        document.getElementById('pin-modal-overlay').classList.add('active');
+        document.getElementById('pin-search-modal-input').focus();
     };
 
-    window.filterPinItems = () => {
-        const text = document.getElementById('pin-search-input').value.toLowerCase();
-        const listDiv = document.getElementById('pin-dropdown-list');
+    window.closePinModal = () => {
+        document.getElementById('pin-modal-overlay').classList.remove('active');
+    };
+
+    window.filterPinItemsModal = () => {
+        const text = document.getElementById('pin-search-modal-input').value.toLowerCase();
+        const listDiv = document.getElementById('pin-modal-list');
         listDiv.innerHTML = '';
         
         let results = [];
@@ -1524,7 +1570,7 @@
             }
         });
         
-        results.slice(0, 20).forEach(res => {
+        results.slice(0, 30).forEach(res => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'dropdown-item';
             
@@ -1534,7 +1580,7 @@
             else if (res.type==='member') typeLabel = '人員';
             else if (res.type==='asset') typeLabel = '資產';
 
-            itemDiv.innerHTML = `<span style="font-weight:bold; font-size:14px; display:flex; gap:8px;"><span>${res.icon}</span> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">${res.name}</span></span><span style="font-size:11px; color:white; background:var(--text-muted); padding:2px 6px; border-radius:12px; font-weight:bold;">${typeLabel}</span>`;
+            itemDiv.innerHTML = `<span style="font-weight:bold; font-size:14px; display:flex; gap:8px;"><span>${res.icon}</span> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${res.name}</span></span><span style="font-size:11px; color:white; background:var(--text-muted); padding:2px 6px; border-radius:12px; font-weight:bold;">${typeLabel}</span>`;
             itemDiv.onclick = (e) => {
                 e.stopPropagation();
                 addPinItem(res);
@@ -1543,7 +1589,7 @@
         });
         
         if(results.length === 0) {
-            listDiv.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">無符合項目</div>';
+            listDiv.innerHTML = '<div style="padding:20px; color:#94a3b8; font-size:13px; text-align:center;">無符合項目</div>';
         }
     };
 
@@ -1564,12 +1610,11 @@
         myPinnedItems = newPinned;
         
         initView(); // 強制重繪首頁與置頂區
+        closePinModal(); // 關閉彈出視窗
 
         try {
             const userId = auth.currentUser?.email || 'anonymous@preview.com';
             await safeWrite(setDoc(doc(db, 'users', userId), { pinnedItems: newPinned }, { merge: true }));
-            const panel = document.getElementById('pin-dropdown-panel');
-            if(panel) panel.classList.remove('active');
         } catch(e) {
             console.error(e); customAlert('置頂儲存失敗', true);
         }
@@ -1613,7 +1658,7 @@
         const container = document.getElementById('pinned-items-wrapper');
         if(!container) return;
         
-        container.innerHTML = ''; // 清空重新渲染
+        container.innerHTML = ''; 
         
         myPinnedItems.forEach((item, index) => {
             const card = document.createElement('div');
@@ -1698,7 +1743,7 @@
             container.appendChild(card);
         });
         
-        // 渲染結尾的新增方塊
+        // 渲染結尾的獨立新增按鈕框
         if (myPinnedItems.length < 5) {
             const addCard = document.createElement('div');
             addCard.className = 'nav-card';
@@ -1708,19 +1753,10 @@
             addCard.style.border = '2px dashed #cbd5e1';
             addCard.style.boxShadow = 'none';
             addCard.style.background = 'transparent';
-            addCard.style.position = 'relative';
             addCard.style.cursor = 'pointer';
             
-            addCard.innerHTML = `
-                <div style="font-size: 36px; color: #94a3b8; width: 100%; height: 100%;">＋</div>
-                <div class="custom-dropdown-panel" id="pin-dropdown-panel" style="width: 100%; top: 100%; left: 0; z-index: 3200;">
-                    <div class="dropdown-search-row">
-                        <input type="text" id="pin-search-input" placeholder="搜尋並加入置頂..." oninput="filterPinItems()" onclick="event.stopPropagation()">
-                    </div>
-                    <div class="dropdown-list" id="pin-dropdown-list"></div>
-                </div>
-            `;
-            addCard.onclick = (e) => togglePinDropdown(e);
+            addCard.innerHTML = `<div style="font-size: 36px; color: #94a3b8; width: 100%; height: 100%;">＋</div>`;
+            addCard.onclick = () => openPinModal();
             container.appendChild(addCard);
         }
     };
@@ -1952,7 +1988,7 @@
             btn.disabled = false;
             btn.innerText = '確定移除';
             document.getElementById('confirm-modal-overlay').classList.add('active');
-            return; // 不需倒數
+            return; 
         }
 
         btn.disabled = true;
@@ -2013,7 +2049,7 @@
     }
 
     function initView() {
-        const gridNav = document.querySelector('#floor-list-container');
+        const gridNav = document.querySelector('#view-floor .grid-nav');
         if (gridNav) {
             gridNav.innerHTML = ''; 
             
@@ -2057,7 +2093,6 @@
         
         document.getElementById('dev-tabs-container').style.display = (devOptionsEnabled && currentLevel === 0) ? 'flex' : 'none';
         
-        // ✨ 首頁置頂區域的顯示邏輯 (有物件就強制展開且隱藏 Header 按鈕，無物件則隱藏且顯示 Header 按鈕)
         if (currentLevel === 0) {
             if (myPinnedItems.length > 0) {
                 document.getElementById('btn-global-pin').style.display = 'none';
@@ -2175,21 +2210,15 @@
         if (avatarMenu && !e.target.closest('#user-profile')) {
             avatarMenu.style.display = 'none';
         }
-
-        const pinPanel = document.getElementById('pin-dropdown-panel');
-        if (pinPanel && pinPanel.classList.contains('active') && !e.target.closest('#pin-add-area')) {
-            pinPanel.classList.remove('active');
-        }
     });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeFabMenu(); closeEditModal(); closeAssetModal(); closeOfficeModal(); closeSidebar(); closeAddOfficeModal();
-            closeTitleRankModal(); closeUpdateLogModal(); closeOfficeActionModal(); window.closeWhitelistModal(); window.closeNicknameModal(); window.closeShareModal(); window.closeFriendlyLinkModal();
+            closeTitleRankModal(); closeUpdateLogModal(); closeOfficeActionModal(); window.closeWhitelistModal(); window.closeNicknameModal(); window.closeShareModal(); window.closeFriendlyLinkModal(); window.closePinModal();
             document.getElementById('category-panel').classList.remove('active');
             document.getElementById('owner-panel').classList.remove('active');
             if(document.getElementById('room-type-panel')) document.getElementById('room-type-panel').classList.remove('active');
-            if(document.getElementById('pin-dropdown-panel')) document.getElementById('pin-dropdown-panel').classList.remove('active');
             closeConfirmModal(); window.closeAdminWelcomeModal();
         }
     });
@@ -3483,69 +3512,40 @@
         }
     };
 
-    // ================= 統一全域函數綁定 (防止 ReferenceError) =================
-    window.safeWrite = safeWrite;
-    window.toggleSidebar = toggleSidebar; 
-    window.closeSidebar = closeSidebar;
-    window.showExtensionsView = showExtensionsView; 
-    window.goHome = goHome; 
-    window.goUpLevel = goUpLevel;
-    window.showOffices = showOffices; 
-    window.showDetail = showDetail; 
-    window.switchTab = switchTab;
-    window.updateDetailContent = updateDetailContent;
-    
-    window.openMemberModal = openMemberModal; 
-    window.closeEditModal = closeEditModal; 
-    window.saveMemberData = saveMemberData;
-    window.openAssetModal = openAssetModal; 
-    window.closeAssetModal = closeAssetModal; 
-    window.saveAssetData = saveAssetData;
+    window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal;
+    window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal;
+    window.openAddOfficeModal = openAddOfficeModal; window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal;
     window.syncSnPc = syncSnPc;
+    window.toggleCategoryDropdown = toggleCategoryDropdown; window.renderCategoryDropdown = renderCategoryDropdown;
+    window.filterCategories = filterCategories; window.selectCategory = selectCategory;
+    window.addCategory = addCategory; window.promptDeleteCategory = promptDeleteCategory;
+    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; window.renderRoomTypeDropdown = renderRoomTypeDropdown;
+    window.filterRoomTypes = filterRoomTypes; window.selectRoomType = selectRoomType;
+    window.addRoomType = addRoomType; window.promptDeleteRoomType = promptDeleteRoomType;
+    window.toggleOwnerDropdown = toggleOwnerDropdown; window.renderOwnerDropdown = renderOwnerDropdown;
+    window.filterOwners = filterOwners; window.selectOwner = selectOwner;
+    window.addOwnerFromAsset = addOwnerFromAsset; window.promptDeleteOwner = promptDeleteOwner;
+    window.executeDeleteFromModal = executeDeleteFromModal; window.closeOfficeActionModal = closeOfficeActionModal;
+    window.promptDeleteOffice = promptDeleteOffice; window.moveOfficeRegion = moveOfficeRegion;
     
-    window.toggleCategoryDropdown = toggleCategoryDropdown; 
-    window.filterCategories = filterCategories; 
-    window.addCategory = addCategory; 
-    window.selectCategory = selectCategory; 
-    window.promptDeleteCategory = promptDeleteCategory;
-    
-    window.toggleOwnerDropdown = toggleOwnerDropdown; 
-    window.filterOwners = filterOwners; 
-    window.addOwnerFromAsset = addOwnerFromAsset; 
-    window.selectOwner = selectOwner; 
-    window.promptDeleteOwner = promptDeleteOwner;
-    
-    window.executeDeleteFromModal = executeDeleteFromModal; 
-    window.executeConfirmAction = executeConfirmAction; 
-    window.closeConfirmModal = closeConfirmModal;
-    
-    window.toggleFabMenu = toggleFabMenu; 
-    window.customAlert = customAlert;
-    window.openTitleRankModal = openTitleRankModal; 
-    window.closeTitleRankModal = closeTitleRankModal;
-    window.changeTitleRankScope = changeTitleRankScope; 
-    window.promptSaveTitleRanks = promptSaveTitleRanks;
-    window.openUpdateLogModal = openUpdateLogModal; 
-    window.closeUpdateLogModal = closeUpdateLogModal;
-    window.toggleDevOptions = toggleDevOptions; 
-    window.toggleTreeFloor = toggleTreeFloor;
+    window.promptStrictAction = promptStrictAction;
+    window.closeConfirmModal = closeConfirmModal; 
+    window.executeConfirmAction = executeConfirmAction;
 
-    window.openAddOfficeModal = openAddOfficeModal; 
-    window.openOfficeModal = openOfficeModal; 
-    window.closeOfficeModal = closeOfficeModal; 
-    window.saveOfficeData = saveOfficeData;
-    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; 
-    window.filterRoomTypes = filterRoomTypes; 
-    window.addRoomType = addRoomType; 
-    window.selectRoomType = selectRoomType; 
-    window.promptDeleteRoomType = promptDeleteRoomType;
-    window.moveOfficeRegion = moveOfficeRegion; 
-    window.promptDeleteOffice = promptDeleteOffice; 
-    window.closeOfficeActionModal = closeOfficeActionModal;
     window.restoreLostComputers = restoreLostComputers;
-
-    window.loginWithGoogle = loginWithGoogle; 
-    window.logout = logout;
+    window.saveMemberData = saveMemberData; window.saveAssetData = saveAssetData; window.saveOfficeData = saveOfficeData;
+    window.goHome = goHome; window.goUpLevel = goUpLevel;
+    window.showOffices = showOffices; window.showDetail = showDetail;
+    window.switchTab = switchTab; window.updateDetailContent = updateDetailContent;
+    window.showExtensionsView = showExtensionsView; window.toggleSidebar = toggleSidebar;
+    window.closeSidebar = closeSidebar; window.toggleTreeFloor = toggleTreeFloor;
+    window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
+    window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal;
+    window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
+    window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
+    window.toggleDevOptions = toggleDevOptions;
+    window.loginWithGoogle = loginWithGoogle; window.logout = logout;
+    
     window.openAdminWelcomeModal = openAdminWelcomeModal;
     window.closeAdminWelcomeModal = closeAdminWelcomeModal;
     window.toggleAvatarMenu = toggleAvatarMenu;
@@ -3555,18 +3555,19 @@
     window.openWhitelistModal = openWhitelistModal;
     window.closeWhitelistModal = closeWhitelistModal;
     window.renderWhitelist = renderWhitelist;
+    
     window.openShareModal = openShareModal;
     window.closeShareModal = closeShareModal;
     window.copyShareLink = copyShareLink;
     window.inviteUser = inviteUser;
+    
     window.addWhitelistEmail = addWhitelistEmail;
     window.promptDeleteWhitelist = promptDeleteWhitelist;
-    window.promptStrictAction = promptStrictAction;
 
-    // ✨ 置頂功能綁定
     window.togglePinSection = togglePinSection;
-    window.togglePinDropdown = togglePinDropdown;
-    window.filterPinItems = filterPinItems;
+    window.openPinModal = openPinModal;
+    window.closePinModal = closePinModal;
+    window.filterPinItemsModal = filterPinItemsModal;
     window.addPinItem = addPinItem;
     window.removePinItem = removePinItem;
     window.handlePinClick = handlePinClick;
@@ -3578,12 +3579,12 @@
     window.handlePinDrop = handlePinDrop;
     window.handlePinDragEnd = handlePinDragEnd;
 
-    // ✨ 友站連結綁定
     window.renderFriendlyLinks = renderFriendlyLinks;
     window.openFriendlyLinkModal = openFriendlyLinkModal;
     window.closeFriendlyLinkModal = closeFriendlyLinkModal;
     window.saveFriendlyLink = saveFriendlyLink;
     window.promptDeleteFriendlyLink = promptDeleteFriendlyLink;
+    window.trackLinkClick = trackLinkClick;
 
     window.addEventListener('resize', syncHeaderLayout);
 </script>

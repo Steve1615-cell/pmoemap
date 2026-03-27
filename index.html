@@ -294,7 +294,49 @@
         }
         .crown-ping { animation: crownPing 0.6s ease-out; display: inline-block; }
 
-        /* ✨ 置頂卡片 CSS (更新: 優化懸停動畫與陰影) */
+        /* ✨ 置頂區與卡片 CSS (v1.6.7 新增吸頂與摺疊效果) */
+        #pinned-section {
+            display: none;
+            position: sticky;
+            top: 15px;
+            z-index: 990;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border: 2px dashed #cbd5e1;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        #pinned-section.collapsed {
+            padding: 10px 20px;
+            cursor: pointer;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            border-style: solid;
+        }
+        #pinned-section.collapsed .pinned-section-header { margin-bottom: 8px !important; }
+        #pinned-section.collapsed .pinned-section-header div { font-size: 13px !important; }
+        #pinned-section.collapsed .grid-nav {
+            display: flex; overflow-x: auto; flex-wrap: nowrap; gap: 10px; padding-bottom: 5px;
+        }
+        #pinned-section.collapsed .pinned-full-card {
+            flex: 0 0 auto; width: auto; min-width: 160px; padding: 8px 15px; transform: none;
+        }
+        #pinned-section.collapsed .card-content-detail,
+        #pinned-section.collapsed .password-container,
+        #pinned-section.collapsed .unpin-btn {
+            display: none !important;
+        }
+        #pinned-section.collapsed .pinned-full-card h2,
+        #pinned-section.collapsed .pinned-full-card h3 {
+            font-size: 14px; margin-top: 5px !important; margin-bottom: 0 !important;
+        }
+        #pinned-section.collapsed .pinned-type-badge {
+            position: static !important; display: inline-block; margin-bottom: 5px; padding: 2px 6px !important;
+        }
+
         .pinned-full-card {
             position: relative; cursor: grab; background: var(--card); padding: 20px 15px; text-align: center; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 2px solid transparent; transition: all 0.2s;
         }
@@ -332,6 +374,13 @@
             .login-center-box { width: 90%; aspect-ratio: auto; border-radius: 16px; padding: 30px 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
             #login-orbit-container { position: relative !important; width: 100%; height: auto; display: flex; flex-direction: column; gap: 10px; padding: 0 20px; box-sizing: border-box;}
             .orbit-link { position: relative !important; left: auto !important; top: auto !important; transform: none !important; width: 100%; max-width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
+            
+            /* 手機版置頂橫向捲動 */
+            #pinned-items-wrapper {
+                display: flex; flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch; padding-bottom: 10px;
+            }
+            .pinned-full-card { flex: 0 0 85%; scroll-snap-align: center; }
         }
 
         @media (hover: none) {
@@ -626,9 +675,12 @@
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
         <div style="padding: 10px 20px 5px 20px; font-size: 12px; font-weight: bold; color: var(--text-muted);">🔗 友站連結</div>
         <div id="sidebar-friendly-links"></div>
-    </div>
-    <div class="sidebar-footer">
-        <div>更多功能開發中！</div>
+
+        <!-- ✨ 新增：側邊欄下方版本捷徑 -->
+        <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
+        <div class="menu-item" onclick="openUpdateLogModal()" style="font-size: 13px; justify-content:center; color: var(--text-muted);">
+            <span id="sidebar-version-display">系統版本載入中...</span>
+        </div>
     </div>
 </div>
 
@@ -638,7 +690,6 @@
             <button class="btn-nav btn-menu" onclick="toggleSidebar()">☰</button>
             <button class="btn-nav" id="btn-global-home" style="display:none;" onclick="goHome()">🏠 首頁</button>
             <button class="btn-nav" id="btn-global-up" style="display:none;" onclick="goUpLevel()">← 上一層</button>
-            <!-- 初始不顯示置頂區切換按鈕，若無置頂項才會在 JS 裡開啟顯示 -->
             <button class="btn-nav" id="btn-global-pin" onclick="togglePinSection()" style="display:none; color: var(--warning); border: 1px solid var(--warning); background: white;">📌 置頂區</button>
         </div>
         <div class="title-container" id="title-container">
@@ -658,6 +709,8 @@
                 <div id="avatar-dropdown" style="position: absolute; top: 45px; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 180px; display: none; flex-direction: column; overflow: hidden; z-index: 3100;">
                     <div class="avatar-dropdown-item" onclick="openNicknameModal()">✏️ 設定個人暱稱</div>
                     <div class="avatar-dropdown-item" onclick="openShareModal()">🔗 分享與邀請</div>
+                    <!-- ✨ 新增：大頭貼選單版本紀錄捷徑 -->
+                    <div class="avatar-dropdown-item" onclick="openUpdateLogModal(); document.getElementById('avatar-dropdown').style.display='none';">📄 查看當前版本與修正</div>
                     <div class="avatar-dropdown-item" id="btn-logout" onclick="logout()" style="color: var(--danger);">🚪 登出系統</div>
                 </div>
             </div>
@@ -666,10 +719,8 @@
 
     <div id="breadcrumb" class="breadcrumb"></div>
 
-    <!-- ✨ 系統登入大廳 (Neumorphism 圓形排列軌道) -->
     <div id="view-login" class="view">
         <div class="login-wrapper">
-            <!-- 軌道友站連結區域 (桌面版顯示絕對定位軌道，手機版回退清單) -->
             <div id="login-orbit-container" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none;"></div>
             
             <div class="login-center-box" style="pointer-events: auto;">
@@ -692,7 +743,6 @@
         </div>
     </div>
 
-    <!-- 待授權大廳 -->
     <div id="view-unauthorized" class="view">
         <div style="max-width: 500px; margin: 60px auto; background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;">
             <div style="font-size: 48px; margin-bottom: 10px;">🔒</div>
@@ -712,9 +762,9 @@
             <button id="btn-dev-whitelist" class="dev-tab-btn" onclick="openWhitelistModal()" style="color: var(--primary); border-color: var(--primary); background: #e0e7ff;">🛡️ 權限白名單管理</button>
         </div>
 
-        <!-- ✨ 新版置頂區塊：以 Grid 渲染完整卡片 -->
-        <div id="pinned-section" style="display: none; margin-bottom: 20px; background: rgba(255,255,255,0.6); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 2px dashed #cbd5e1;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+        <!-- ✨ 新版置頂區塊：v1.6.7 加入仿 Excel 凍結窗格吸頂機制 -->
+        <div id="pinned-section" onclick="expandPinnedSection(event)">
+            <div class="pinned-section-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
                 <div style="font-size: 16px; font-weight: bold; color: var(--warning); display:flex; align-items:center; gap:8px;">📌 我的常用置頂 <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(拖曳排序，最多 8 項)</span></div>
             </div>
             <div id="pinned-items-wrapper" class="grid-nav">
@@ -783,7 +833,7 @@
     </div>
 </div>
 
-<!-- ✨ 新增：會議室預約排程表單 Modal ✨ -->
+<!-- ✨ 會議室預約排程表單 Modal ✨ -->
 <div id="booking-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeBookingModal()" style="z-index: 3800;">
     <div class="modal-content">
         <div class="modal-header">
@@ -795,13 +845,14 @@
             <input type="text" id="booking-title" placeholder="例如：Phase 3 啟動會議">
         </div>
         <div class="form-group">
-            <label>預約日期 <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">(僅限當月及次月)</span></label>
+            <label>預約日期 <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">(僅限當天至下個月)</span></label>
             <input type="date" id="booking-date">
         </div>
         <div style="display:flex; gap:10px;">
             <div class="form-group" style="flex:1;">
                 <label>開始時間</label>
-                <input type="time" id="booking-start">
+                <!-- ✨ 新增：自動帶入一小時機制的綁定 -->
+                <input type="time" id="booking-start" onchange="handleStartTimeChange()">
             </div>
             <div class="form-group" style="flex:1;">
                 <label>結束時間</label>
@@ -816,7 +867,6 @@
             <button id="btn-delete-booking" class="btn-danger" style="display:none;" onclick="promptDeleteBooking()">🗑️ 取消預約</button>
             <div style="display:flex; gap:10px;">
                 <button class="btn-secondary" onclick="closeBookingModal()">返回</button>
-                <!-- ✨ 加入連續新增的下一筆按鈕 -->
                 <button id="btn-save-next-booking" class="btn-primary" onclick="saveBookingData(true)" style="display:none; background-color:#059669;">下一筆</button>
                 <button id="btn-save-booking" class="btn-primary" onclick="saveBookingData(false)">儲存</button>
             </div>
@@ -964,8 +1014,6 @@
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore, persistentLocalCache, persistentSingleTabManager, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // ✨ [安全防護] 全域錯誤與 Promise 拒絕捕捉
-    // 只要系統發生任何預期外報錯，立刻強制解除「無限載入畫面」卡死狀態
     window.addEventListener('error', function(e) {
         const loader = document.getElementById('loading-overlay');
         if (loader && loader.style.display !== 'none') {
@@ -1001,7 +1049,18 @@
         localCache: persistentLocalCache({tabManager: persistentSingleTabManager()})
     });
 
+    // ✨ 更新版本日誌至 v1.6.7
     const systemUpdateLogs = [
+        {
+            version: "1.6.7",
+            date: "20260327",
+            changes: [
+                "【置頂列優化】導入 Excel 凍結窗格概念，首頁往下捲動時置頂區將自動吸頂並縮合；手機版支援橫向滑動以節省空間。",
+                "【預約排程月曆】會議室預約全面升級為「網格月曆視角」，支援切換月份查看紀錄，排程更加直觀。",
+                "【智慧防呆機制】新增預約衝堂防護，精準阻擋同一會議室的重疊時段；選擇開始時間後會自動帶入一小時為結束時間。",
+                "【介面微調】修復連續新增預約時按鈕卡在「儲存中」的異常；側邊欄與個人頭像選單皆新增快速查看「版本日誌」捷徑。"
+            ]
+        },
         {
             version: "1.6.6",
             date: "20260327",
@@ -1017,17 +1076,20 @@
             date: "20260327",
             changes: [
                 "【首頁進化】置頂功能全面升級：支援顯示完整資訊卡片。當有置頂物件時，首頁強制展開置頂區並隱藏按鈕，維持版面俐落。",
-                "優化置頂新增操作：廢除易衝突之選單，改以「獨立搜尋彈窗」操作，杜絕背景干擾。",
-                "【登入大廳翻新】採用 Neumorphism (半立體擬物化) 圓形設計，並實作行星軌道 (Orbit) 友站連結佈局。",
-                "導入智慧動態軌道：友站圖示將依據全站點擊次數自動縮放顯示大小，重點資源一目了然。"
+                "優化置頂新增操作：廢除易衝突之選單，改以「獨立搜尋彈窗」操作，杜絕背景干擾。"
             ]
         }
     ];
 
     function renderVersionFooter() {
+        const versionText = `系統版本 v${systemUpdateLogs[0].version}`;
         const footer = document.querySelector('.version-footer');
         if (footer && systemUpdateLogs.length > 0) {
-            footer.innerText = `系統版本 v${systemUpdateLogs[0].version} (${systemUpdateLogs[0].date}) - 點擊查看更新日誌`;
+            footer.innerText = `${versionText} (${systemUpdateLogs[0].date}) - 點擊查看更新日誌`;
+        }
+        const sidebarVer = document.getElementById('sidebar-version-display');
+        if (sidebarVer) {
+            sidebarVer.innerText = versionText;
         }
     }
     renderVersionFooter();
@@ -1045,13 +1107,13 @@
         'assets': '資產',
         'facilities': '孔位',
         'checkout': '🔒 登記領取',
-        'booking': '📅 預約排程' // ✨ 解鎖了鎖頭圖示
+        'booking': '📅 預約排程'
     };
 
     let globalOffices = [];
     let globalMembers = [];
     let globalAssets = [];
-    let globalBookings = []; // ✨ 新增預約資料的陣列
+    let globalBookings = [];
     let defaultCategories = ['電腦', '影印機', '冰箱', '洗衣機', '冷氣機'];
     let globalCategories = [...defaultCategories]; 
     let currentAssetCategory = '電腦';
@@ -1073,7 +1135,7 @@
     let currentEditMemberId = null; 
     let currentEditAssetId = null;
     let currentEditOfficeId = null; 
-    let currentEditBookingId = null; // ✨ 追蹤正在編輯的預約單
+    let currentEditBookingId = null; 
     let isEditMode = false; 
     let isOfficeEditMode = false;
 
@@ -1089,6 +1151,10 @@
     let myPinnedItems = [];
     let isPinSectionVisible = false;
 
+    // ✨ 新增：月曆視角專用全域變數
+    window.currentCalendarDate = new Date(); 
+    window.selectedCalendarDate = new Date().toISOString().split('T')[0]; 
+
     function setupPublicListeners() {
         onSnapshot(doc(db, "settings", "friendlyLinks"), (docSnap) => {
             if(docSnap.exists()) {
@@ -1100,6 +1166,26 @@
         });
     }
     setupPublicListeners(); 
+
+    // ✨ 捲動監聽：滑動時置頂區縮合
+    window.addEventListener('scroll', () => {
+        const pinned = document.getElementById('pinned-section');
+        if (pinned && isPinSectionVisible) {
+            if (window.scrollY > 80) {
+                pinned.classList.add('collapsed');
+            } else {
+                pinned.classList.remove('collapsed');
+            }
+        }
+    });
+
+    window.expandPinnedSection = (e) => {
+        const pinned = document.getElementById('pinned-section');
+        if (pinned.classList.contains('collapsed')) {
+            e.stopPropagation(); 
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
 
     window.openAdminWelcomeModal = (e) => {
         if(e) e.stopPropagation();
@@ -1362,7 +1448,7 @@
         let loadedCount = 0;
         const checkAllLoaded = () => {
             loadedCount++;
-            if (loadedCount >= 10 && !isInitialized) { // ✨ 改為 10，因為增加了 bookings 監聽
+            if (loadedCount >= 10 && !isInitialized) { 
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
@@ -1431,12 +1517,11 @@
             if(currentLevel === 0) renderPinnedItems();
         });
         
-        // ✨ 新增：監聽會議室預約資料
         onSnapshot(collection(db, "bookings"), (snapshot) => {
             globalBookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
             checkAllLoaded();
             if (currentLevel === 2 && currentTab === 'booking') {
-                updateDetailContent(); // 若目前正好停留在預約分頁，即時更新畫面
+                updateDetailContent(); 
             }
         });
 
@@ -1647,7 +1732,6 @@
     };
 
     window.addPinItem = async (res) => {
-        // ✨ 修改：提升置頂上限至 8 項
         if (myPinnedItems.length >= 8) {
             customAlert('置頂項目最多只能 8 個！', true);
             return;
@@ -1687,7 +1771,14 @@
         } catch(e) { console.error(e); }
     };
 
-    window.handlePinClick = (type, id) => {
+    window.handlePinClick = (type, id, event) => {
+        // ✨ 若置頂區正在縮合狀態，點擊卡片不會導航，而是觸發展開
+        if (document.getElementById('pinned-section').classList.contains('collapsed')) {
+            if (event) event.stopPropagation();
+            expandPinnedSection(event);
+            return;
+        }
+
         if (type === 'floor') {
             showOffices(id);
         } else if (type === 'office') {
@@ -1721,23 +1812,26 @@
             card.dataset.index = index;
 
             let contentHtml = '';
-            let onClickHandler = `handlePinClick('${item.type}', '${item.id}')`;
+            let onClickHandler = `handlePinClick('${item.type}', '${item.id}', event)`;
+            let typeBadge = `<div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">區域</div>`;
 
             if (item.type === 'floor') {
-                contentHtml = `<div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">區域</div>
-                               <h2 style="margin-top:15px;">${item.name}</h2>
-                               <div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看樓層</div>`;
+                contentHtml = `
+                    ${typeBadge}
+                    <h2 style="margin-top:15px;">${item.name}</h2>
+                    <div class="card-content-detail" style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看樓層</div>
+                `;
             } else if (item.type === 'office') {
                 const off = globalOffices.find(o => o.id === item.id);
                 if (off) {
                     const rType = off.roomType || '辦公室';
                     const extraBadge = rType === '會議室' ? `<span style="font-size:12px; color:var(--success); font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; margin-left:10px;">🟢 可預約</span>` : '';
-                    const rTypeHTML = `<div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${rType}</div>`;
+                    const rTypeHTML = `<div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${rType}</div>`;
                     contentHtml = `
                         ${rTypeHTML}
                         <h2 style="margin-top:15px;">${off.name} ${extraBadge}</h2>
                         <div class="password-container" style="max-height:none; opacity:1;"><span class="password-badge">${off.pwd || 'N/A'}</span></div>
-                        <div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>
+                        <div class="card-content-detail" style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>
                     `;
                 } else { contentHtml = `<h2 style="color:var(--danger)">該房間已移除</h2>`; }
             } else if (item.type === 'member') {
@@ -1747,9 +1841,9 @@
                     const pcDisplay = myPc && myPc.pc_id && myPc.pc_id !== 'N/A' ? myPc.pc_id : '無設備';
                     const displayJoinDate = m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A';
                     contentHtml = `
-                        <div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">人員</div>
+                        <div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">人員</div>
                         <div style="text-align: left; margin-top:5px;"><h3 style="margin:0 0 5px 0;">${m.name}</h3></div>
-                        <div class="detail-info" style="border-top: none; padding-top: 0; margin-top: 5px; opacity: 1; max-height: none;">
+                        <div class="detail-info card-content-detail" style="border-top: none; padding-top: 0; margin-top: 5px; opacity: 1; max-height: none;">
                             <div><b>職稱：</b>${m.title || 'N/A'}</div>
                             <div><b>分機：</b>${m.ext}</div>
                             <div><b>入廠日：</b>${displayJoinDate}</div>
@@ -1775,11 +1869,13 @@
                     let userText = a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${ownerName}</div>` : '';
 
                     contentHtml = `
-                        <div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${a.category || '資產'}</div>
+                        <div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${a.category || '資產'}</div>
                         <div style="text-align:left; margin-top:5px;"><h3 style="margin:0;">${titleText}</h3></div>
-                        ${userText}
-                        <div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div>
-                        <div style="font-size:12px; font-weight:bold; color: var(--text-main);">${statusIcon} ${a.status || '未登記'}</div>
+                        <div class="card-content-detail">
+                            ${userText}
+                            <div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div>
+                            <div style="font-size:12px; font-weight:bold; color: var(--text-main);">${statusIcon} ${a.status || '未登記'}</div>
+                        </div>
                     `;
                 } else { contentHtml = `<h2 style="color:var(--danger)">該資產已移除</h2>`; }
             }
@@ -1797,10 +1893,9 @@
             container.appendChild(card);
         });
         
-        // ✨ 修改：配合置頂上限提升至 8 項
         if (myPinnedItems.length < 8) {
             const addCard = document.createElement('div');
-            addCard.className = 'nav-card';
+            addCard.className = 'nav-card pinned-full-card';
             addCard.style.display = 'flex';
             addCard.style.justifyContent = 'center';
             addCard.style.alignItems = 'center';
@@ -2100,7 +2195,6 @@
     }
 
     function initView() {
-        // ✨ [錯誤修復] 改用 getElementById 精準鎖定容器，避免與「置頂區」的 .grid-nav 發生衝突
         const gridNav = document.getElementById('floor-list-container');
         if (gridNav) {
             gridNav.innerHTML = ''; 
@@ -2272,7 +2366,7 @@
             document.getElementById('owner-panel').classList.remove('active');
             if(document.getElementById('room-type-panel')) document.getElementById('room-type-panel').classList.remove('active');
             closeConfirmModal(); window.closeAdminWelcomeModal();
-            closeBookingModal(); // ✨ 支援 ESC 關閉預約表單
+            closeBookingModal(); 
         }
     });
 
@@ -2311,7 +2405,6 @@
             if (currentTab === 'staff') specificAction = `<button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>`;
             else if (currentTab === 'assets') specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增資產 (包含電腦)</button>`;
             else if (currentTab === 'checkout') specificAction = `<button class="fab-item" onclick="customAlert('此功能尚未開放')">➕ 新增紀錄</button>`;
-            // ✨ 如果在預約排程頁，將 FAB 設定為開啟預約表單
             else if (currentTab === 'booking') specificAction = `<button class="fab-item" onclick="openBookingModal()">📅 新增會議預約</button>`;
             
             fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal('${currentOfficeId}')">✏️ 編輯房間資訊</button>`;
@@ -2463,6 +2556,17 @@
         updateDetailContent(); updateFabMenu(); 
     }
 
+    // ✨ 新增：月曆視角月份切換
+    window.changeCalendarMonth = (delta) => {
+        window.currentCalendarDate.setMonth(window.currentCalendarDate.getMonth() + delta);
+        updateDetailContent();
+    };
+
+    window.selectCalendarDate = (dateStr) => {
+        window.selectedCalendarDate = dateStr;
+        updateDetailContent();
+    };
+
     function updateDetailContent() {
         const grid = document.getElementById('detail-grid');
         grid.innerHTML = '';
@@ -2481,52 +2585,118 @@
         document.getElementById('asset-sort-select').style.display = (currentTab === 'assets') ? 'block' : 'none';
 
         if (currentTab === 'checkout') {
+            grid.className = 'grid-nav';
             grid.innerHTML = `<div class="locked-feature-panel"><h3>🔒 此模組功能開發中</h3></div>`;
             return;
         }
         
-        // ✨ 新增：會議室預約排程畫面渲染邏輯
+        // ✨ 新增：會議室預約排程升級為「月曆視角」
         if (currentTab === 'booking') {
+            grid.className = ''; 
+            grid.style.display = 'block';
+
             let roomBookings = globalBookings.filter(b => b.office_id === currentOfficeId);
             
-            // 按照日期與時間排序 (最新的在下面，或是按時間軸排)
-            roomBookings.sort((a, b) => {
-                if (a.date !== b.date) return a.date.localeCompare(b.date);
-                return a.startTime.localeCompare(b.startTime);
+            const yyyy = window.currentCalendarDate.getFullYear();
+            const mm = window.currentCalendarDate.getMonth();
+            const firstDay = new Date(yyyy, mm, 1).getDay();
+            const daysInMonth = new Date(yyyy, mm + 1, 0).getDate();
+            
+            let html = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; background:white; padding:10px 15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <button class="btn-secondary" onclick="changeCalendarMonth(-1)" style="padding:4px 12px;">◀ 上個月</button>
+                    <h3 style="margin:0; color:var(--primary); font-size:18px;">${yyyy}年 ${mm + 1}月</h3>
+                    <button class="btn-secondary" onclick="changeCalendarMonth(1)" style="padding:4px 12px;">下個月 ▶</button>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:1px; background:#cbd5e1; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">
+            `;
+            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+            weekdays.forEach(w => {
+                let color = (w==='日'||w==='六') ? 'var(--danger)' : 'var(--text-muted)';
+                html += `<div style="background:#f8fafc; padding:8px; text-align:center; font-size:13px; font-weight:bold; color:${color};">${w}</div>`;
             });
-
-            // 過濾掉昨天的舊紀錄，只顯示今天與未來
-            const todayStr = new Date().toISOString().split('T')[0];
-            const upcomingBookings = roomBookings.filter(b => b.date >= todayStr);
-
-            if(upcomingBookings.length === 0) { 
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無會議預約，點擊右下角「＋」可新增。</div>'; 
-                return; 
+            
+            for(let i=0; i<firstDay; i++) {
+                html += `<div style="background:white; min-height:80px; padding:5px; opacity:0.3;"></div>`;
             }
+            
+            const todayStr = new Date().toISOString().split('T')[0];
 
-            upcomingBookings.forEach(b => {
-                const card = document.createElement('div'); 
-                card.className = 'nav-card';
-                card.style.textAlign = 'left';
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateStr = `${yyyy}-${String(mm+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const dayBookings = roomBookings.filter(b => b.date === dateStr).sort((a,b) => a.startTime.localeCompare(b.startTime));
                 
-                // 判斷是否為今天
-                let dateTag = b.date === todayStr ? `<span style="background:var(--danger); color:white; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:8px;">今天</span>` : '';
+                const isSelected = dateStr === window.selectedCalendarDate;
+                const isToday = dateStr === todayStr;
+                
+                let bg = isSelected ? '#eff6ff' : 'white';
+                let border = isSelected ? '2px solid var(--primary)' : '2px solid transparent';
+                let boxSizing = 'box-sizing:border-box;';
+                let dayColor = isToday ? 'white' : 'var(--text-main)';
+                let dayBg = isToday ? 'var(--danger)' : 'transparent';
+                
+                let badges = '';
+                dayBookings.slice(0, 3).forEach(b => {
+                    badges += `<div style="font-size:10px; background:var(--primary); color:white; border-radius:3px; padding:2px 4px; margin-top:3px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${b.startTime} ${b.title}</div>`;
+                });
+                if(dayBookings.length > 3) {
+                    badges += `<div style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:2px;">+${dayBookings.length - 3} 更多</div>`;
+                }
 
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:10px;">
-                        <div>
-                            <div style="font-size:13px; color:var(--text-muted); font-weight:bold;">${b.date.replace(/-/g, '/')} ${dateTag}</div>
-                            <h3 style="margin:5px 0 0 0; color:var(--primary); font-size:18px;">${b.title}</h3>
-                        </div>
-                        <button class="btn-edit" onclick="openBookingModal('${b.id}')">✏️ 編輯</button>
+                html += `
+                    <div style="background:${bg}; border:${border}; ${boxSizing} min-height:80px; padding:5px; cursor:pointer; transition:background 0.2s;" onclick="selectCalendarDate('${dateStr}')">
+                        <div style="display:inline-block; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; font-size:12px; font-weight:bold; color:${dayColor}; background:${dayBg};">${d}</div>
+                        ${badges}
                     </div>
-                    <div style="font-size:14px; margin-bottom:6px;"><b>時間：</b> <span style="font-family:monospace; font-size:15px;">${b.startTime} - ${b.endTime}</span></div>
-                    <div style="font-size:14px;"><b>預約人：</b> ${b.booker}</div>
                 `;
-                grid.appendChild(card);
-            });
+            }
+            
+            const totalCells = firstDay + daysInMonth;
+            const remainder = totalCells % 7;
+            if(remainder !== 0) {
+                for(let i=0; i<7-remainder; i++) {
+                    html += `<div style="background:white; min-height:80px; padding:5px; opacity:0.3;"></div>`;
+                }
+            }
+            html += `</div>`;
+
+            // 選定日期的預約議程清單
+            const selectedBookings = roomBookings.filter(b => b.date === window.selectedCalendarDate).sort((a,b) => a.startTime.localeCompare(b.startTime));
+            
+            let displayDate = window.selectedCalendarDate === todayStr ? window.selectedCalendarDate.replace(/-/g,'/') + ' (今天)' : window.selectedCalendarDate.replace(/-/g,'/');
+            html += `<h3 style="margin-top:30px; border-bottom:2px solid #e2e8f0; padding-bottom:10px; color:var(--text-main);">📌 ${displayDate} 預約清單</h3>`;
+            html += `<div class="grid-nav" id="calendar-agenda-grid"></div>`;
+            
+            grid.innerHTML = html;
+            const agendaGrid = document.getElementById('calendar-agenda-grid');
+            
+            if(selectedBookings.length === 0) {
+                agendaGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 30px; color: #64748b; background:white; border-radius:12px; border:1px dashed #cbd5e1;">這天尚無會議預約，點擊右下角「＋」可新增。</div>`;
+            } else {
+                selectedBookings.forEach(b => {
+                    const card = document.createElement('div'); 
+                    card.className = 'nav-card';
+                    card.style.textAlign = 'left';
+                    
+                    card.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:10px;">
+                            <div>
+                                <h3 style="margin:0; color:var(--primary); font-size:18px;">${b.title}</h3>
+                            </div>
+                            <button class="btn-edit" onclick="openBookingModal('${b.id}')">✏️ 編輯</button>
+                        </div>
+                        <div style="font-size:14px; margin-bottom:6px;"><b>時間：</b> <span style="font-family:monospace; font-size:15px; font-weight:bold; color:var(--danger);">${b.startTime} - ${b.endTime}</span></div>
+                        <div style="font-size:14px;"><b>預約人：</b> ${b.booker}</div>
+                    `;
+                    agendaGrid.appendChild(card);
+                });
+            }
             return;
         }
+
+        // 切回其他分頁時恢復 grid-nav class
+        grid.className = 'grid-nav';
+        grid.style.display = '';
 
         if (currentTab === 'staff') {
             if(officeMembers.length === 0) { grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>'; return; }
@@ -2819,19 +2989,34 @@
 
     function closeEditModal() { document.getElementById('edit-modal-overlay').classList.remove('active'); }
 
-    // ✨ 新增：開啟預約會議表單的邏輯 (v1.6.6 新增限制時間範圍功能)
+    // ✨ 新增：自動帶入結束時間功能
+    window.handleStartTimeChange = () => {
+        const startInput = document.getElementById('booking-start');
+        const endInput = document.getElementById('booking-end');
+        if (startInput.value) {
+            let [h, m] = startInput.value.split(':').map(Number);
+            h = (h + 1) % 24; 
+            endInput.value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+    };
+
     window.openBookingModal = (bookingId = null) => {
         closeFabMenu();
+        
+        // ✨ 修復連續新增按鈕卡在儲存中的狀態
+        document.getElementById('btn-save-booking').disabled = false;
+        document.getElementById('btn-save-booking').innerText = '儲存';
+        document.getElementById('btn-save-next-booking').disabled = false;
+        document.getElementById('btn-save-next-booking').innerText = '下一筆';
+
         const btnDel = document.getElementById('btn-delete-booking');
         const btnNext = document.getElementById('btn-save-next-booking');
         const dateInput = document.getElementById('booking-date');
         
-        // 抓取預設的使用者名稱 (如果已設定暱稱則優先使用)
         const userId = auth.currentUser?.email || '';
         const userProfile = globalUsers.find(u => u.id === userId);
         const defaultName = (userProfile && userProfile.nickname) ? userProfile.nickname : (auth.currentUser?.displayName || '');
 
-        // 動態計算允許的日期範圍 (今天 ~ 下個月的最後一天)
         const todayObj = new Date();
         const yyyy = todayObj.getFullYear();
         const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
@@ -2851,7 +3036,7 @@
             currentEditBookingId = bookingId;
             document.getElementById('booking-modal-title').innerText = '✏️ 編輯預約排程';
             btnDel.style.display = 'inline-block';
-            btnNext.style.display = 'none'; // 編輯模式不顯示「下一筆」
+            btnNext.style.display = 'none';
 
             const b = globalBookings.find(x => x.id === bookingId);
             if (b) {
@@ -2868,7 +3053,7 @@
             btnNext.style.display = 'inline-block';
 
             document.getElementById('booking-title').value = '';
-            dateInput.value = minDate; // 預設今天
+            dateInput.value = window.selectedCalendarDate >= minDate ? window.selectedCalendarDate : minDate; 
             document.getElementById('booking-start').value = '09:00';
             document.getElementById('booking-end').value = '10:00';
             document.getElementById('booking-user').value = defaultName;
@@ -2880,7 +3065,6 @@
         document.getElementById('booking-modal-overlay').classList.remove('active');
     };
 
-    // ✨ 修改：支援「連續新增下一筆」
     window.saveBookingData = async (continueNext = false) => {
         const title = document.getElementById('booking-title').value.trim();
         const dateInput = document.getElementById('booking-date');
@@ -2901,6 +3085,20 @@
 
         if (date < dateInput.min || date > dateInput.max) {
             customAlert(`請選擇 ${dateInput.min} 至 ${dateInput.max} 之間的日期！`, true);
+            return;
+        }
+
+        // ✨ 智慧衝堂防護邏輯
+        const isConflict = globalBookings.some(b => {
+            if (b.office_id !== currentOfficeId) return false;
+            if (b.date !== date) return false;
+            if (currentEditBookingId && b.id === currentEditBookingId) return false; 
+            // 判斷重疊：A開始 < B結束 且 A結束 > B開始
+            return start < b.endTime && end > b.startTime;
+        });
+
+        if (isConflict) {
+            customAlert('❌ 此時段這間會議室已被預約，請確認是否衝堂！', true);
             return;
         }
 
@@ -2927,9 +3125,11 @@
                 await safeWrite(addDoc(collection(db, 'bookings'), bookingData));
             }
             
+            // 儲存成功後，將月曆選定日切過去以顯示最新紀錄
+            window.selectCalendarDate(date);
+
             if (continueNext && !currentEditBookingId) {
                 btn.innerText = '已新增 ✔';
-                // 保留所有輸入內容，讓使用者快速微調再送出下一筆
                 setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 800);
                 customAlert('預約已儲存！請直接修改時間或日期以新增下一筆。');
             } else {
@@ -3418,7 +3618,6 @@
                 closeConfirmModal();
                 customAlert(`已移除友站連結！`);
             }
-            // ✨ 新增處理刪除會議預約
             else if (pendingDeleteAction.type === 'booking') {
                 await safeWrite(deleteDoc(doc(db, 'bookings', pendingDeleteAction.id)));
                 if (document.getElementById('booking-modal-overlay').classList.contains('active')) closeBookingModal();
@@ -3500,7 +3699,6 @@
                 const offName = pendingDeleteAction.name;
                 const membersToDelete = globalMembers.filter(m => m.office_id === offId);
                 const assetsToDelete = globalAssets.filter(a => a.office_id === offId);
-                // ✨ 連同會議預約一起刪除
                 const bookingsToDelete = globalBookings.filter(b => b.office_id === offId);
 
                 const ops = [];
@@ -3730,7 +3928,6 @@
                         batchOperations.push(updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeId }));
                     }
 
-                    // ✨ (如果有舊版預約也需要遷移，不過這個是新功能，通常不會有舊資料需要轉移)
                     const relatedBookings = globalBookings.filter(b => b.office_id === oldOffice.id);
                     for (const b of relatedBookings) {
                         batchOperations.push(updateDoc(doc(db, 'bookings', b.id), { office_id: newOfficeId }));
@@ -3830,11 +4027,13 @@
     window.promptDeleteFriendlyLink = promptDeleteFriendlyLink;
     window.trackLinkClick = trackLinkClick;
 
-    // ✨ 新增會議室預約排程相關綁定
     window.openBookingModal = openBookingModal;
     window.closeBookingModal = closeBookingModal;
     window.saveBookingData = saveBookingData;
     window.promptDeleteBooking = promptDeleteBooking;
+    window.handleStartTimeChange = handleStartTimeChange;
+    window.changeCalendarMonth = changeCalendarMonth;
+    window.selectCalendarDate = selectCalendarDate;
 
     window.addEventListener('resize', syncHeaderLayout);
 </script>

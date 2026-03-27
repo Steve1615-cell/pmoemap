@@ -279,14 +279,14 @@
         .fab-btn { width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: white; font-size: 30px; border: none; box-shadow: 0 4px 15px rgba(37,99,235,0.4); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: transform 0.3s ease; }
         .fab-container.active .fab-btn { transform: rotate(45deg); background: var(--danger); }
 
-        /* ✨ 頭貼下拉選單 CSS */
+        /* 頭貼下拉選單 CSS */
         .avatar-dropdown-item {
             padding: 12px 15px; font-size: 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 10px;
         }
         .avatar-dropdown-item:hover { background: var(--accent); color: var(--primary); }
         .avatar-dropdown-item:last-child { border-bottom: none; }
 
-        /* ✨ 吸收回皇冠的動畫 */
+        /* 吸收回皇冠的動畫 */
         @keyframes crownPing {
             0% { transform: scale(1); text-shadow: none; }
             50% { transform: scale(1.6); text-shadow: 0 0 20px gold; }
@@ -294,7 +294,18 @@
         }
         .crown-ping { animation: crownPing 0.6s ease-out; display: inline-block; }
 
-        /* ✨ 針對觸控設備 (手機/平板) 的專屬設定 (隱藏名字，保留頭貼與王冠) */
+        /* ✨ 置頂卡片專屬 CSS */
+        .pinned-card {
+            background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; 
+            display: flex; align-items: center; gap: 8px; cursor: grab; font-size: 13px; font-weight: bold; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;
+        }
+        .pinned-card:active { cursor: grabbing; }
+        .pinned-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .pinned-card.dragging { opacity: 0.5; background: #f8fafc; }
+        .pinned-card.drag-over { border-left: 2px solid var(--primary); }
+
+        /* 針對觸控設備 (手機/平板) 的專屬設定 */
         @media (max-width: 600px) {
             #user-info-text { display: none !important; }
         }
@@ -348,7 +359,6 @@
 
 <div id="custom-toast"></div>
 
-<!-- ✨ 管理員動態迎新視窗 (支援收合動畫) -->
 <div id="admin-welcome-modal-overlay" class="modal-overlay" style="z-index: 5000;">
     <div class="modal-content" style="text-align: center; padding: 30px 20px; width: 85%; max-width: 360px;">
         <div style="font-size: 50px; margin-bottom: 15px;">👑</div>
@@ -357,7 +367,6 @@
             歡迎成為此系統的管理者之一！<br>即刻起，您可使用多種進階功能：
         </p>
         
-        <!-- 動態注入特權清單 -->
         <div id="admin-features-list" style="background: var(--accent); padding: 15px; border-radius: 8px; margin-bottom: 25px; font-size: 13px; color: var(--text-main); line-height: 1.8;">
         </div>
 
@@ -365,7 +374,6 @@
     </div>
 </div>
 
-<!-- 共用防呆警告對話框 -->
 <div id="confirm-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeConfirmModal()" style="z-index: 4000;">
     <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header" style="color: var(--danger);">
@@ -373,7 +381,6 @@
         </div>
         <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
         
-        <!-- ✨ 雙重確認防呆輸入框 (動態檢查) -->
         <div id="strict-input-container" style="display: none; margin-bottom: 20px;">
             <label style="font-size: 12px; color: var(--danger); font-weight: bold;">請輸入完整的信箱位址以解鎖確認按鈕：</label>
             <input type="email" id="strict-confirm-input" style="width: 100%; padding: 8px; border: 1px solid var(--danger); border-radius: 6px; margin-top: 5px;" autocomplete="off" placeholder="請輸入對方信箱...">
@@ -386,7 +393,6 @@
     </div>
 </div>
 
-<!-- ✨ 分享與邀請表單 (全體可用) -->
 <div id="share-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeShareModal()" style="z-index: 3600;">
     <div class="modal-content">
         <div class="modal-header">
@@ -419,7 +425,6 @@
     </div>
 </div>
 
-<!-- ✨ 系統授權白名單管理表單 (僅限管理員) -->
 <div id="whitelist-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeWhitelistModal()" style="z-index: 3500;">
     <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header">
@@ -431,8 +436,7 @@
         </div>
 
         <div id="whitelist-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
-            <!-- JS 動態生成 -->
-        </div>
+            </div>
 
         <div class="modal-footer" style="margin-top: 15px;">
             <button class="btn-secondary" onclick="closeWhitelistModal()">關閉</button>
@@ -440,7 +444,6 @@
     </div>
 </div>
 
-<!-- ✨ 設定個人暱稱表單 -->
 <div id="nickname-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeNicknameModal()" style="z-index: 3600;">
     <div class="modal-content">
         <div class="modal-header">
@@ -458,7 +461,6 @@
     </div>
 </div>
 
-<!-- 職稱排序設定表單 (Modal) -->
 <div id="title-rank-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeTitleRankModal()" style="z-index: 3500;">
     <div class="modal-content">
         <div class="modal-header">
@@ -469,8 +471,7 @@
         <div class="form-group">
             <label>選擇套用範圍：</label>
             <select id="title-rank-scope" onchange="changeTitleRankScope()">
-                <!-- JS 動態生成選項 -->
-            </select>
+                </select>
         </div>
 
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">請按住 ☰ 拖曳項目來調整高低順序 (越上方排序越優先)。</p>
@@ -483,7 +484,6 @@
     </div>
 </div>
 
-<!-- 辦公室轉移或刪除專用 Modal -->
 <div id="office-action-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeOfficeActionModal()" style="z-index: 3800;">
     <div class="modal-content">
         <div class="modal-header">
@@ -495,8 +495,7 @@
         <div class="form-group">
             <label>將此辦公室轉移至：</label>
             <select id="office-move-floor-select" style="background: var(--accent); font-weight:bold;">
-                <!-- JS 動態生成樓層選項 -->
-            </select>
+                </select>
         </div>
 
         <div class="modal-footer" style="justify-content: space-between; margin-top: 30px;">
@@ -509,7 +508,6 @@
     </div>
 </div>
 
-<!-- 更新日誌 Modal -->
 <div id="update-log-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeUpdateLogModal()" style="z-index: 3500;">
     <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
@@ -517,22 +515,19 @@
             <button class="btn-close" onclick="closeUpdateLogModal()">×</button>
         </div>
         <div id="update-log-content" style="max-height: 60vh; overflow-y: auto; text-align: left;">
-            <!-- JS 動態生成日誌 -->
-        </div>
+            </div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeUpdateLogModal()">關閉</button>
         </div>
     </div>
 </div>
 
-<!-- 載入中遮罩 -->
 <div id="loading-overlay">
     <div id="loading-spinner" style="font-size: 40px; animation: spin 1s linear infinite;">⏳</div>
     <div id="loading-text">資料讀取中...</div>
 </div>
 <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
 
-<!-- 側邊欄與遮罩區域 -->
 <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
@@ -556,6 +551,7 @@
 
         <div class="menu-item disabled tooltip-container" data-tooltip="辦公室地圖視角開發中！">🗺️ 地圖顯示</div>
         <div class="menu-item disabled tooltip-container" data-tooltip="在列資產總表開發中！">📦 在列資產總表</div>
+        <div class="menu-item disabled tooltip-container" data-tooltip="縮時相機管理開發中！">📷 縮時相機管理</div>
         <div class="menu-item" onclick="showExtensionsView()">📞 辦公室分機表</div>
     </div>
     <div class="sidebar-footer">
@@ -569,24 +565,22 @@
             <button class="btn-nav btn-menu" onclick="toggleSidebar()">☰</button>
             <button class="btn-nav" id="btn-global-home" style="display:none;" onclick="goHome()">🏠 首頁</button>
             <button class="btn-nav" id="btn-global-up" style="display:none;" onclick="goUpLevel()">← 上一層</button>
+            <button class="btn-nav" id="btn-global-pin" onclick="togglePinSection()" style="display:none; color: var(--primary);">📌 置頂</button>
         </div>
         <div class="title-container" id="title-container">
             <h1 id="main-title" class="static-title">ＰＭＯ電子圖資系統</h1>
         </div>
         
-        <!-- ✨ 登入者的頭像與隱藏式下拉選單 -->
         <div class="header-right" id="header-right">
             <div id="user-profile" style="display:none; align-items:center; gap:10px; position: relative;">
                 <div style="text-align: right; display: none;" id="user-info-text">
                     <div id="user-name-display" style="font-size: 14px; font-weight: bold; color: var(--text-main);"></div>
                     <div id="user-email-display" style="font-size: 11px; color: var(--text-muted);"></div>
                 </div>
-                <!-- ✨ 管理員王冠 (可重複點擊叫出歡迎視窗) -->
                 <span id="admin-crown" onclick="openAdminWelcomeModal(event)" style="display:none; font-size:18px; margin-right:-5px; cursor:pointer; z-index:10;" title="點擊查看管理員專屬功能">👑</span>
                 
                 <img id="user-avatar" onclick="toggleAvatarMenu(event)" src="" style="width:32px; height:32px; border-radius:50%; border: 2px solid #e2e8f0; transition: transform 0.2s; cursor: pointer;">
                 
-                <!-- ✨ 頭貼下拉選單 -->
                 <div id="avatar-dropdown" style="position: absolute; top: 45px; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 180px; display: none; flex-direction: column; overflow: hidden; z-index: 3100;">
                     <div class="avatar-dropdown-item" onclick="openNicknameModal()">✏️ 設定個人暱稱</div>
                     <div class="avatar-dropdown-item" onclick="openShareModal()">🔗 分享與邀請</div>
@@ -598,7 +592,6 @@
 
     <div id="breadcrumb" class="breadcrumb"></div>
 
-    <!-- 系統登入大廳 -->
     <div id="view-login" class="view">
         <div style="max-width: 400px; margin: 60px auto; background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;">
             <div style="font-size: 48px; margin-bottom: 10px;">🏢</div>
@@ -619,7 +612,6 @@
         </div>
     </div>
 
-    <!-- ✨ 待授權大廳 (已登入但不包含在白名單) -->
     <div id="view-unauthorized" class="view">
         <div style="max-width: 500px; margin: 60px auto; background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;">
             <div style="font-size: 48px; margin-bottom: 10px;">🔒</div>
@@ -637,8 +629,22 @@
             <button class="dev-tab-btn" onclick="runDatabaseMigration()" style="color: var(--danger); border-color: var(--danger); background: #fee2e2;">⚠️ 執行 Phase 3 資料庫升級</button>
             <button class="dev-tab-btn" onclick="restoreLostComputers()">🚑 復原測試資產</button>
             
-            <!-- ✨ 白名單管理移至此處，若非管理員則加上 locked 樣式 -->
             <button id="btn-dev-whitelist" class="dev-tab-btn" onclick="openWhitelistModal()" style="color: var(--primary); border-color: var(--primary); background: #e0e7ff;">🛡️ 權限白名單管理</button>
+        </div>
+
+        <div id="pinned-section" style="display: none; margin-bottom: 20px; background: white; padding: 15px 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 2px dashed #cbd5e1;">
+            <div style="font-size: 14px; font-weight: bold; color: var(--text-muted); margin-bottom: 15px;">📌 我的常用置頂 (最多 5 項，拖曳可排序)</div>
+            <div id="pinned-items-wrapper" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <div id="pin-add-area" style="position: relative;">
+                    <div id="pin-add-btn" onclick="togglePinDropdown(event)" style="width: 40px; height: 40px; border: 2px dashed #94a3b8; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: #64748b; font-size: 20px; transition: all 0.2s;">＋</div>
+                    <div class="custom-dropdown-panel" id="pin-dropdown-panel" style="width: 280px; top: 45px; left: 0;">
+                        <div class="dropdown-search-row">
+                            <input type="text" id="pin-search-input" placeholder="搜尋區域、辦公室、人員、資產..." oninput="filterPinItems()" onclick="event.stopPropagation()">
+                        </div>
+                        <div class="dropdown-list" id="pin-dropdown-list"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="grid-nav"></div>
@@ -647,10 +653,7 @@
     <div id="view-office" class="view"><div class="grid-nav" id="office-list"></div></div>
     
     <div id="view-detail" class="view">
-        <!-- 動態特徵標籤容器 -->
-        <div class="tabs" id="dynamic-room-tabs">
-            <!-- JS 動態生成 -->
-        </div>
+        <div class="tabs" id="dynamic-room-tabs"></div>
         
         <div id="filter-container" style="display: none; justify-content: flex-end; margin-bottom: 15px; gap: 10px;">
             <div style="background: white; padding: 5px 15px; border-radius: 8px; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -674,10 +677,8 @@
 
     <div id="view-extensions" class="view"><div id="ext-container"></div></div>
 
-    <!-- 讓版本號與日誌在全域可見，包含未登入畫面 -->
     <div class="version-footer" onclick="openUpdateLogModal()">
-        <!-- 由 JS 動態填入最新版本號 -->
-    </div>
+        </div>
 </div>
 
 <div class="fab-container" id="fab-container">
@@ -685,7 +686,6 @@
     <button class="fab-btn" onclick="toggleFabMenu(event)">＋</button>
 </div>
 
-<!-- ================= Modal 表單區域 (人員、資產、辦公室編輯) ================= -->
 <div id="edit-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeEditModal()">
     <div class="modal-content">
         <div class="modal-header">
@@ -842,7 +842,6 @@
     </div>
 </div>
 
-<!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -868,12 +867,20 @@
 
     const systemUpdateLogs = [
         {
+            version: "1.6.3",
+            date: "20260327",
+            changes: [
+                "【全新功能】導入「📌 我的常用置頂」模組：可自由將樓層、房間、人員、設備加入首頁置頂區，並支援自由拖曳排序，大幅提升導覽效率。",
+                "修復部分彈出視窗(Modal) 關閉與按鈕點擊之 ReferenceError 問題，強化底層變數綁定穩定性。",
+                "側邊欄擴充：預載「📷 縮時相機管理」為未來模組開發建立接口。"
+            ]
+        },
+        {
             version: "1.6.2",
             date: "20260326",
             changes: [
                 "【進階體驗】管理員歡迎訊息改為動態生成，不寫死功能列表，並支援點擊王冠重複讀取。",
                 "實裝收合動畫：點擊「開始使用」時，視窗會以動畫收合至右上角王冠，增強視覺引導。",
-                "優化手機版顯示：修復手機版歡迎訊息版面，並隱藏過長文字，保持俐落介面。",
                 "強化管理員下限防護：當系統僅剩一位一般管理員時，限制其刪除自身權限，避免無人管理的情境。"
             ]
         },
@@ -884,15 +891,6 @@
                 "【系統優化】綜合修復網頁渲染與預覽環境的授權存取問題。",
                 "深化管理員權限控制：包含動態字串防呆驗證、孤島防護機制與迎新動畫。",
                 "完善個人化選單、暱稱系統與「分享與邀請」自助授權流程。"
-            ]
-        },
-        {
-            version: "1.6.0",
-            date: "20260325",
-            changes: [
-                "開放系統登入大廳，支援全體 Google 帳號自由登入，並實作直覺的「分享與邀請」自助授權功能。",
-                "新增「個人暱稱」設定功能與「管理員上帝視角」，白名單清單可視覺化辨識使用者身分。",
-                "實裝離線登出防護機制與無縫自動解鎖體驗。"
             ]
         }
     ];
@@ -955,6 +953,10 @@
     let globalUsers = [];
     let globalAdmins = []; 
     const SUPER_ADMIN = 'steve1615@gmail.com'; 
+
+    // ✨ 置頂功能全域變數
+    let myPinnedItems = [];
+    let isPinSectionVisible = false;
 
     window.openAdminWelcomeModal = (e) => {
         if(e) e.stopPropagation();
@@ -1125,6 +1127,8 @@
             document.getElementById('breadcrumb').style.display = 'none';
             document.getElementById('fab-container').style.display = 'none';
             document.getElementById('dev-tabs-container').style.display = 'none';
+            document.getElementById('pinned-section').style.display = 'none';
+            document.getElementById('btn-global-pin').style.display = 'none';
             document.getElementById('loading-overlay').style.display = 'none';
             document.getElementById('admin-crown').style.display = 'none'; 
             
@@ -1175,6 +1179,8 @@
             document.getElementById('breadcrumb').style.display = 'none';
             document.getElementById('fab-container').style.display = 'none';
             document.getElementById('dev-tabs-container').style.display = 'none';
+            document.getElementById('pinned-section').style.display = 'none';
+            document.getElementById('btn-global-pin').style.display = 'none';
             updateMainTitle('ＰＭＯ電子圖資系統');
             switchView('view-unauthorized');
         }
@@ -1243,11 +1249,13 @@
 
         onSnapshot(collection(db, "users"), (snapshot) => {
             globalUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-            if (auth.currentUser && !auth.currentUser.isAnonymous) {
+            if (auth.currentUser) {
                 const userEmail = auth.currentUser.email || 'anonymous@preview.com';
                 const myProfile = globalUsers.find(u => u.id === userEmail);
-                if (myProfile && myProfile.nickname) {
-                    document.getElementById('user-name-display').innerText = myProfile.nickname;
+                if (myProfile) {
+                    if (myProfile.nickname) document.getElementById('user-name-display').innerText = myProfile.nickname;
+                    myPinnedItems = myProfile.pinnedItems || [];
+                    if (currentLevel === 0 && isPinSectionVisible) renderPinnedItems();
                 }
             }
             if(document.getElementById('whitelist-modal-overlay').classList.contains('active')) renderWhitelist();
@@ -1310,6 +1318,212 @@
         }
     }
 
+    // =======================================================
+    // ✨ 📌 置頂功能 (Pin Feature)
+    // =======================================================
+    window.togglePinSection = () => {
+        isPinSectionVisible = !isPinSectionVisible;
+        const section = document.getElementById('pinned-section');
+        section.style.display = isPinSectionVisible ? 'block' : 'none';
+        if (isPinSectionVisible) renderPinnedItems();
+    };
+
+    window.togglePinDropdown = (event) => {
+        if(event) event.stopPropagation();
+        const panel = document.getElementById('pin-dropdown-panel');
+        panel.classList.toggle('active');
+        if(panel.classList.contains('active')) {
+            document.getElementById('pin-search-input').value = '';
+            filterPinItems();
+            document.getElementById('pin-search-input').focus();
+        }
+    };
+
+    window.filterPinItems = () => {
+        const text = document.getElementById('pin-search-input').value.toLowerCase();
+        const listDiv = document.getElementById('pin-dropdown-list');
+        listDiv.innerHTML = '';
+        
+        let results = [];
+        
+        const floors = [...new Set(globalOffices.map(o => o.floor || '未分類區域'))];
+        floors.forEach(f => {
+            if(f.toLowerCase().includes(text)) results.push({type: 'floor', id: f, name: f, icon: '🏢'});
+        });
+        
+        globalOffices.forEach(o => {
+            if(o.name.toLowerCase().includes(text)) results.push({type: 'office', id: o.id, name: o.name, officeName: o.name, icon: '🚪'});
+        });
+        
+        globalMembers.forEach(m => {
+            if(m.name.toLowerCase().includes(text)) results.push({type: 'member', id: m.id, name: m.name, icon: '👤'});
+        });
+        
+        globalAssets.forEach(a => {
+            const itemName = a.item || '未命名設備';
+            if(itemName.toLowerCase().includes(text) || (a.sn && a.sn.toLowerCase().includes(text))) {
+                results.push({type: 'asset', id: a.id, name: itemName, icon: '📦'});
+            }
+        });
+        
+        results.slice(0, 20).forEach(res => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'dropdown-item';
+            
+            let typeLabel = '';
+            if (res.type==='floor') typeLabel = '樓層';
+            else if (res.type==='office') typeLabel = '辦公室';
+            else if (res.type==='member') typeLabel = '人員';
+            else if (res.type==='asset') typeLabel = '資產';
+
+            itemDiv.innerHTML = `<span style="font-weight:bold; font-size:14px; display:flex; gap:8px;"><span>${res.icon}</span> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">${res.name}</span></span><span style="font-size:11px; color:white; background:var(--text-muted); padding:2px 6px; border-radius:12px; font-weight:bold;">${typeLabel}</span>`;
+            itemDiv.onclick = (e) => {
+                e.stopPropagation();
+                addPinItem(res);
+            };
+            listDiv.appendChild(itemDiv);
+        });
+        
+        if(results.length === 0) {
+            listDiv.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">無符合項目</div>';
+        }
+    };
+
+    window.addPinItem = async (res) => {
+        if (myPinnedItems.length >= 5) {
+            customAlert('置頂項目最多只能 5 個！', true);
+            return;
+        }
+        if (myPinnedItems.find(p => p.id === res.id && p.type === res.type)) {
+            customAlert('此項目已經在置頂清單中！', true);
+            return;
+        }
+        
+        const newItem = { type: res.type, id: res.id, name: res.name, icon: res.icon };
+        if (res.officeName) newItem.officeName = res.officeName; 
+        
+        const newPinned = [...myPinnedItems, newItem];
+        myPinnedItems = newPinned;
+        renderPinnedItems();
+
+        try {
+            const userId = auth.currentUser?.email || 'anonymous@preview.com';
+            await safeWrite(setDoc(doc(db, 'users', userId), { pinnedItems: newPinned }, { merge: true }));
+            document.getElementById('pin-dropdown-panel').classList.remove('active');
+        } catch(e) {
+            console.error(e); customAlert('置頂儲存失敗', true);
+        }
+    };
+
+    window.removePinItem = async (index) => {
+        const newPinned = [...myPinnedItems];
+        newPinned.splice(index, 1);
+        myPinnedItems = newPinned;
+        renderPinnedItems();
+
+        try {
+            const userId = auth.currentUser?.email || 'anonymous@preview.com';
+            await safeWrite(setDoc(doc(db, 'users', userId), { pinnedItems: newPinned }, { merge: true }));
+        } catch(e) { console.error(e); }
+    };
+
+    window.handlePinClick = (type, id) => {
+        if (type === 'floor') {
+            showOffices(id);
+        } else if (type === 'office') {
+            const off = globalOffices.find(o => o.id === id);
+            if (off) showDetail(off.id, off.name);
+        } else if (type === 'member') {
+            const m = globalMembers.find(x => x.id === id);
+            if(m) {
+                const off = globalOffices.find(o => o.id === m.office_id);
+                if(off) { showDetail(off.id, off.name); switchTab('staff'); }
+            } else customAlert('該人員已被移除', true);
+        } else if (type === 'asset') {
+            const a = globalAssets.find(x => x.id === id);
+            if(a) {
+                const off = globalOffices.find(o => o.id === a.office_id);
+                if(off) { showDetail(off.id, off.name); switchTab('assets'); }
+            } else customAlert('該資產已被移除', true);
+        }
+    };
+
+    window.renderPinnedItems = () => {
+        const container = document.getElementById('pinned-items-wrapper');
+        if(!container) return;
+        
+        const cards = container.querySelectorAll('.pinned-card');
+        cards.forEach(c => c.remove());
+        
+        const addBtnArea = document.getElementById('pin-add-area');
+        
+        myPinnedItems.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'pinned-card';
+            card.draggable = true;
+            card.dataset.index = index;
+            
+            card.innerHTML = `
+                <span style="cursor: pointer; display:flex; align-items:center; gap:5px;" onclick="handlePinClick('${item.type}', '${item.id}')">
+                    <span>${item.icon}</span> <span style="white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis;">${item.name}</span>
+                </span>
+                <button style="background:none; border:none; cursor:pointer; color:var(--text-muted); padding:0 5px; font-size:16px; opacity:0.5; transition:opacity 0.2s; font-weight:bold;" onmouseover="this.style.opacity=1; this.style.color='var(--danger)';" onmouseout="this.style.opacity=0.5; this.style.color='var(--text-muted)';" onclick="event.stopPropagation(); removePinItem(${index})">×</button>
+            `;
+            
+            card.addEventListener('dragstart', handlePinDragStart);
+            card.addEventListener('dragover', handlePinDragOver);
+            card.addEventListener('dragenter', handlePinDragEnter);
+            card.addEventListener('dragleave', handlePinDragLeave);
+            card.addEventListener('drop', handlePinDrop);
+            card.addEventListener('dragend', handlePinDragEnd);
+            
+            container.insertBefore(card, addBtnArea);
+        });
+        
+        if (myPinnedItems.length >= 5) {
+            addBtnArea.style.display = 'none';
+        } else {
+            addBtnArea.style.display = 'block';
+        }
+    };
+
+    let pinDragSrcEl = null;
+    window.handlePinDragStart = function(e) {
+        pinDragSrcEl = this;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', this.innerHTML);
+        this.classList.add('dragging');
+    };
+    window.handlePinDragOver = function(e) { if (e.preventDefault) e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; };
+    window.handlePinDragEnter = function(e) { this.classList.add('drag-over'); };
+    window.handlePinDragLeave = function(e) { this.classList.remove('drag-over'); };
+    window.handlePinDrop = async function(e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (pinDragSrcEl !== this) {
+            const fromIndex = parseInt(pinDragSrcEl.dataset.index);
+            const toIndex = parseInt(this.dataset.index);
+            const newPinned = [...myPinnedItems];
+            const item = newPinned.splice(fromIndex, 1)[0];
+            newPinned.splice(toIndex, 0, item);
+            
+            myPinnedItems = newPinned;
+            renderPinnedItems();
+            
+            try {
+                const userId = auth.currentUser?.email || 'anonymous@preview.com';
+                await safeWrite(setDoc(doc(db, 'users', userId), { pinnedItems: newPinned }, { merge: true }));
+            } catch(err) { console.error(err); }
+        }
+        return false;
+    };
+    window.handlePinDragEnd = function(e) {
+        this.classList.remove('dragging');
+        document.querySelectorAll('.pinned-card').forEach(col => col.classList.remove('drag-over'));
+    };
+
+    // =======================================================
+    // ✨ 個人化選單與授權工具
+    // =======================================================
     window.toggleAvatarMenu = (event) => {
         event.stopPropagation();
         const dropdown = document.getElementById('avatar-dropdown');
@@ -1318,7 +1532,7 @@
     };
 
     window.openNicknameModal = () => {
-        const userId = auth.currentUser?.email || 'anonymous';
+        const userId = auth.currentUser?.email || 'anonymous@preview.com';
         const userProfile = globalUsers.find(u => u.id === userId);
         document.getElementById('nickname-input').value = userProfile?.nickname || '';
         document.getElementById('nickname-modal-overlay').classList.add('active');
@@ -1330,7 +1544,7 @@
     window.saveNickname = async () => {
         const nickname = document.getElementById('nickname-input').value.trim();
         try {
-            const userId = auth.currentUser?.email || 'anonymous';
+            const userId = auth.currentUser?.email || 'anonymous@preview.com';
             await safeWrite(setDoc(doc(db, 'users', userId), { nickname: nickname }, { merge: true }));
             customAlert('暱稱設定成功！');
             closeNicknameModal();
@@ -1596,6 +1810,10 @@
         }
         
         document.getElementById('dev-tabs-container').style.display = (devOptionsEnabled && currentLevel === 0) ? 'flex' : 'none';
+        document.getElementById('btn-global-pin').style.display = (currentLevel === 0) ? 'inline-block' : 'none';
+        
+        if (currentLevel === 0 && isPinSectionVisible) renderPinnedItems();
+
         updateNavigationUI();
         if (!history.state) history.replaceState({ level: 0 }, "");
     }
@@ -1701,6 +1919,11 @@
         if (avatarMenu && !e.target.closest('#user-profile')) {
             avatarMenu.style.display = 'none';
         }
+
+        const pinPanel = document.getElementById('pin-dropdown-panel');
+        if (pinPanel && pinPanel.classList.contains('active') && !e.target.closest('#pin-add-area')) {
+            pinPanel.classList.remove('active');
+        }
     });
 
     document.addEventListener('keydown', (e) => {
@@ -1710,6 +1933,7 @@
             document.getElementById('category-panel').classList.remove('active');
             document.getElementById('owner-panel').classList.remove('active');
             if(document.getElementById('room-type-panel')) document.getElementById('room-type-panel').classList.remove('active');
+            if(document.getElementById('pin-dropdown-panel')) document.getElementById('pin-dropdown-panel').classList.remove('active');
             closeConfirmModal(); window.closeAdminWelcomeModal();
         }
     });
@@ -1760,19 +1984,30 @@
         const btnHome = document.getElementById('btn-global-home');
         const btnUp = document.getElementById('btn-global-up');
         const breadcrumb = document.getElementById('breadcrumb');
+        const btnPin = document.getElementById('btn-global-pin');
 
         if (currentLevel === -1 || currentLevel === -2) {
             btnHome.style.display = 'none'; 
             btnUp.style.display = 'none';
+            btnPin.style.display = 'none';
             breadcrumb.style.display = 'none';
             document.getElementById('dev-tabs-container').style.display = 'none';
+            document.getElementById('pinned-section').style.display = 'none';
             return;
         }
 
         breadcrumb.style.display = 'flex';
 
-        if (currentLevel === 0) { btnHome.style.display = 'none'; btnUp.style.display = 'none'; } 
-        else { btnHome.style.display = 'inline-block'; btnUp.style.display = 'inline-block'; }
+        if (currentLevel === 0) { 
+            btnHome.style.display = 'none'; 
+            btnUp.style.display = 'none'; 
+            btnPin.style.display = 'inline-block';
+        } else { 
+            btnHome.style.display = 'inline-block'; 
+            btnUp.style.display = 'inline-block'; 
+            btnPin.style.display = 'none';
+            document.getElementById('pinned-section').style.display = 'none';
+        }
         
         document.getElementById('dev-tabs-container').style.display = (currentLevel === 0 && devOptionsEnabled) ? 'flex' : 'none';
 
@@ -2984,40 +3219,69 @@
         }
     };
 
-    window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal;
-    window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal;
-    window.openAddOfficeModal = openAddOfficeModal; window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal;
+    // ================= 統一全域函數綁定 (防止 ReferenceError) =================
+    window.safeWrite = safeWrite;
+    window.toggleSidebar = toggleSidebar; 
+    window.closeSidebar = closeSidebar;
+    window.showExtensionsView = showExtensionsView; 
+    window.goHome = goHome; 
+    window.goUpLevel = goUpLevel;
+    window.showOffices = showOffices; 
+    window.showDetail = showDetail; 
+    window.switchTab = switchTab;
+    window.updateDetailContent = updateDetailContent;
+    
+    window.openMemberModal = openMemberModal; 
+    window.closeEditModal = closeEditModal; 
+    window.saveMemberData = saveMemberData;
+    window.openAssetModal = openAssetModal; 
+    window.closeAssetModal = closeAssetModal; 
+    window.saveAssetData = saveAssetData;
     window.syncSnPc = syncSnPc;
-    window.toggleCategoryDropdown = toggleCategoryDropdown; window.renderCategoryDropdown = renderCategoryDropdown;
-    window.filterCategories = filterCategories; window.selectCategory = selectCategory;
-    window.addCategory = addCategory; window.promptDeleteCategory = promptDeleteCategory;
-    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; window.renderRoomTypeDropdown = renderRoomTypeDropdown;
-    window.filterRoomTypes = filterRoomTypes; window.selectRoomType = selectRoomType;
-    window.addRoomType = addRoomType; window.promptDeleteRoomType = promptDeleteRoomType;
-    window.toggleOwnerDropdown = toggleOwnerDropdown; window.renderOwnerDropdown = renderOwnerDropdown;
-    window.filterOwners = filterOwners; window.selectOwner = selectOwner;
-    window.addOwnerFromAsset = addOwnerFromAsset; window.promptDeleteOwner = promptDeleteOwner;
-    window.executeDeleteFromModal = executeDeleteFromModal; window.closeOfficeActionModal = closeOfficeActionModal;
-    window.promptDeleteOffice = promptDeleteOffice; window.moveOfficeRegion = moveOfficeRegion;
     
-    window.promptStrictAction = promptStrictAction;
-    window.closeConfirmModal = closeConfirmModal; 
-    window.executeConfirmAction = executeConfirmAction;
+    window.toggleCategoryDropdown = toggleCategoryDropdown; 
+    window.filterCategories = filterCategories; 
+    window.addCategory = addCategory; 
+    window.selectCategory = selectCategory; 
+    window.promptDeleteCategory = promptDeleteCategory;
+    
+    window.toggleOwnerDropdown = toggleOwnerDropdown; 
+    window.filterOwners = filterOwners; 
+    window.addOwnerFromAsset = addOwnerFromAsset; 
+    window.selectOwner = selectOwner; 
+    window.promptDeleteOwner = promptDeleteOwner;
+    
+    window.executeDeleteFromModal = executeDeleteFromModal; 
+    window.executeConfirmAction = executeConfirmAction; 
+    window.closeConfirmModal = closeConfirmModal;
+    
+    window.toggleFabMenu = toggleFabMenu; 
+    window.customAlert = customAlert;
+    window.openTitleRankModal = openTitleRankModal; 
+    window.closeTitleRankModal = closeTitleRankModal;
+    window.changeTitleRankScope = changeTitleRankScope; 
+    window.promptSaveTitleRanks = promptSaveTitleRanks;
+    window.openUpdateLogModal = openUpdateLogModal; 
+    window.closeUpdateLogModal = closeUpdateLogModal;
+    window.toggleDevOptions = toggleDevOptions; 
+    window.toggleTreeFloor = toggleTreeFloor;
 
+    window.openAddOfficeModal = openAddOfficeModal; 
+    window.openOfficeModal = openOfficeModal; 
+    window.closeOfficeModal = closeOfficeModal; 
+    window.saveOfficeData = saveOfficeData;
+    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; 
+    window.filterRoomTypes = filterRoomTypes; 
+    window.addRoomType = addRoomType; 
+    window.selectRoomType = selectRoomType; 
+    window.promptDeleteRoomType = promptDeleteRoomType;
+    window.moveOfficeRegion = moveOfficeRegion; 
+    window.promptDeleteOffice = promptDeleteOffice; 
+    window.closeOfficeActionModal = closeOfficeActionModal;
     window.restoreLostComputers = restoreLostComputers;
-    window.saveMemberData = saveMemberData; window.saveAssetData = saveAssetData; window.saveOfficeData = saveOfficeData;
-    window.goHome = goHome; window.goUpLevel = goUpLevel;
-    window.showOffices = showOffices; window.showDetail = showDetail;
-    window.switchTab = switchTab; window.updateDetailContent = updateDetailContent;
-    window.showExtensionsView = showExtensionsView; window.toggleSidebar = toggleSidebar;
-    window.closeSidebar = closeSidebar; window.toggleTreeFloor = toggleTreeFloor;
-    window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
-    window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal;
-    window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
-    window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
-    window.toggleDevOptions = toggleDevOptions;
-    window.loginWithGoogle = loginWithGoogle; window.logout = logout;
-    
+
+    window.loginWithGoogle = loginWithGoogle; 
+    window.logout = logout;
     window.openAdminWelcomeModal = openAdminWelcomeModal;
     window.closeAdminWelcomeModal = closeAdminWelcomeModal;
     window.toggleAvatarMenu = toggleAvatarMenu;
@@ -3027,14 +3291,28 @@
     window.openWhitelistModal = openWhitelistModal;
     window.closeWhitelistModal = closeWhitelistModal;
     window.renderWhitelist = renderWhitelist;
-    
     window.openShareModal = openShareModal;
     window.closeShareModal = closeShareModal;
     window.copyShareLink = copyShareLink;
     window.inviteUser = inviteUser;
-    
     window.addWhitelistEmail = addWhitelistEmail;
     window.promptDeleteWhitelist = promptDeleteWhitelist;
+    window.promptStrictAction = promptStrictAction;
+
+    // ✨ 置頂功能綁定
+    window.togglePinSection = togglePinSection;
+    window.togglePinDropdown = togglePinDropdown;
+    window.filterPinItems = filterPinItems;
+    window.addPinItem = addPinItem;
+    window.removePinItem = removePinItem;
+    window.handlePinClick = handlePinClick;
+    window.renderPinnedItems = renderPinnedItems;
+    window.handlePinDragStart = handlePinDragStart;
+    window.handlePinDragOver = handlePinDragOver;
+    window.handlePinDragEnter = handlePinDragEnter;
+    window.handlePinDragLeave = handlePinDragLeave;
+    window.handlePinDrop = handlePinDrop;
+    window.handlePinDragEnd = handlePinDragEnd;
 
     window.addEventListener('resize', syncHeaderLayout);
 </script>

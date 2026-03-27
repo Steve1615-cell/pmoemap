@@ -191,7 +191,7 @@
         .dev-tab-btn.disabled { color: #94a3b8; cursor: not-allowed; background: #f1f5f9; }
         .dev-tab-btn.locked { color: #94a3b8; cursor: not-allowed; background: #f8fafc; opacity: 0.6; border-style: dashed; }
 
-        /* 電腦版：懸浮預覽與詳情 */
+        /* 懸浮預覽與詳情 */
         .preview-list { max-height: 0; opacity: 0; overflow: hidden; list-style: none; padding: 0; margin: 0; transition: all 0.3s ease; font-size: 14px; color: var(--text-muted); }
         .nav-card:hover .preview-list { max-height: 250px; opacity: 1; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; }
         .password-container { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease; }
@@ -233,20 +233,7 @@
         .btn-edit { background: none; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
         .btn-edit:hover { background: var(--accent); color: var(--primary); border-color: var(--primary); }
 
-        /* 自訂下拉選單元件 */
-        .custom-dropdown-btn {
-            width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;
-            background: white; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
-        }
-        .custom-dropdown-btn.locked {
-            background-color: #f1f5f9; cursor: not-allowed; pointer-events: none; opacity: 0.8;
-        }
-        .custom-dropdown-panel {
-            position: absolute; top: 100%; left: 0; width: 100%; box-sizing: border-box;
-            background: white; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 3100;
-            display: none; flex-direction: column; margin-top: 4px; overflow: hidden;
-        }
-        .custom-dropdown-panel.active { display: flex; }
+        /* 下拉選項 CSS */
         .dropdown-search-row { display: flex; gap: 5px; padding: 10px; border-bottom: 1px solid #eee; background: #f8fafc; }
         .dropdown-search-row input { flex: 1; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; }
         .dropdown-list { max-height: 180px; overflow-y: auto; }
@@ -258,7 +245,7 @@
         .dropdown-item-delete { background: none; border: none; cursor: pointer; opacity: 0.5; font-size: 14px; padding: 4px; border-radius: 4px; }
         .dropdown-item-delete:hover { opacity: 1; background: #fee2e2; color: var(--danger); }
 
-        /* 拖曳排序 (Drag & Drop) */
+        /* 拖曳排序 */
         .draggable-item {
             display: flex; justify-content: flex-start; align-items: center; gap: 10px;
             padding: 12px 15px; border-bottom: 1px solid #f1f5f9; background: white;
@@ -270,7 +257,7 @@
         .drag-handle { color: #cbd5e1; font-size: 18px; cursor: grab; padding-right: 5px; }
         .draggable-item:hover .drag-handle { color: var(--text-muted); }
 
-        /* 懸浮操作按鈕 (FAB) */
+        /* 懸浮操作按鈕 */
         .fab-container { position: fixed; bottom: 30px; right: 30px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .fab-menu { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; }
         .fab-menu.active { opacity: 1; visibility: visible; transform: translateY(0); }
@@ -279,14 +266,13 @@
         .fab-btn { width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: white; font-size: 30px; border: none; box-shadow: 0 4px 15px rgba(37,99,235,0.4); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: transform 0.3s ease; }
         .fab-container.active .fab-btn { transform: rotate(45deg); background: var(--danger); }
 
-        /* 頭貼下拉選單 CSS */
+        /* 頭貼選單 */
         .avatar-dropdown-item {
             padding: 12px 15px; font-size: 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 10px;
         }
         .avatar-dropdown-item:hover { background: var(--accent); color: var(--primary); }
         .avatar-dropdown-item:last-child { border-bottom: none; }
 
-        /* 吸收回皇冠的動畫 */
         @keyframes crownPing {
             0% { transform: scale(1); text-shadow: none; }
             50% { transform: scale(1.6); text-shadow: 0 0 20px gold; }
@@ -294,44 +280,60 @@
         }
         .crown-ping { animation: crownPing 0.6s ease-out; display: inline-block; }
 
-        /* ✨ 置頂卡片 CSS */
-        .pinned-full-card {
-            position: relative; cursor: grab; background: var(--card); padding: 20px 15px; text-align: center; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 2px solid transparent; transition: all 0.2s;
+        /* ✨ 置頂卡片 CSS (橫向滑動) */
+        .pinned-section-wrapper {
+            position: relative; margin-bottom: 20px; background: rgba(255,255,255,0.6); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 2px dashed #cbd5e1;
         }
-        .pinned-full-card:hover { border-color: var(--warning); transform: translateY(-5px); }
+        .pinned-items-container {
+            display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 15px; padding-bottom: 10px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory;
+        }
+        .pinned-items-container::-webkit-scrollbar { height: 8px; }
+        .pinned-items-container::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+        .pinned-items-container::-webkit-scrollbar-track { background: transparent; }
+        
+        /* 手機滑動漸層引導 */
+        .scroll-hint-right {
+            position: absolute; right: 0; top: 0; bottom: 0; width: 40px; background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1)); pointer-events: none; border-radius: 0 12px 12px 0; z-index: 10; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; font-size: 20px; color: var(--primary); opacity: 0.8;
+        }
+        
+        .pinned-full-card {
+            flex: 0 0 280px; scroll-snap-align: start; position: relative; cursor: grab; background: var(--card); padding: 20px 15px; text-align: left; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 2px solid transparent; transition: all 0.2s; min-height: 120px; display: flex; flex-direction: column; justify-content: center;
+        }
+        .pinned-full-card:hover { border-color: var(--warning); transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
         .pinned-full-card:active { cursor: grabbing; }
         .pinned-full-card.dragging { opacity: 0.5; background: #f8fafc; }
-        .pinned-full-card.drag-over { border: 2px dashed var(--primary); }
+        .pinned-full-card.drag-over { border-left: 3px solid var(--primary); }
         
         .unpin-btn {
-            position: absolute; top: 8px; right: 8px; background: #fee2e2; border: none; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; opacity: 0.5; transition: all 0.2s; z-index: 20; color: var(--danger); font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 14px;
+            position: absolute; top: 8px; right: 8px; background: #fee2e2; border: none; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; opacity: 0; transition: all 0.2s; z-index: 20; color: var(--danger); font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 16px;
         }
         .pinned-full-card:hover .unpin-btn { opacity: 1; transform: scale(1.1); }
         .unpin-btn:hover { background: var(--danger); color: white; }
 
-        /* ✨ 登入大廳 圓形軌道 UI */
+        /* ✨ 登入大廳 圓形軌道 UI (Neumorphism) */
         .login-wrapper {
             position: relative; width: 100%; height: calc(100vh - 150px); min-height: 500px; display: flex; justify-content: center; align-items: center; overflow: hidden;
         }
         .login-center-box {
-            width: 40%; max-width: 450px; aspect-ratio: 1 / 1; border-radius: 50%; background: #f4f7fb; 
-            box-shadow: 20px 20px 60px #d0d3d6, -20px -20px 60px #ffffff; /* Neumorphism 半立體設計 */
+            width: 40vmin; max-width: 450px; min-width: 320px; aspect-ratio: 1 / 1; border-radius: 50%; background: #f8fafc; 
+            box-shadow: 20px 20px 60px #d0d3d6, -20px -20px 60px #ffffff; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; z-index: 10; text-align: center;
         }
         .orbit-link {
-            position: absolute; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-decoration: none; color: var(--text-main); font-size: 13px; transition: transform 0.3s, box-shadow 0.3s, border-color 0.2s; display: flex; flex-direction: column; gap: 5px; z-index: 5; max-width: 150px; pointer-events: auto; transform-origin: center;
+            position: absolute; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-decoration: none; color: var(--text-main); font-size: 14px; transition: transform 0.3s, box-shadow 0.3s, border-color 0.2s; display: flex; flex-direction: column; gap: 5px; z-index: 5; max-width: 180px; pointer-events: auto; transform-origin: center;
         }
         .orbit-link:hover { z-index: 20 !important; border-color: var(--primary); box-shadow: 0 8px 20px rgba(37,99,235,0.2); }
         .orbit-link-name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .orbit-link-url { font-size: 10px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .orbit-link-url { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        /* 針對觸控設備與手機的專屬設定 */
-        @media (max-width: 768px) {
+        /* 針對觸控設備與手機的設定 */
+        @media (max-width: 850px) {
             #user-info-text { display: none !important; }
-            .login-wrapper { flex-direction: column; height: auto; padding-top: 40px; gap: 30px; justify-content: flex-start; }
-            .login-center-box { width: 90%; aspect-ratio: auto; border-radius: 16px; padding: 30px 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+            .login-wrapper { flex-direction: column; height: auto; padding-top: 20px; gap: 20px; justify-content: flex-start; }
+            .login-center-box { width: 90%; min-width: unset; aspect-ratio: auto; border-radius: 16px; padding: 30px 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
             #login-orbit-container { position: relative !important; width: 100%; height: auto; display: flex; flex-direction: column; gap: 10px; padding: 0 20px; box-sizing: border-box;}
             .orbit-link { position: relative !important; left: auto !important; top: auto !important; transform: none !important; width: 100%; max-width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
+            .pinned-full-card .unpin-btn { opacity: 1; }
         }
 
         @media (hover: none) {
@@ -347,16 +349,16 @@
             .pinned-full-card .unpin-btn { opacity: 1; }
         }
 
-        /* 讀取與提示 */
+        /* 讀取遮罩：加上底色以隱藏背後切換 */
         #loading-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: var(--bg); display: flex; justify-content: center; align-items: center;
-            z-index: 5000; font-size: 20px; font-weight: bold; color: var(--primary); transition: opacity 0.3s; flex-direction: column; gap: 15px;
+            z-index: 9999; font-size: 20px; font-weight: bold; color: var(--primary); transition: opacity 0.3s; flex-direction: column; gap: 15px;
         }
         #custom-toast {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
             background: #334155; color: white; padding: 12px 24px; border-radius: 8px;
-            z-index: 9999; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             opacity: 0; visibility: hidden; transition: all 0.3s ease;
         }
         #custom-toast.show { opacity: 1; visibility: visible; top: 60px; }
@@ -375,6 +377,13 @@
     </style>
 </head>
 <body>
+
+<!-- ✨ 初始驗證載入遮罩 (Splash Screen) 防止閃爍 -->
+<div id="loading-overlay">
+    <div id="loading-spinner" style="font-size: 40px; animation: spin 1s linear infinite;">⏳</div>
+    <div id="loading-text">系統環境準備中...</div>
+</div>
+<style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
 
 <div id="offline-banner" style="display:none; background:var(--danger); color:white; text-align:center; padding:10px; font-weight:bold; position:sticky; top:0; z-index:995; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
     ⚠️ 目前為離線模式，您可以繼續更新資料。恢復連線後將自動同步，<span style="text-decoration:underline;">請勿重新整理頁面</span>以免遺失資料。
@@ -406,7 +415,6 @@
         </div>
         <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
         
-        <!-- 雙重確認防呆輸入框 -->
         <div id="strict-input-container" style="display: none; margin-bottom: 20px;">
             <label style="font-size: 12px; color: var(--danger); font-weight: bold;">請輸入完整的信箱位址以解鎖確認按鈕：</label>
             <input type="email" id="strict-confirm-input" style="width: 100%; padding: 8px; border: 1px solid var(--danger); border-radius: 6px; margin-top: 5px;" autocomplete="off" placeholder="請輸入對方信箱...">
@@ -419,7 +427,7 @@
     </div>
 </div>
 
-<!-- ✨ 新增置頂項目的獨立彈窗 (Modal) 取代下拉選單 -->
+<!-- ✨ 置頂專用獨立彈窗 (Modal) -->
 <div id="pin-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closePinModal()" style="z-index: 3600;">
     <div class="modal-content" style="max-width: 400px; height: 80vh; display: flex; flex-direction: column;">
         <div class="modal-header" style="flex-shrink: 0;">
@@ -468,7 +476,7 @@
     </div>
 </div>
 
-<!-- 系統授權白名單管理表單 (僅限管理員) -->
+<!-- 系統授權白名單管理表單 -->
 <div id="whitelist-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeWhitelistModal()" style="z-index: 3500;">
     <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header">
@@ -480,7 +488,6 @@
         </div>
 
         <div id="whitelist-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
-            <!-- JS 動態生成 -->
         </div>
 
         <div class="modal-footer" style="margin-top: 15px;">
@@ -530,22 +537,19 @@
     </div>
 </div>
 
+<!-- 職稱排序設定表單 -->
 <div id="title-rank-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeTitleRankModal()" style="z-index: 3500;">
     <div class="modal-content">
         <div class="modal-header">
             <span>📊 設定職稱排序</span>
             <button class="btn-close" onclick="closeTitleRankModal()">×</button>
         </div>
-        
         <div class="form-group">
             <label>選擇套用範圍：</label>
-            <select id="title-rank-scope" onchange="changeTitleRankScope()">
-            </select>
+            <select id="title-rank-scope" onchange="changeTitleRankScope()"></select>
         </div>
-
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">請按住 ☰ 拖曳項目來調整高低順序 (越上方排序越優先)。</p>
-        <div id="title-rank-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
-        </div>
+        <div id="title-rank-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;"></div>
         <div class="modal-footer" style="margin-top: 15px;">
             <button class="btn-secondary" onclick="closeTitleRankModal()">取消</button>
             <button class="btn-primary" onclick="promptSaveTitleRanks()">套用排序</button>
@@ -553,6 +557,7 @@
     </div>
 </div>
 
+<!-- 辦公室轉移或刪除專用 Modal -->
 <div id="office-action-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeOfficeActionModal()" style="z-index: 3800;">
     <div class="modal-content">
         <div class="modal-header">
@@ -560,13 +565,10 @@
             <button class="btn-close" onclick="closeOfficeActionModal()">×</button>
         </div>
         <div id="office-action-msg" style="font-size: 14px; margin-bottom: 20px; color: var(--text-main); font-weight: bold;"></div>
-
         <div class="form-group">
             <label>將此辦公室轉移至：</label>
-            <select id="office-move-floor-select" style="background: var(--accent); font-weight:bold;">
-            </select>
+            <select id="office-move-floor-select" style="background: var(--accent); font-weight:bold;"></select>
         </div>
-
         <div class="modal-footer" style="justify-content: space-between; margin-top: 30px;">
             <button class="btn-danger" onclick="promptDeleteOffice()">🗑️ 永久刪除</button>
             <div style="display:flex; gap:10px;">
@@ -577,25 +579,19 @@
     </div>
 </div>
 
+<!-- 更新日誌 Modal -->
 <div id="update-log-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeUpdateLogModal()" style="z-index: 3500;">
     <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
             <span>📝 系統版本日誌</span>
             <button class="btn-close" onclick="closeUpdateLogModal()">×</button>
         </div>
-        <div id="update-log-content" style="max-height: 60vh; overflow-y: auto; text-align: left;">
-        </div>
+        <div id="update-log-content" style="max-height: 60vh; overflow-y: auto; text-align: left;"></div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeUpdateLogModal()">關閉</button>
         </div>
     </div>
 </div>
-
-<div id="loading-overlay">
-    <div id="loading-spinner" style="font-size: 40px; animation: spin 1s linear infinite;">⏳</div>
-    <div id="loading-text">資料讀取中...</div>
-</div>
-<style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
 
 <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 <div id="sidebar" class="sidebar">
@@ -638,8 +634,8 @@
             <button class="btn-nav btn-menu" onclick="toggleSidebar()">☰</button>
             <button class="btn-nav" id="btn-global-home" style="display:none;" onclick="goHome()">🏠 首頁</button>
             <button class="btn-nav" id="btn-global-up" style="display:none;" onclick="goUpLevel()">← 上一層</button>
-            <!-- 初始不顯示置頂區切換按鈕，若無置頂項才會在 JS 裡開啟顯示 -->
-            <button class="btn-nav" id="btn-global-pin" onclick="togglePinSection()" style="display:none; color: var(--warning); border: 1px solid var(--warning); background: white;">📌 置頂區</button>
+            <!-- 📌 當有置頂物件時，按鈕會隱藏 -->
+            <button class="btn-nav" id="btn-global-pin" onclick="openPinModal()" style="display:none; color: var(--warning); border: 1px solid var(--warning); background: white;">📌 置頂區</button>
         </div>
         <div class="title-container" id="title-container">
             <h1 id="main-title" class="static-title">ＰＭＯ電子圖資系統</h1>
@@ -666,10 +662,10 @@
 
     <div id="breadcrumb" class="breadcrumb"></div>
 
-    <!-- ✨ 系統登入大廳 (Neumorphism 圓形排列軌道) -->
+    <!-- ✨ 系統登入大廳 (Neumorphism 圓形軌道介面) -->
     <div id="view-login" class="view">
         <div class="login-wrapper">
-            <!-- 軌道友站連結區域 (桌面版顯示絕對定位軌道，手機版回退清單) -->
+            <!-- 軌道友站連結區域 -->
             <div id="login-orbit-container" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none;"></div>
             
             <div class="login-center-box" style="pointer-events: auto;">
@@ -712,13 +708,18 @@
             <button id="btn-dev-whitelist" class="dev-tab-btn" onclick="openWhitelistModal()" style="color: var(--primary); border-color: var(--primary); background: #e0e7ff;">🛡️ 權限白名單管理</button>
         </div>
 
-        <!-- ✨ 新版置頂區塊：以 Grid 渲染完整卡片 -->
-        <div id="pinned-section" style="display: none; margin-bottom: 20px; background: rgba(255,255,255,0.6); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 2px dashed #cbd5e1;">
+        <!-- ✨ 置頂區塊 (含橫向滑動) -->
+        <div id="pinned-section" class="pinned-section-wrapper" style="display: none;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
-                <div style="font-size: 16px; font-weight: bold; color: var(--warning); display:flex; align-items:center; gap:8px;">📌 我的常用置頂 <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(拖曳排序，最多 5 項)</span></div>
+                <div style="font-size: 16px; font-weight: bold; color: var(--warning); display:flex; align-items:center; gap:8px;">📌 我的常用置頂 <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(拖曳排序，最多 8 項)</span></div>
             </div>
-            <div id="pinned-items-wrapper" class="grid-nav">
-                <!-- Pinned full cards will be injected here -->
+            
+            <div style="position: relative;">
+                <div id="pinned-items-wrapper" class="pinned-items-container">
+                    <!-- 完整卡片渲染於此 -->
+                </div>
+                <!-- ✨ 手機橫向滑動漸層引導 -->
+                <div class="scroll-hint-right" id="pinned-scroll-hint">›</div>
             </div>
         </div>
 
@@ -729,7 +730,6 @@
     
     <div id="view-detail" class="view">
         <div class="tabs" id="dynamic-room-tabs"></div>
-        
         <div id="filter-container" style="display: none; justify-content: flex-end; margin-bottom: 15px; gap: 10px;">
             <div style="background: white; padding: 5px 15px; border-radius: 8px; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <label style="font-size: 13px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
@@ -746,7 +746,6 @@
                 </select>
             </div>
         </div>
-
         <div id="detail-grid" class="grid-nav"></div>
     </div>
 
@@ -760,7 +759,7 @@
     <button class="fab-btn" onclick="toggleFabMenu(event)">＋</button>
 </div>
 
-<!-- ================= Modal 表單區域 ================= -->
+<!-- ================= Modal 表單區域 (人員、資產) ================= -->
 <div id="edit-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeEditModal()">
     <div class="modal-content">
         <div class="modal-header">
@@ -870,53 +869,6 @@
     </div>
 </div>
 
-<div id="office-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeOfficeModal()">
-    <div class="modal-content" style="overflow: visible;">
-        <div class="modal-header">
-            <span id="office-modal-title">✏️ 編輯房間資訊</span>
-            <button class="btn-close" onclick="closeOfficeModal()">×</button>
-        </div>
-        
-        <div class="form-group" id="office-floor-group" style="display: none;">
-            <label>所屬區域 (樓層)</label>
-            <input type="text" id="office-floor" disabled style="background-color: #f1f5f9; color: #94a3b8;">
-        </div>
-
-        <div class="form-group">
-            <label>房間類型 <span id="room-type-lock-hint" style="color:var(--danger); display:none; font-size:12px;">(建立後不可更改)</span></label>
-            <div class="custom-dropdown-btn" id="room-type-dropdown-btn" onclick="toggleRoomTypeDropdown(event)">
-                <span id="selected-room-type-text">選擇房間類型...</span>
-                <span id="room-type-dropdown-arrow" style="font-size: 12px; color: var(--text-muted);">▼</span>
-            </div>
-            <div class="custom-dropdown-panel" id="room-type-panel">
-                <div class="dropdown-search-row">
-                    <input type="text" id="room-type-search-input" placeholder="搜尋或新增類型..." oninput="filterRoomTypes()" onclick="event.stopPropagation()">
-                    <button class="btn-primary" onclick="addRoomType(event)" style="padding: 4px 8px; flex-shrink: 0;">➕</button>
-                </div>
-                <div class="dropdown-list" id="room-type-list"></div>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>房間名稱</label>
-            <input type="text" id="office-name" placeholder="輸入房間或辦公室名稱">
-        </div>
-
-        <div class="form-group">
-            <label>門禁密碼</label>
-            <input type="text" id="office-pwd" placeholder="例如：0857# (無則填 N/A)">
-        </div>
-
-        <div class="modal-footer" style="justify-content: space-between;">
-            <button id="btn-delete-office" class="btn-danger" style="display:none;" onclick="executeDeleteFromModal('office')">🗑️ 移除整個房間</button>
-            <div style="display:flex; gap:10px;">
-                <button class="btn-secondary" onclick="closeOfficeModal()">取消</button>
-                <button id="btn-save-office" class="btn-primary" onclick="saveOfficeData()">儲存</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- ================= 這裡開始是 Firebase 與 JavaScript 邏輯 ================= -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -943,13 +895,14 @@
 
     const systemUpdateLogs = [
         {
-            version: "1.6.5",
+            version: "1.6.4(a)",
             date: "20260327",
             changes: [
-                "【首頁進化】置頂功能全面升級：支援顯示完整資訊卡片。當有置頂物件時，首頁強制展開置頂區並隱藏按鈕，維持版面俐落。",
+                "【首頁進化】置頂功能全面升級：支援顯示完整資訊卡片，上限提升至 8 個，採用平滑的橫向滑軌 (Scroll-snap) 設計，維持首頁高度俐落。",
                 "優化置頂新增操作：廢除易衝突之選單，改以「獨立搜尋彈窗」操作，杜絕背景干擾。",
                 "【登入大廳翻新】採用 Neumorphism (半立體擬物化) 圓形設計，並實作行星軌道 (Orbit) 友站連結佈局。",
-                "導入智慧動態軌道：友站圖示將依據全站點擊次數自動縮放顯示大小，重點資源一目了然。"
+                "導入智慧動態軌道：友站圖示將依據全站點擊次數自動縮放顯示大小，重點資源一目了然。",
+                "大幅優化初始載入體驗：加入全螢幕系統遮罩，解決網路驗證時的版面閃爍問題。"
             ]
         },
         {
@@ -959,15 +912,6 @@
                 "管理員歡迎訊息改為動態生成，不寫死功能列表，並支援點擊王冠重複讀取。",
                 "實裝收合動畫：點擊「開始使用」時，視窗會以動畫收合至右上角王冠，增強視覺引導。",
                 "強化管理員下限防護：當系統僅剩一位一般管理員時，限制其刪除自身權限，避免無人管理的情境。"
-            ]
-        },
-        {
-            version: "1.6.1",
-            date: "20260325",
-            changes: [
-                "綜合修復網頁渲染與預覽環境的授權存取問題。",
-                "深化管理員權限控制：包含動態字串防呆驗證、孤島防護機制與迎新動畫。",
-                "完善個人化選單、暱稱系統與「分享與邀請」自助授權流程。"
             ]
         }
     ];
@@ -1033,7 +977,8 @@
     const SUPER_ADMIN = 'steve1615@gmail.com'; 
 
     let myPinnedItems = [];
-    let isPinSectionVisible = false;
+    // 預設為 true，當清空時自動隱藏
+    let isPinSectionVisible = true;
 
     // ✨ 系統一啟動就監聽公用資料流 (不用登入也能拿到的設定)
     function setupPublicListeners() {
@@ -1176,8 +1121,6 @@
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '正在驗證系統授權...';
-            document.getElementById('loading-overlay').style.display = 'flex';
-            document.getElementById('loading-overlay').style.opacity = '1';
 
             if (user.isAnonymous) {
                 document.getElementById('user-profile').style.display = 'flex';
@@ -1220,7 +1163,6 @@
             document.getElementById('dev-tabs-container').style.display = 'none';
             document.getElementById('pinned-section').style.display = 'none';
             document.getElementById('btn-global-pin').style.display = 'none';
-            document.getElementById('loading-overlay').style.display = 'none';
             document.getElementById('admin-crown').style.display = 'none'; 
             
             const dropdown = document.getElementById('avatar-dropdown');
@@ -1229,6 +1171,8 @@
             updateMainTitle('ＰＭＯ電子圖資系統');
             renderFriendlyLinks(); 
             switchView('view-login');
+            // Hide loading overlay safely if it was stuck
+            setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 500);
         }
     });
 
@@ -1289,7 +1233,7 @@
         } catch (error) {
             if (error.code === 'auth/unauthorized-domain') {
                 if (window.location.hostname.includes('usercontent.goog') || window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1')) {
-                    customAlert('預覽環境受限，為您啟用「訪客預覽模式」！');
+                    customAlert('預覽環境或本地端受限，為您啟用「訪客預覽模式」！');
                     await signInAnonymously(auth);
                 } else {
                     customAlert('登入失敗：目前執行的網址未獲 Firebase 授權！請在 Vercel 設定授權網域。', true);
@@ -1449,8 +1393,8 @@
             
             globalFriendlyLinks.forEach((link, i) => {
                 const angle = (i / totalLinks) * 2 * Math.PI;
-                const radiusX = window.innerWidth > 768 ? window.innerWidth * 0.28 : 0; // 橢圓軌道 X
-                const radiusY = window.innerWidth > 768 ? window.innerHeight * 0.35 : 0; // 橢圓軌道 Y
+                const radiusX = window.innerWidth > 850 ? window.innerWidth * 0.28 : 0; 
+                const radiusY = window.innerWidth > 850 ? window.innerHeight * 0.35 : 0; 
                 
                 const clicks = link.clicks || 0;
                 let scale = 0.8 + (clicks / maxClicks) * 0.7; 
@@ -1461,7 +1405,7 @@
                 a.className = "orbit-link";
                 a.innerHTML = `<div class="orbit-link-name">🌍 ${link.name}</div><div class="orbit-link-url">${link.url}</div>`;
                 
-                if (window.innerWidth > 768) {
+                if (window.innerWidth > 850) {
                     const x = `calc(50% + ${Math.cos(angle) * radiusX}px)`;
                     const y = `calc(50% + ${Math.sin(angle) * radiusY}px)`;
                     a.style.left = x;
@@ -1478,7 +1422,6 @@
     window.trackLinkClick = async (index, url) => {
         const newLinks = [...globalFriendlyLinks];
         newLinks[index].clicks = (newLinks[index].clicks || 0) + 1;
-        // 寫入資料庫但不等待，直接幫使用者跳轉
         setDoc(doc(db, 'settings', 'friendlyLinks'), { list: newLinks }).catch(e => console.log('Link track error', e));
         window.open(url, '_blank');
     };
@@ -1522,16 +1465,18 @@
     };
 
     // =======================================================
-    // ✨ 📌 置頂功能 (獨立 Modal 版，防止點擊衝突)
+    // ✨ 📌 置頂功能 (獨立 Modal 版，支援滑軌橫向排列)
     // =======================================================
     window.togglePinSection = () => {
+        // 若點擊強制展開，僅在沒有項目時允許收合
+        if (myPinnedItems.length > 0) return; 
+        
         isPinSectionVisible = !isPinSectionVisible;
         const section = document.getElementById('pinned-section');
         section.style.display = isPinSectionVisible ? 'block' : 'none';
         if (isPinSectionVisible) renderPinnedItems();
     };
 
-    // 改用獨立的 Modal 來新增置頂
     window.openPinModal = () => {
         document.getElementById('pin-search-modal-input').value = '';
         filterPinItemsModal();
@@ -1594,8 +1539,9 @@
     };
 
     window.addPinItem = async (res) => {
-        if (myPinnedItems.length >= 5) {
-            customAlert('置頂項目最多只能 5 個！', true);
+        // ✨ 開放至 8 個
+        if (myPinnedItems.length >= 8) {
+            customAlert('置頂項目最多只能 8 個！', true);
             return;
         }
         if (myPinnedItems.find(p => p.id === res.id && p.type === res.type)) {
@@ -1609,8 +1555,8 @@
         const newPinned = [...myPinnedItems, newItem];
         myPinnedItems = newPinned;
         
+        closePinModal(); 
         initView(); // 強制重繪首頁與置頂區
-        closePinModal(); // 關閉彈出視窗
 
         try {
             const userId = auth.currentUser?.email || 'anonymous@preview.com';
@@ -1656,13 +1602,20 @@
 
     window.renderPinnedItems = () => {
         const container = document.getElementById('pinned-items-wrapper');
+        const hint = document.getElementById('pinned-scroll-hint');
         if(!container) return;
         
         container.innerHTML = ''; 
         
+        // 判斷是否需要顯示漸層滑動提示
+        if (hint) {
+            if (myPinnedItems.length > 2) hint.style.display = 'flex';
+            else hint.style.display = 'none';
+        }
+        
         myPinnedItems.forEach((item, index) => {
             const card = document.createElement('div');
-            card.className = 'nav-card pinned-full-card';
+            card.className = 'pinned-full-card';
             card.draggable = true;
             card.dataset.index = index;
 
@@ -1671,8 +1624,8 @@
 
             if (item.type === 'floor') {
                 contentHtml = `<div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">區域</div>
-                               <h2 style="margin-top:15px;">${item.name}</h2>
-                               <div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看樓層</div>`;
+                               <h2 style="margin-top:15px; text-align:center;">${item.name}</h2>
+                               <div style="font-size:12px; color:var(--primary); margin-top:10px; text-align:center;">點擊查看樓層</div>`;
             } else if (item.type === 'office') {
                 const off = globalOffices.find(o => o.id === item.id);
                 if (off) {
@@ -1681,9 +1634,9 @@
                     const rTypeHTML = `<div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${rType}</div>`;
                     contentHtml = `
                         ${rTypeHTML}
-                        <h2 style="margin-top:15px;">${off.name} ${extraBadge}</h2>
-                        <div class="password-container" style="max-height:none; opacity:1;"><span class="password-badge">${off.pwd || 'N/A'}</span></div>
-                        <div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>
+                        <h2 style="margin-top:15px; text-align:center;">${off.name} ${extraBadge}</h2>
+                        <div class="password-container" style="max-height:none; opacity:1; text-align:center;"><span class="password-badge">${off.pwd || 'N/A'}</span></div>
+                        <div style="font-size:12px; color:var(--primary); margin-top:10px; text-align:center;">點擊查看詳情</div>
                     `;
                 } else { contentHtml = `<h2 style="color:var(--danger)">該房間已移除</h2>`; }
             } else if (item.type === 'member') {
@@ -1743,19 +1696,18 @@
             container.appendChild(card);
         });
         
-        // 渲染結尾的獨立新增按鈕框
-        if (myPinnedItems.length < 5) {
+        // 渲染結尾的獨立新增按鈕框 (上限 8)
+        if (myPinnedItems.length < 8) {
             const addCard = document.createElement('div');
-            addCard.className = 'nav-card';
-            addCard.style.display = 'flex';
-            addCard.style.justifyContent = 'center';
+            addCard.className = 'pinned-full-card';
             addCard.style.alignItems = 'center';
             addCard.style.border = '2px dashed #cbd5e1';
             addCard.style.boxShadow = 'none';
             addCard.style.background = 'transparent';
             addCard.style.cursor = 'pointer';
+            addCard.style.minHeight = '120px';
             
-            addCard.innerHTML = `<div style="font-size: 36px; color: #94a3b8; width: 100%; height: 100%;">＋</div>`;
+            addCard.innerHTML = `<div style="font-size: 36px; color: #94a3b8;">＋</div>`;
             addCard.onclick = () => openPinModal();
             container.appendChild(addCard);
         }
@@ -1773,20 +1725,22 @@
     window.handlePinDragLeave = function(e) { this.classList.remove('drag-over'); };
     window.handlePinDrop = async function(e) {
         if (e.stopPropagation) e.stopPropagation();
-        if (pinDragSrcEl !== this) {
+        if (pinDragSrcEl !== this && pinDragSrcEl) {
             const fromIndex = parseInt(pinDragSrcEl.dataset.index);
             const toIndex = parseInt(this.dataset.index);
-            const newPinned = [...myPinnedItems];
-            const item = newPinned.splice(fromIndex, 1)[0];
-            newPinned.splice(toIndex, 0, item);
-            
-            myPinnedItems = newPinned;
-            renderPinnedItems();
-            
-            try {
-                const userId = auth.currentUser?.email || 'anonymous@preview.com';
-                await safeWrite(setDoc(doc(db, 'users', userId), { pinnedItems: newPinned }, { merge: true }));
-            } catch(err) { console.error(err); }
+            if (!isNaN(fromIndex) && !isNaN(toIndex)) {
+                const newPinned = [...myPinnedItems];
+                const item = newPinned.splice(fromIndex, 1)[0];
+                newPinned.splice(toIndex, 0, item);
+                
+                myPinnedItems = newPinned;
+                renderPinnedItems();
+                
+                try {
+                    const userId = auth.currentUser?.email || 'anonymous@preview.com';
+                    await safeWrite(setDoc(doc(db, 'users', userId), { pinnedItems: newPinned }, { merge: true }));
+                } catch(err) { console.error(err); }
+            }
         }
         return false;
     };
@@ -2049,7 +2003,8 @@
     }
 
     function initView() {
-        const gridNav = document.querySelector('#view-floor .grid-nav');
+        // ✨ 修改為不覆蓋整個 view-floor，而是專注覆寫樓層清單
+        const gridNav = document.getElementById('floor-list-container');
         if (gridNav) {
             gridNav.innerHTML = ''; 
             
@@ -2093,6 +2048,7 @@
         
         document.getElementById('dev-tabs-container').style.display = (devOptionsEnabled && currentLevel === 0) ? 'flex' : 'none';
         
+        // ✨ 首頁置頂區域的顯示邏輯 (有物件強制展開且隱藏 Header 按鈕)
         if (currentLevel === 0) {
             if (myPinnedItems.length > 0) {
                 document.getElementById('btn-global-pin').style.display = 'none';
@@ -3512,40 +3468,68 @@
         }
     };
 
-    window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal;
-    window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal;
-    window.openAddOfficeModal = openAddOfficeModal; window.openOfficeModal = openOfficeModal; window.closeOfficeModal = closeOfficeModal;
+    window.safeWrite = safeWrite;
+    window.toggleSidebar = toggleSidebar; 
+    window.closeSidebar = closeSidebar;
+    window.showExtensionsView = showExtensionsView; 
+    window.goHome = goHome; 
+    window.goUpLevel = goUpLevel;
+    window.showOffices = showOffices; 
+    window.showDetail = showDetail; 
+    window.switchTab = switchTab;
+    window.updateDetailContent = updateDetailContent;
+    
+    window.openMemberModal = openMemberModal; 
+    window.closeEditModal = closeEditModal; 
+    window.saveMemberData = saveMemberData;
+    window.openAssetModal = openAssetModal; 
+    window.closeAssetModal = closeAssetModal; 
+    window.saveAssetData = saveAssetData;
     window.syncSnPc = syncSnPc;
-    window.toggleCategoryDropdown = toggleCategoryDropdown; window.renderCategoryDropdown = renderCategoryDropdown;
-    window.filterCategories = filterCategories; window.selectCategory = selectCategory;
-    window.addCategory = addCategory; window.promptDeleteCategory = promptDeleteCategory;
-    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; window.renderRoomTypeDropdown = renderRoomTypeDropdown;
-    window.filterRoomTypes = filterRoomTypes; window.selectRoomType = selectRoomType;
-    window.addRoomType = addRoomType; window.promptDeleteRoomType = promptDeleteRoomType;
-    window.toggleOwnerDropdown = toggleOwnerDropdown; window.renderOwnerDropdown = renderOwnerDropdown;
-    window.filterOwners = filterOwners; window.selectOwner = selectOwner;
-    window.addOwnerFromAsset = addOwnerFromAsset; window.promptDeleteOwner = promptDeleteOwner;
-    window.executeDeleteFromModal = executeDeleteFromModal; window.closeOfficeActionModal = closeOfficeActionModal;
-    window.promptDeleteOffice = promptDeleteOffice; window.moveOfficeRegion = moveOfficeRegion;
     
-    window.promptStrictAction = promptStrictAction;
-    window.closeConfirmModal = closeConfirmModal; 
-    window.executeConfirmAction = executeConfirmAction;
+    window.toggleCategoryDropdown = toggleCategoryDropdown; 
+    window.filterCategories = filterCategories; 
+    window.addCategory = addCategory; 
+    window.selectCategory = selectCategory; 
+    window.promptDeleteCategory = promptDeleteCategory;
+    
+    window.toggleOwnerDropdown = toggleOwnerDropdown; 
+    window.filterOwners = filterOwners; 
+    window.addOwnerFromAsset = addOwnerFromAsset; 
+    window.selectOwner = selectOwner; 
+    window.promptDeleteOwner = promptDeleteOwner;
+    
+    window.executeDeleteFromModal = executeDeleteFromModal; 
+    window.executeConfirmAction = executeConfirmAction; 
+    window.closeConfirmModal = closeConfirmModal;
+    
+    window.toggleFabMenu = toggleFabMenu; 
+    window.customAlert = customAlert;
+    window.openTitleRankModal = openTitleRankModal; 
+    window.closeTitleRankModal = closeTitleRankModal;
+    window.changeTitleRankScope = changeTitleRankScope; 
+    window.promptSaveTitleRanks = promptSaveTitleRanks;
+    window.openUpdateLogModal = openUpdateLogModal; 
+    window.closeUpdateLogModal = closeUpdateLogModal;
+    window.toggleDevOptions = toggleDevOptions; 
+    window.toggleTreeFloor = toggleTreeFloor;
 
+    window.openAddOfficeModal = openAddOfficeModal; 
+    window.openOfficeModal = openOfficeModal; 
+    window.closeOfficeModal = closeOfficeModal; 
+    window.saveOfficeData = saveOfficeData;
+    window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; 
+    window.filterRoomTypes = filterRoomTypes; 
+    window.addRoomType = addRoomType; 
+    window.selectRoomType = selectRoomType; 
+    window.promptDeleteRoomType = promptDeleteRoomType;
+    window.moveOfficeRegion = moveOfficeRegion; 
+    window.promptDeleteOffice = promptDeleteOffice; 
+    window.closeOfficeActionModal = closeOfficeActionModal;
     window.restoreLostComputers = restoreLostComputers;
-    window.saveMemberData = saveMemberData; window.saveAssetData = saveAssetData; window.saveOfficeData = saveOfficeData;
-    window.goHome = goHome; window.goUpLevel = goUpLevel;
-    window.showOffices = showOffices; window.showDetail = showDetail;
-    window.switchTab = switchTab; window.updateDetailContent = updateDetailContent;
-    window.showExtensionsView = showExtensionsView; window.toggleSidebar = toggleSidebar;
-    window.closeSidebar = closeSidebar; window.toggleTreeFloor = toggleTreeFloor;
-    window.toggleFabMenu = toggleFabMenu; window.customAlert = customAlert;
-    window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal;
-    window.changeTitleRankScope = changeTitleRankScope; window.promptSaveTitleRanks = promptSaveTitleRanks;
-    window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
-    window.toggleDevOptions = toggleDevOptions;
-    window.loginWithGoogle = loginWithGoogle; window.logout = logout;
-    
+
+    window.loginWithGoogle = loginWithGoogle; 
+    window.logout = logout;
     window.openAdminWelcomeModal = openAdminWelcomeModal;
     window.closeAdminWelcomeModal = closeAdminWelcomeModal;
     window.toggleAvatarMenu = toggleAvatarMenu;
@@ -3555,14 +3539,13 @@
     window.openWhitelistModal = openWhitelistModal;
     window.closeWhitelistModal = closeWhitelistModal;
     window.renderWhitelist = renderWhitelist;
-    
     window.openShareModal = openShareModal;
     window.closeShareModal = closeShareModal;
     window.copyShareLink = copyShareLink;
     window.inviteUser = inviteUser;
-    
     window.addWhitelistEmail = addWhitelistEmail;
     window.promptDeleteWhitelist = promptDeleteWhitelist;
+    window.promptStrictAction = promptStrictAction;
 
     window.togglePinSection = togglePinSection;
     window.openPinModal = openPinModal;

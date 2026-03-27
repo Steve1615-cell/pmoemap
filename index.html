@@ -783,6 +783,45 @@
     </div>
 </div>
 
+<!-- ✨ 新增：會議室預約排程表單 Modal ✨ -->
+<div id="booking-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeBookingModal()" style="z-index: 3800;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span id="booking-modal-title">📅 新增預約排程</span>
+            <button class="btn-close" onclick="closeBookingModal()">×</button>
+        </div>
+        <div class="form-group">
+            <label>會議名稱 (主題)</label>
+            <input type="text" id="booking-title" placeholder="例如：Phase 3 啟動會議">
+        </div>
+        <div class="form-group">
+            <label>預約日期</label>
+            <input type="date" id="booking-date">
+        </div>
+        <div style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1;">
+                <label>開始時間</label>
+                <input type="time" id="booking-start">
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label>結束時間</label>
+                <input type="time" id="booking-end">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>預約人</label>
+            <input type="text" id="booking-user" placeholder="輸入您的姓名">
+        </div>
+        <div class="modal-footer" style="justify-content: space-between;">
+            <button id="btn-delete-booking" class="btn-danger" style="display:none;" onclick="promptDeleteBooking()">🗑️ 取消預約</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" onclick="closeBookingModal()">返回</button>
+                <button id="btn-save-booking" class="btn-primary" onclick="saveBookingData()">儲存預約</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="asset-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeAssetModal()">
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header">
@@ -943,6 +982,15 @@
 
     const systemUpdateLogs = [
         {
+            version: "2.0.0",
+            date: "20260327",
+            changes: [
+                "【Phase 3 啟動】正式解鎖會議室專屬模組！",
+                "新增「預約排程系統」，支援即時同步的會議行程建立與編輯。",
+                "導入 Firebase Bookings 集合，會議資料與常駐人員資料庫徹底脫鉤，解決資料庫污染問題。"
+            ]
+        },
+        {
             version: "1.6.5",
             date: "20260327",
             changes: [
@@ -950,24 +998,6 @@
                 "優化置頂新增操作：廢除易衝突之選單，改以「獨立搜尋彈窗」操作，杜絕背景干擾。",
                 "【登入大廳翻新】採用 Neumorphism (半立體擬物化) 圓形設計，並實作行星軌道 (Orbit) 友站連結佈局。",
                 "導入智慧動態軌道：友站圖示將依據全站點擊次數自動縮放顯示大小，重點資源一目了然。"
-            ]
-        },
-        {
-            version: "1.6.2",
-            date: "20260326",
-            changes: [
-                "管理員歡迎訊息改為動態生成，不寫死功能列表，並支援點擊王冠重複讀取。",
-                "實裝收合動畫：點擊「開始使用」時，視窗會以動畫收合至右上角王冠，增強視覺引導。",
-                "強化管理員下限防護：當系統僅剩一位一般管理員時，限制其刪除自身權限，避免無人管理的情境。"
-            ]
-        },
-        {
-            version: "1.6.1",
-            date: "20260325",
-            changes: [
-                "綜合修復網頁渲染與預覽環境的授權存取問題。",
-                "深化管理員權限控制：包含動態字串防呆驗證、孤島防護機制與迎新動畫。",
-                "完善個人化選單、暱稱系統與「分享與邀請」自助授權流程。"
             ]
         }
     ];
@@ -993,12 +1023,13 @@
         'assets': '資產',
         'facilities': '孔位',
         'checkout': '🔒 登記領取',
-        'booking': '🔒 預約排程'
+        'booking': '📅 預約排程' // ✨ 解鎖了鎖頭圖示
     };
 
     let globalOffices = [];
     let globalMembers = [];
     let globalAssets = [];
+    let globalBookings = []; // ✨ 新增預約資料的陣列
     let defaultCategories = ['電腦', '影印機', '冰箱', '洗衣機', '冷氣機'];
     let globalCategories = [...defaultCategories]; 
     let currentAssetCategory = '電腦';
@@ -1020,6 +1051,7 @@
     let currentEditMemberId = null; 
     let currentEditAssetId = null;
     let currentEditOfficeId = null; 
+    let currentEditBookingId = null; // ✨ 追蹤正在編輯的預約單
     let isEditMode = false; 
     let isOfficeEditMode = false;
 
@@ -1035,7 +1067,6 @@
     let myPinnedItems = [];
     let isPinSectionVisible = false;
 
-    // ✨ 系統一啟動就監聽公用資料流 (不用登入也能拿到的設定)
     function setupPublicListeners() {
         onSnapshot(doc(db, "settings", "friendlyLinks"), (docSnap) => {
             if(docSnap.exists()) {
@@ -1309,7 +1340,7 @@
         let loadedCount = 0;
         const checkAllLoaded = () => {
             loadedCount++;
-            if (loadedCount >= 9 && !isInitialized) { 
+            if (loadedCount >= 10 && !isInitialized) { // ✨ 改為 10，因為增加了 bookings 監聽
                 isInitialized = true;
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 300);
@@ -1377,6 +1408,16 @@
             globalAssets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); checkAllLoaded();
             if(currentLevel === 0) renderPinnedItems();
         });
+        
+        // ✨ 新增：監聽會議室預約資料
+        onSnapshot(collection(db, "bookings"), (snapshot) => {
+            globalBookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+            checkAllLoaded();
+            if (currentLevel === 2 && currentTab === 'booking') {
+                updateDetailContent(); // 若目前正好停留在預約分頁，即時更新畫面
+            }
+        });
+
         onSnapshot(doc(db, "settings", "categories"), (docSnap) => {
             if(docSnap.exists()) globalCategories = docSnap.data().list;
             else { safeWrite(setDoc(doc(db, "settings", "categories"), { list: defaultCategories })); globalCategories = [...defaultCategories]; }
@@ -1415,13 +1456,9 @@
         }
     }
 
-    // =======================================================
-    // ✨ 友站連結邏輯 (Friendly Links) - 支援環繞動畫
-    // =======================================================
     window.renderFriendlyLinks = () => {
         const isAuth = auth.currentUser && (globalWhitelist.includes(auth.currentUser.email) || globalAdmins.includes(auth.currentUser.email) || auth.currentUser.email === SUPER_ADMIN || auth.currentUser.isAnonymous);
         
-        // 側邊欄渲染
         const sidebarList = document.getElementById('sidebar-friendly-links');
         if (sidebarList) {
             let html = '';
@@ -1438,7 +1475,6 @@
             sidebarList.innerHTML = html;
         }
 
-        // ✨ 登入畫面環繞渲染 (Neumorphism Orbit)
         const orbitContainer = document.getElementById('login-orbit-container');
         if (orbitContainer && currentLevel === -1) {
             orbitContainer.innerHTML = '';
@@ -1449,8 +1485,8 @@
             
             globalFriendlyLinks.forEach((link, i) => {
                 const angle = (i / totalLinks) * 2 * Math.PI;
-                const radiusX = window.innerWidth > 768 ? window.innerWidth * 0.28 : 0; // 橢圓軌道 X
-                const radiusY = window.innerWidth > 768 ? window.innerHeight * 0.35 : 0; // 橢圓軌道 Y
+                const radiusX = window.innerWidth > 768 ? window.innerWidth * 0.28 : 0; 
+                const radiusY = window.innerWidth > 768 ? window.innerHeight * 0.35 : 0; 
                 
                 const clicks = link.clicks || 0;
                 let scale = 0.8 + (clicks / maxClicks) * 0.7; 
@@ -1478,7 +1514,6 @@
     window.trackLinkClick = async (index, url) => {
         const newLinks = [...globalFriendlyLinks];
         newLinks[index].clicks = (newLinks[index].clicks || 0) + 1;
-        // 寫入資料庫但不等待，直接幫使用者跳轉
         setDoc(doc(db, 'settings', 'friendlyLinks'), { list: newLinks }).catch(e => console.log('Link track error', e));
         window.open(url, '_blank');
     };
@@ -1521,9 +1556,6 @@
         document.getElementById('confirm-modal-overlay').classList.add('active');
     };
 
-    // =======================================================
-    // ✨ 📌 置頂功能 (獨立 Modal 版，防止點擊衝突)
-    // =======================================================
     window.togglePinSection = () => {
         isPinSectionVisible = !isPinSectionVisible;
         const section = document.getElementById('pinned-section');
@@ -1531,7 +1563,6 @@
         if (isPinSectionVisible) renderPinnedItems();
     };
 
-    // 改用獨立的 Modal 來新增置頂
     window.openPinModal = () => {
         document.getElementById('pin-search-modal-input').value = '';
         filterPinItemsModal();
@@ -1609,8 +1640,8 @@
         const newPinned = [...myPinnedItems, newItem];
         myPinnedItems = newPinned;
         
-        initView(); // 強制重繪首頁與置頂區
-        closePinModal(); // 關閉彈出視窗
+        initView(); 
+        closePinModal(); 
 
         try {
             const userId = auth.currentUser?.email || 'anonymous@preview.com';
@@ -1625,7 +1656,7 @@
         newPinned.splice(index, 1);
         myPinnedItems = newPinned;
         
-        initView(); // 強制重繪首頁與置頂區
+        initView(); 
 
         try {
             const userId = auth.currentUser?.email || 'anonymous@preview.com';
@@ -1743,7 +1774,6 @@
             container.appendChild(card);
         });
         
-        // 渲染結尾的獨立新增按鈕框
         if (myPinnedItems.length < 5) {
             const addCard = document.createElement('div');
             addCard.className = 'nav-card';
@@ -1795,9 +1825,6 @@
         document.querySelectorAll('.pinned-full-card').forEach(col => col.classList.remove('drag-over'));
     };
 
-    // =======================================================
-    // 個人化選單與授權工具
-    // =======================================================
     window.toggleAvatarMenu = (event) => {
         event.stopPropagation();
         const dropdown = document.getElementById('avatar-dropdown');
@@ -2049,7 +2076,8 @@
     }
 
     function initView() {
-        const gridNav = document.querySelector('#view-floor .grid-nav');
+        // ✨ [錯誤修復] 改用 getElementById 精準鎖定容器，避免與「置頂區」的 .grid-nav 發生衝突
+        const gridNav = document.getElementById('floor-list-container');
         if (gridNav) {
             gridNav.innerHTML = ''; 
             
@@ -2220,6 +2248,7 @@
             document.getElementById('owner-panel').classList.remove('active');
             if(document.getElementById('room-type-panel')) document.getElementById('room-type-panel').classList.remove('active');
             closeConfirmModal(); window.closeAdminWelcomeModal();
+            closeBookingModal(); // ✨ 支援 ESC 關閉預約表單
         }
     });
 
@@ -2257,7 +2286,9 @@
             let specificAction = '';
             if (currentTab === 'staff') specificAction = `<button class="fab-item" onclick="openMemberModal()">➕ 新增人員</button>`;
             else if (currentTab === 'assets') specificAction = `<button class="fab-item" onclick="openAssetModal()">➕ 新增資產 (包含電腦)</button>`;
-            else if (currentTab === 'booking' || currentTab === 'checkout') specificAction = `<button class="fab-item" onclick="customAlert('此功能尚未開放')">➕ 新增紀錄</button>`;
+            else if (currentTab === 'checkout') specificAction = `<button class="fab-item" onclick="customAlert('此功能尚未開放')">➕ 新增紀錄</button>`;
+            // ✨ 如果在預約排程頁，將 FAB 設定為開啟預約表單
+            else if (currentTab === 'booking') specificAction = `<button class="fab-item" onclick="openBookingModal()">📅 新增會議預約</button>`;
             
             fabMenu.innerHTML = `${specificAction}<button class="fab-item" onclick="openOfficeModal('${currentOfficeId}')">✏️ 編輯房間資訊</button>`;
         } else {
@@ -2425,8 +2456,51 @@
         document.getElementById('staff-sort-select').style.display = (currentTab === 'staff') ? 'block' : 'none';
         document.getElementById('asset-sort-select').style.display = (currentTab === 'assets') ? 'block' : 'none';
 
-        if (currentTab === 'checkout' || currentTab === 'booking') {
+        if (currentTab === 'checkout') {
             grid.innerHTML = `<div class="locked-feature-panel"><h3>🔒 此模組功能開發中</h3></div>`;
+            return;
+        }
+        
+        // ✨ 新增：會議室預約排程畫面渲染邏輯
+        if (currentTab === 'booking') {
+            let roomBookings = globalBookings.filter(b => b.office_id === currentOfficeId);
+            
+            // 按照日期與時間排序 (最新的在下面，或是按時間軸排)
+            roomBookings.sort((a, b) => {
+                if (a.date !== b.date) return a.date.localeCompare(b.date);
+                return a.startTime.localeCompare(b.startTime);
+            });
+
+            // 過濾掉昨天的舊紀錄，只顯示今天與未來
+            const todayStr = new Date().toISOString().split('T')[0];
+            const upcomingBookings = roomBookings.filter(b => b.date >= todayStr);
+
+            if(upcomingBookings.length === 0) { 
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無會議預約，點擊右下角「＋」可新增。</div>'; 
+                return; 
+            }
+
+            upcomingBookings.forEach(b => {
+                const card = document.createElement('div'); 
+                card.className = 'nav-card';
+                card.style.textAlign = 'left';
+                
+                // 判斷是否為今天
+                let dateTag = b.date === todayStr ? `<span style="background:var(--danger); color:white; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:8px;">今天</span>` : '';
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:10px;">
+                        <div>
+                            <div style="font-size:13px; color:var(--text-muted); font-weight:bold;">${b.date.replace(/-/g, '/')} ${dateTag}</div>
+                            <h3 style="margin:5px 0 0 0; color:var(--primary); font-size:18px;">${b.title}</h3>
+                        </div>
+                        <button class="btn-edit" onclick="openBookingModal('${b.id}')">✏️ 編輯</button>
+                    </div>
+                    <div style="font-size:14px; margin-bottom:6px;"><b>時間：</b> <span style="font-family:monospace; font-size:15px;">${b.startTime} - ${b.endTime}</span></div>
+                    <div style="font-size:14px;"><b>預約人：</b> ${b.booker}</div>
+                `;
+                grid.appendChild(card);
+            });
             return;
         }
 
@@ -2720,6 +2794,102 @@
     }
 
     function closeEditModal() { document.getElementById('edit-modal-overlay').classList.remove('active'); }
+
+    // ✨ 新增：開啟預約會議表單的邏輯
+    window.openBookingModal = (bookingId = null) => {
+        closeFabMenu();
+        const btnDel = document.getElementById('btn-delete-booking');
+        
+        // 抓取預設的使用者名稱 (如果已設定暱稱則優先使用)
+        const userId = auth.currentUser?.email || '';
+        const userProfile = globalUsers.find(u => u.id === userId);
+        const defaultName = (userProfile && userProfile.nickname) ? userProfile.nickname : (auth.currentUser?.displayName || '');
+
+        if (bookingId && typeof bookingId === 'string') {
+            currentEditBookingId = bookingId;
+            document.getElementById('booking-modal-title').innerText = '✏️ 編輯預約排程';
+            btnDel.style.display = 'inline-block';
+
+            const b = globalBookings.find(x => x.id === bookingId);
+            if (b) {
+                document.getElementById('booking-title').value = b.title || '';
+                document.getElementById('booking-date').value = b.date || '';
+                document.getElementById('booking-start').value = b.startTime || '';
+                document.getElementById('booking-end').value = b.endTime || '';
+                document.getElementById('booking-user').value = b.booker || '';
+            }
+        } else {
+            currentEditBookingId = null;
+            document.getElementById('booking-modal-title').innerText = '📅 新增預約排程';
+            btnDel.style.display = 'none';
+
+            document.getElementById('booking-title').value = '';
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('booking-date').value = today;
+            document.getElementById('booking-start').value = '09:00';
+            document.getElementById('booking-end').value = '10:00';
+            document.getElementById('booking-user').value = defaultName;
+        }
+        document.getElementById('booking-modal-overlay').classList.add('active');
+    };
+
+    window.closeBookingModal = () => {
+        document.getElementById('booking-modal-overlay').classList.remove('active');
+    };
+
+    window.saveBookingData = async () => {
+        const title = document.getElementById('booking-title').value.trim();
+        const date = document.getElementById('booking-date').value;
+        const start = document.getElementById('booking-start').value;
+        const end = document.getElementById('booking-end').value;
+        const booker = document.getElementById('booking-user').value.trim();
+
+        if (!title || !date || !start || !end || !booker) {
+            customAlert('所有欄位皆為必填！', true);
+            return;
+        }
+
+        if (start >= end) {
+            customAlert('結束時間必須晚於開始時間！', true);
+            return;
+        }
+
+        const btn = document.getElementById('btn-save-booking');
+        btn.disabled = true; btn.innerText = '儲存中...';
+
+        try {
+            const bookingData = {
+                office_id: currentOfficeId,
+                title: title,
+                date: date,
+                startTime: start,
+                endTime: end,
+                booker: booker,
+                updatedAt: new Date().toISOString()
+            };
+
+            if (currentEditBookingId) {
+                await safeWrite(updateDoc(doc(db, 'bookings', currentEditBookingId), bookingData));
+            } else {
+                bookingData.creatorEmail = auth.currentUser?.email || 'anonymous';
+                await safeWrite(addDoc(collection(db, 'bookings'), bookingData));
+            }
+            window.closeBookingModal();
+            customAlert('預約已成功儲存！');
+        } catch (e) {
+            console.error(e);
+            customAlert('預約儲存失敗', true);
+        } finally {
+            btn.disabled = false; btn.innerText = '儲存預約';
+        }
+    };
+
+    window.promptDeleteBooking = () => {
+        pendingDeleteAction = { type: 'booking', id: currentEditBookingId };
+        document.getElementById('confirm-modal-title').innerText = '⚠️ 取消預約';
+        document.getElementById('confirm-msg').innerText = '確定要取消並刪除這筆會議預約嗎？';
+        document.getElementById('confirm-modal-overlay').classList.add('active');
+    };
 
     function syncSnPc(source) {
         if (currentAssetCategory !== '電腦') return;
@@ -3189,6 +3359,12 @@
                 closeConfirmModal();
                 customAlert(`已移除友站連結！`);
             }
+            // ✨ 新增處理刪除會議預約
+            else if (pendingDeleteAction.type === 'booking') {
+                await safeWrite(deleteDoc(doc(db, 'bookings', pendingDeleteAction.id)));
+                if (document.getElementById('booking-modal-overlay').classList.contains('active')) closeBookingModal();
+                closeConfirmModal(); customAlert(`已成功取消預約！`);
+            }
             else if (pendingDeleteAction.type === 'promoteAdmin') {
                 const targetEmail = pendingDeleteAction.payload;
                 const newAdmins = [...globalAdmins, targetEmail];
@@ -3265,10 +3441,13 @@
                 const offName = pendingDeleteAction.name;
                 const membersToDelete = globalMembers.filter(m => m.office_id === offId);
                 const assetsToDelete = globalAssets.filter(a => a.office_id === offId);
+                // ✨ 連同會議預約一起刪除
+                const bookingsToDelete = globalBookings.filter(b => b.office_id === offId);
 
                 const ops = [];
                 membersToDelete.forEach(m => ops.push(deleteDoc(doc(db, 'members', m.id))));
                 assetsToDelete.forEach(a => ops.push(deleteDoc(doc(db, 'assets', a.id))));
+                bookingsToDelete.forEach(b => ops.push(deleteDoc(doc(db, 'bookings', b.id))));
                 ops.push(deleteDoc(doc(db, 'offices', offId)));
 
                 await safeWrite(Promise.all(ops));
@@ -3492,6 +3671,12 @@
                         batchOperations.push(updateDoc(doc(db, 'assets', a.id), { office_id: newOfficeId }));
                     }
 
+                    // ✨ (如果有舊版預約也需要遷移，不過這個是新功能，通常不會有舊資料需要轉移)
+                    const relatedBookings = globalBookings.filter(b => b.office_id === oldOffice.id);
+                    for (const b of relatedBookings) {
+                        batchOperations.push(updateDoc(doc(db, 'bookings', b.id), { office_id: newOfficeId }));
+                    }
+
                     batchOperations.push(deleteDoc(doc(db, 'offices', oldOffice.id)));
                 }
             }
@@ -3585,6 +3770,12 @@
     window.saveFriendlyLink = saveFriendlyLink;
     window.promptDeleteFriendlyLink = promptDeleteFriendlyLink;
     window.trackLinkClick = trackLinkClick;
+
+    // ✨ 新增會議室預約排程相關綁定
+    window.openBookingModal = openBookingModal;
+    window.closeBookingModal = closeBookingModal;
+    window.saveBookingData = saveBookingData;
+    window.promptDeleteBooking = promptDeleteBooking;
 
     window.addEventListener('resize', syncHeaderLayout);
 </script>

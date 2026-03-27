@@ -294,11 +294,11 @@
         }
         .crown-ping { animation: crownPing 0.6s ease-out; display: inline-block; }
 
-        /* ✨ 置頂卡片 CSS */
+        /* ✨ 置頂卡片 CSS (更新: 優化懸停動畫與陰影) */
         .pinned-full-card {
             position: relative; cursor: grab; background: var(--card); padding: 20px 15px; text-align: center; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 2px solid transparent; transition: all 0.2s;
         }
-        .pinned-full-card:hover { border-color: var(--warning); transform: translateY(-5px); }
+        .pinned-full-card:hover { border-color: var(--warning); transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.12); z-index: 10; }
         .pinned-full-card:active { cursor: grabbing; }
         .pinned-full-card.dragging { opacity: 0.5; background: #f8fafc; }
         .pinned-full-card.drag-over { border: 2px dashed var(--primary); }
@@ -715,7 +715,7 @@
         <!-- ✨ 新版置頂區塊：以 Grid 渲染完整卡片 -->
         <div id="pinned-section" style="display: none; margin-bottom: 20px; background: rgba(255,255,255,0.6); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 2px dashed #cbd5e1;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
-                <div style="font-size: 16px; font-weight: bold; color: var(--warning); display:flex; align-items:center; gap:8px;">📌 我的常用置頂 <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(拖曳排序，最多 5 項)</span></div>
+                <div style="font-size: 16px; font-weight: bold; color: var(--warning); display:flex; align-items:center; gap:8px;">📌 我的常用置頂 <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(拖曳排序，最多 8 項)</span></div>
             </div>
             <div id="pinned-items-wrapper" class="grid-nav">
                 <!-- Pinned full cards will be injected here -->
@@ -795,7 +795,7 @@
             <input type="text" id="booking-title" placeholder="例如：Phase 3 啟動會議">
         </div>
         <div class="form-group">
-            <label>預約日期</label>
+            <label>預約日期 <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">(僅限當月及次月)</span></label>
             <input type="date" id="booking-date">
         </div>
         <div style="display:flex; gap:10px;">
@@ -816,7 +816,9 @@
             <button id="btn-delete-booking" class="btn-danger" style="display:none;" onclick="promptDeleteBooking()">🗑️ 取消預約</button>
             <div style="display:flex; gap:10px;">
                 <button class="btn-secondary" onclick="closeBookingModal()">返回</button>
-                <button id="btn-save-booking" class="btn-primary" onclick="saveBookingData()">儲存預約</button>
+                <!-- ✨ 加入連續新增的下一筆按鈕 -->
+                <button id="btn-save-next-booking" class="btn-primary" onclick="saveBookingData(true)" style="display:none; background-color:#059669;">下一筆</button>
+                <button id="btn-save-booking" class="btn-primary" onclick="saveBookingData(false)">儲存</button>
             </div>
         </div>
     </div>
@@ -962,6 +964,25 @@
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, deleteDoc, initializeFirestore, persistentLocalCache, persistentSingleTabManager, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+    // ✨ [安全防護] 全域錯誤與 Promise 拒絕捕捉
+    // 只要系統發生任何預期外報錯，立刻強制解除「無限載入畫面」卡死狀態
+    window.addEventListener('error', function(e) {
+        const loader = document.getElementById('loading-overlay');
+        if (loader && loader.style.display !== 'none') {
+            loader.style.display = 'none';
+            const toast = document.getElementById('custom-toast');
+            if (toast) {
+                toast.innerText = '⚠️ 系統發生局部異常，部分功能可能受限。';
+                toast.classList.add('danger', 'show');
+                setTimeout(() => toast.classList.remove('show'), 5000);
+            }
+        }
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+        const loader = document.getElementById('loading-overlay');
+        if (loader && loader.style.display !== 'none') loader.style.display = 'none';
+    });
+
     const firebaseConfig = {
         apiKey: "AIzaSyDt7Z-QAG4C73K7f0RyItXMNQJc2NDxkzE",
         authDomain: "pmoemap.firebaseapp.com",
@@ -982,12 +1003,13 @@
 
     const systemUpdateLogs = [
         {
-            version: "2.0.0",
+            version: "1.6.6",
             date: "20260327",
             changes: [
-                "【Phase 3 啟動】正式解鎖會議室專屬模組！",
-                "新增「預約排程系統」，支援即時同步的會議行程建立與編輯。",
-                "導入 Firebase Bookings 集合，會議資料與常駐人員資料庫徹底脫鉤，解決資料庫污染問題。"
+                "【置頂擴充與視覺優化】首頁我的常用置頂上限擴增至 8 件。提升滑鼠懸停時卡片的浮動與陰影質感，資訊判讀更直觀。",
+                "【預約排程升級】會議預約現在支援「連續新增 (下一筆)」按鈕，能自動沿用上筆的會議資訊、時段與預約人，大幅加速操作效率。",
+                "【預約防呆機制】鎖死預約日期的選擇範圍，僅允許選擇「當天」至「下個月月底」的時段，拒絕逾期或超長遠的排程。",
+                "【系統底層除錯】修正了偶發性的首頁辦公區域消失及載入卡死問題，強化全域異常捕捉防護網。"
             ]
         },
         {
@@ -1625,8 +1647,9 @@
     };
 
     window.addPinItem = async (res) => {
-        if (myPinnedItems.length >= 5) {
-            customAlert('置頂項目最多只能 5 個！', true);
+        // ✨ 修改：提升置頂上限至 8 項
+        if (myPinnedItems.length >= 8) {
+            customAlert('置頂項目最多只能 8 個！', true);
             return;
         }
         if (myPinnedItems.find(p => p.id === res.id && p.type === res.type)) {
@@ -1774,7 +1797,8 @@
             container.appendChild(card);
         });
         
-        if (myPinnedItems.length < 5) {
+        // ✨ 修改：配合置頂上限提升至 8 項
+        if (myPinnedItems.length < 8) {
             const addCard = document.createElement('div');
             addCard.className = 'nav-card';
             addCard.style.display = 'flex';
@@ -2795,25 +2819,44 @@
 
     function closeEditModal() { document.getElementById('edit-modal-overlay').classList.remove('active'); }
 
-    // ✨ 新增：開啟預約會議表單的邏輯
+    // ✨ 新增：開啟預約會議表單的邏輯 (v1.6.6 新增限制時間範圍功能)
     window.openBookingModal = (bookingId = null) => {
         closeFabMenu();
         const btnDel = document.getElementById('btn-delete-booking');
+        const btnNext = document.getElementById('btn-save-next-booking');
+        const dateInput = document.getElementById('booking-date');
         
         // 抓取預設的使用者名稱 (如果已設定暱稱則優先使用)
         const userId = auth.currentUser?.email || '';
         const userProfile = globalUsers.find(u => u.id === userId);
         const defaultName = (userProfile && userProfile.nickname) ? userProfile.nickname : (auth.currentUser?.displayName || '');
 
+        // 動態計算允許的日期範圍 (今天 ~ 下個月的最後一天)
+        const todayObj = new Date();
+        const yyyy = todayObj.getFullYear();
+        const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(todayObj.getDate()).padStart(2, '0');
+        const minDate = `${yyyy}-${mm}-${dd}`;
+
+        const nextMonthLastDayObj = new Date(yyyy, todayObj.getMonth() + 2, 0);
+        const max_yyyy = nextMonthLastDayObj.getFullYear();
+        const max_mm = String(nextMonthLastDayObj.getMonth() + 1).padStart(2, '0');
+        const max_dd = String(nextMonthLastDayObj.getDate()).padStart(2, '0');
+        const maxDate = `${max_yyyy}-${max_mm}-${max_dd}`;
+
+        dateInput.min = minDate;
+        dateInput.max = maxDate;
+
         if (bookingId && typeof bookingId === 'string') {
             currentEditBookingId = bookingId;
             document.getElementById('booking-modal-title').innerText = '✏️ 編輯預約排程';
             btnDel.style.display = 'inline-block';
+            btnNext.style.display = 'none'; // 編輯模式不顯示「下一筆」
 
             const b = globalBookings.find(x => x.id === bookingId);
             if (b) {
                 document.getElementById('booking-title').value = b.title || '';
-                document.getElementById('booking-date').value = b.date || '';
+                dateInput.value = b.date || '';
                 document.getElementById('booking-start').value = b.startTime || '';
                 document.getElementById('booking-end').value = b.endTime || '';
                 document.getElementById('booking-user').value = b.booker || '';
@@ -2822,10 +2865,10 @@
             currentEditBookingId = null;
             document.getElementById('booking-modal-title').innerText = '📅 新增預約排程';
             btnDel.style.display = 'none';
+            btnNext.style.display = 'inline-block';
 
             document.getElementById('booking-title').value = '';
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('booking-date').value = today;
+            dateInput.value = minDate; // 預設今天
             document.getElementById('booking-start').value = '09:00';
             document.getElementById('booking-end').value = '10:00';
             document.getElementById('booking-user').value = defaultName;
@@ -2837,9 +2880,11 @@
         document.getElementById('booking-modal-overlay').classList.remove('active');
     };
 
-    window.saveBookingData = async () => {
+    // ✨ 修改：支援「連續新增下一筆」
+    window.saveBookingData = async (continueNext = false) => {
         const title = document.getElementById('booking-title').value.trim();
-        const date = document.getElementById('booking-date').value;
+        const dateInput = document.getElementById('booking-date');
+        const date = dateInput.value;
         const start = document.getElementById('booking-start').value;
         const end = document.getElementById('booking-end').value;
         const booker = document.getElementById('booking-user').value.trim();
@@ -2854,7 +2899,14 @@
             return;
         }
 
-        const btn = document.getElementById('btn-save-booking');
+        if (date < dateInput.min || date > dateInput.max) {
+            customAlert(`請選擇 ${dateInput.min} 至 ${dateInput.max} 之間的日期！`, true);
+            return;
+        }
+
+        const btnId = continueNext ? 'btn-save-next-booking' : 'btn-save-booking';
+        const btn = document.getElementById(btnId);
+        const originalText = btn.innerText;
         btn.disabled = true; btn.innerText = '儲存中...';
 
         try {
@@ -2874,13 +2926,20 @@
                 bookingData.creatorEmail = auth.currentUser?.email || 'anonymous';
                 await safeWrite(addDoc(collection(db, 'bookings'), bookingData));
             }
-            window.closeBookingModal();
-            customAlert('預約已成功儲存！');
+            
+            if (continueNext && !currentEditBookingId) {
+                btn.innerText = '已新增 ✔';
+                // 保留所有輸入內容，讓使用者快速微調再送出下一筆
+                setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 800);
+                customAlert('預約已儲存！請直接修改時間或日期以新增下一筆。');
+            } else {
+                window.closeBookingModal();
+                customAlert('預約已成功儲存！');
+            }
         } catch (e) {
             console.error(e);
             customAlert('預約儲存失敗', true);
-        } finally {
-            btn.disabled = false; btn.innerText = '儲存預約';
+            btn.disabled = false; btn.innerText = originalText;
         }
     };
 

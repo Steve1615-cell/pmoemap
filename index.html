@@ -661,6 +661,8 @@
             <button class="dev-tab-btn" onclick="runDatabaseMigration()" style="color: var(--danger); border-color: var(--danger); background: #fee2e2;">⚠️ 執行 Phase 3 資料庫升級</button>
             <button class="dev-tab-btn" onclick="restoreLostComputers()">🚑 復原測試資產</button>
             <button id="btn-dev-whitelist" class="dev-tab-btn" onclick="openWhitelistModal()" style="color: var(--primary); border-color: var(--primary); background: #e0e7ff;">🛡️ 權限白名單管理</button>
+            <!-- ✨ 新增：匯入歷史未授權名單按鈕 -->
+            <button class="dev-tab-btn" onclick="importLegacyRequests()" style="color: #8b5cf6; border-color: #8b5cf6; background: #ede9fe;">📥 匯入歷史名單</button>
         </div>
         <div id="pinned-section" onclick="expandPinnedSection(event)">
             <div class="pinned-section-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
@@ -2675,6 +2677,48 @@
             if (batchOperations.length > 0) { await safeWrite(Promise.all(batchOperations)); alert("🎉 恭喜！資料庫已成功升級為 Phase 3 正規化架構！\n這意味著以後您更改辦公室名稱，系統都不會再卡頓了。"); window.location.reload(); }
             else { alert("沒有找到需要升級的舊資料。"); document.getElementById('loading-overlay').style.display = 'none'; }
         } catch (error) { console.error(error); alert("升級過程中發生錯誤，請聯絡您的程式夥伴！"); document.getElementById('loading-overlay').style.display = 'none'; }
+    };
+
+    // ✨ 新增：匯入歷史未授權名單至審核區
+    window.importLegacyRequests = async function() {
+        if(!confirm('是否要將過去曾登入過、但未在白名單內的帳號，全部匯入「待審核名單」中？')) return;
+
+        document.getElementById('loading-overlay').querySelector('#loading-text').innerText = '正在匯入歷史名單...'; 
+        document.getElementById('loading-overlay').style.display = 'flex'; 
+        document.getElementById('loading-overlay').style.opacity = '1';
+
+        try {
+            const batchOperations = [];
+            let count = 0;
+
+            globalUsers.forEach(u => {
+                const email = u.id;
+                const isAdmin = globalAdmins.includes(email) || email === SUPER_ADMIN;
+                const isAuth = globalWhitelist.includes(email) || isAdmin;
+                const hasRequested = globalAccessRequests.some(r => r.id === email);
+
+                // 如果不在白名單，也不是管理員，且還沒申請過，就幫他補發申請
+                if (!isAuth && !hasRequested && email !== 'anonymous@preview.com') {
+                    batchOperations.push(setDoc(doc(db, 'access_requests', email), {
+                        email: email,
+                        name: u.nickname || email.split('@')[0], // 若無暱稱則取信箱前綴
+                        timestamp: new Date().toISOString(),
+                        isLegacy: true
+                    }));
+                    count++;
+                }
+            });
+
+            if (batchOperations.length > 0) { 
+                await safeWrite(Promise.all(batchOperations)); 
+                customAlert(`✅ 成功匯入 ${count} 筆歷史未授權名單！`); 
+            }
+            else { customAlert('沒有找到需要匯入的歷史名單。'); }
+        } catch(e) { 
+            console.error(e); customAlert('匯入失敗！', true); 
+        } finally { 
+            document.getElementById('loading-overlay').style.display = 'none'; 
+        }
     };
 
     window.addEventListener('resize', syncHeaderLayout);

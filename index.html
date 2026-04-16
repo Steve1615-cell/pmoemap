@@ -868,7 +868,8 @@
             changes: [
                 "【安全升級】Firebase 資料庫安全規則已收緊，現要求必須通過 Google 帳號認證才可讀取，防止網址外流導致的資料庫掃描威脅。",
                 "【權限申請系統】新增「一鍵申請與小紅點審核」機制。未授權訪客可直接送出申請；管理員大頭貼會出現紅點提示，並支援一鍵核准加入白名單。",
-                "【介面優化】持續改善系統整體穩定性與非授權大廳的指引流程。"
+                "【介面優化】持續改善系統整體穩定性與非授權大廳的指引流程。",
+                "【修正】移除了拒絕申請時的黑名單機制；導入『遲滯效應 (Hysteresis)』完美修復置頂區縮合造成的捲動跳動問題。"
             ]
         },
         {
@@ -923,7 +924,6 @@
     let myPinnedItems = []; let isPinSectionVisible = false;
     window.currentCalendarDate = new Date(); window.selectedCalendarDate = new Date().toISOString().split('T')[0]; 
 
-    // ✨ 新增：共用 Snapshot 錯誤捕捉處理
     const snapErrorHandler = (err) => {
         console.warn("Firestore 讀取被拒絕 (可能尚未登入或無權限):", err.message);
     };
@@ -937,11 +937,17 @@
     }
     setupPublicListeners(); 
 
+    // ✨ 修復：捲動時加入遲滯效應 (Hysteresis) 避免無限循環跳動
     window.addEventListener('scroll', () => {
         const pinned = document.getElementById('pinned-section');
         if (pinned && isPinSectionVisible) {
-            if (window.scrollY > 80) pinned.classList.add('collapsed');
-            else pinned.classList.remove('collapsed');
+            const currentScroll = window.scrollY;
+            // 往下滑超過 150 縮合，往上滑小於 50 展開。中間 100px 為緩衝區
+            if (currentScroll > 150) {
+                pinned.classList.add('collapsed');
+            } else if (currentScroll < 50) {
+                pinned.classList.remove('collapsed');
+            }
         }
     });
 
@@ -1579,6 +1585,7 @@
     window.rejectRequest = async function(email) {
         try {
             await safeWrite(deleteDoc(doc(db, 'access_requests', email)));
+            // ✨ 移除了 accessRejected 標記，未來仍可重新匯入該申請
             customAlert(`已拒絕該申請。`);
         } catch(e) { console.error(e); customAlert('操作失敗，請確認網路連線。', true); }
     };
@@ -2697,11 +2704,11 @@
                 const isAuth = globalWhitelist.includes(email) || isAdmin;
                 const hasRequested = globalAccessRequests.some(r => r.id === email);
 
-                // 如果不在白名單，也不是管理員，且還沒申請過，就幫他補發申請
+                // ✨ 已移除 !u.accessRejected 檢查，不論是否被拒絕過，只要不在白名單且尚未送出申請，就會被再次匯入
                 if (!isAuth && !hasRequested && email !== 'anonymous@preview.com') {
                     batchOperations.push(setDoc(doc(db, 'access_requests', email), {
                         email: email,
-                        name: u.nickname || email.split('@')[0], // 若無暱稱則取信箱前綴
+                        name: u.nickname || email.split('@')[0], 
                         timestamp: new Date().toISOString(),
                         isLegacy: true
                     }));

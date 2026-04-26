@@ -152,11 +152,17 @@
         <div id="sidebar-nav-tree"></div>
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
         <div class="menu-item" style="cursor: default;"><div style="display:flex; align-items:center; gap:10px;"><span>🛠️ 開發人員選項</span></div><label class="ios-switch"><input type="checkbox" id="dev-options-toggle" onchange="toggleDevOptions(event)"><span class="slider"></span></label></div>
+        
         <div class="menu-item disabled tooltip-container" data-tooltip="辦公室地圖視角開發中！">🗺️ 地圖顯示</div>
+        <!-- 尚未分離的附屬網頁 (維持原樣) -->
         <div class="menu-item" onclick="showAssetsTotalView()">📦 在列資產總表</div>
         <div class="menu-item disabled tooltip-container" data-tooltip="縮時相機管理開發中！">📷 縮時相機管理</div>
-        <div class="menu-item" onclick="showExtensionsView()">📞 辦公室分機表</div>
+        
+        <!-- ✨ 已獨立為 MPA：辦公室分機總表 (點擊後開啟新分頁) -->
+        <div class="menu-item" onclick="window.open('extensions.html', '_blank')">📞 辦公室分機總表</div>
+        
         <div class="menu-item disabled tooltip-container" data-tooltip="機車管理系統開發中！">🛵 公務機車總表</div>
+        
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
         <div style="padding: 10px 20px 5px 20px; font-size: 12px; font-weight: bold; color: var(--text-muted);">🔗 友站連結</div>
         <div id="sidebar-friendly-links"></div>
@@ -264,12 +270,7 @@
         <div id="detail-grid" class="grid-nav"></div>
     </div>
 
-    <!-- 第四層：全辦公室分機總表 -->
-    <div id="view-extensions" class="view">
-        <div id="ext-container"></div>
-    </div>
-
-    <!-- 第五層：在列資產總表 -->
+    <!-- 第四層：在列資產總表 (尚未分離前暫留) -->
     <div id="view-assets-total" class="view">
         <div id="assets-total-container"></div>
     </div>
@@ -316,7 +317,6 @@
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header"><span id="asset-modal-title">📦 新增/編輯資產</span><button class="btn-close" onclick="closeAssetModal()">×</button></div>
         
-        <!-- ✨ 新增：資產大類切換 -->
         <div class="form-group">
             <label>資產大類</label>
             <div style="display:flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
@@ -326,7 +326,6 @@
             <input type="hidden" id="asset-main-type" value="fixed">
         </div>
 
-        <!-- 固定資產專屬欄位 -->
         <div id="fixed-asset-fields">
             <div class="form-group">
                 <label>資產類型</label>
@@ -352,7 +351,6 @@
             </div>
         </div>
 
-        <!-- ✨ 消耗品專屬區塊 -->
         <div id="consumable-asset-fields" style="display:none;">
             <div class="form-group"><label>消耗品名稱</label><input type="text" id="consumable-item" placeholder="例如：A4 影印紙 (必填)"></div>
             <div class="form-group"><label>分類標籤</label><input type="text" id="consumable-tag" placeholder="例如：文具、清潔用品 (選填)"></div>

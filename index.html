@@ -154,14 +154,23 @@
         <div class="menu-item" style="cursor: default;"><div style="display:flex; align-items:center; gap:10px;"><span>🛠️ 開發人員選項</span></div><label class="ios-switch"><input type="checkbox" id="dev-options-toggle" onchange="toggleDevOptions(event)"><span class="slider"></span></label></div>
         
         <div class="menu-item disabled tooltip-container" data-tooltip="辦公室地圖視角開發中！">🗺️ 地圖顯示</div>
-        <!-- 尚未分離的附屬網頁 (維持原樣) -->
-        <div class="menu-item" onclick="showAssetsTotalView()">📦 在列資產總表</div>
-        <div class="menu-item disabled tooltip-container" data-tooltip="縮時相機管理開發中！">📷 縮時相機管理</div>
         
-        <!-- ✨ 已獨立為 MPA：辦公室分機總表 (點擊後開啟新分頁) -->
-        <div class="menu-item" onclick="window.open('extensions.html', '_blank')">📞 辦公室分機總表</div>
+        <!-- 尚未分離的附屬網頁 (預備獨立) -->
+        <div class="menu-item" onclick="showAssetsTotalView()">
+            <div style="display:flex; align-items:center;">📦 在列資產總表 <svg style="margin-left:8px; opacity:0.5; color:#64748b;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></div>
+        </div>
+        <div class="menu-item disabled tooltip-container" data-tooltip="縮時相機管理開發中！">
+            <div style="display:flex; align-items:center;">📷 縮時相機管理 <svg style="margin-left:8px; opacity:0.5; color:#64748b;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></div>
+        </div>
         
-        <div class="menu-item disabled tooltip-container" data-tooltip="機車管理系統開發中！">🛵 公務機車總表</div>
+        <!-- ✨ 已獨立為 MPA：辦公室分機表 (點擊後開啟新分頁) -->
+        <div class="menu-item" onclick="window.open('extensions.html', '_blank')">
+            <div style="display:flex; align-items:center;">📞 辦公室分機表 <svg style="margin-left:8px; opacity:0.5; color:#64748b;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></div>
+        </div>
+        
+        <div class="menu-item disabled tooltip-container" data-tooltip="機車管理系統開發中！">
+            <div style="display:flex; align-items:center;">🛵 公務機車總表 <svg style="margin-left:8px; opacity:0.5; color:#64748b;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></div>
+        </div>
         
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
         <div style="padding: 10px 20px 5px 20px; font-size: 12px; font-weight: bold; color: var(--text-muted);">🔗 友站連結</div>

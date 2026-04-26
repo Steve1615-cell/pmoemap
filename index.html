@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-<head><link rel="stylesheet" href="style.css">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ＰＭＯ電子圖資系統</title>
-    
+    <!-- ✨ 乾淨俐落：只引入獨立的 CSS 樣式表 -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -14,122 +15,71 @@
 
 <div id="custom-toast"></div>
 
-<!-- 管理員動態迎新視窗 -->
+<!-- 系統 Modal 群 -->
 <div id="admin-welcome-modal-overlay" class="modal-overlay" style="z-index: 5000;">
     <div class="modal-content" style="text-align: center; padding: 30px 20px; width: 85%; max-width: 360px;">
         <div style="font-size: 50px; margin-bottom: 15px;">👑</div>
         <h2 style="margin-top: 0; color: var(--primary); font-size: 22px;">管理員授權開通</h2>
-        <p style="color: var(--text-muted); line-height: 1.6; font-size: 14px; margin-bottom: 15px;">
-            歡迎成為此系統的管理者之一！<br>即刻起，您可使用多種進階功能：
-        </p>
+        <p style="color: var(--text-muted); line-height: 1.6; font-size: 14px; margin-bottom: 15px;">歡迎成為此系統的管理者之一！<br>即刻起，您可使用多種進階功能：</p>
         <div id="admin-features-list" style="background: var(--accent); padding: 15px; border-radius: 8px; margin-bottom: 25px; font-size: 13px; color: var(--text-main); line-height: 1.8;"></div>
         <button class="btn-primary" style="width: 100%; padding: 12px; font-size: 16px; border-radius: 30px;" onclick="closeAdminWelcomeModal()">開始使用</button>
     </div>
 </div>
 
-<!-- 共用防呆警告對話框 -->
 <div id="confirm-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeConfirmModal()" style="z-index: 4000;">
     <div class="modal-content" style="max-width: 450px;">
-        <div class="modal-header" style="color: var(--danger);">
-            <span id="confirm-modal-title">⚠️ 系統警告</span>
-        </div>
+        <div class="modal-header" style="color: var(--danger);"><span id="confirm-modal-title">⚠️ 系統警告</span></div>
         <div id="confirm-msg" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 20px;"></div>
-        
         <div id="strict-input-container" style="display: none; margin-bottom: 20px;">
             <label style="font-size: 12px; color: var(--danger); font-weight: bold;">請輸入完整的信箱位址以解鎖確認按鈕：</label>
             <input type="email" id="strict-confirm-input" style="width: 100%; padding: 8px; border: 1px solid var(--danger); border-radius: 6px; margin-top: 5px;" autocomplete="off" placeholder="請輸入對方信箱...">
         </div>
-
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeConfirmModal()">取消</button>
-            <button id="btn-confirm-action" class="btn-danger" onclick="executeConfirmAction()">確定執行</button>
-        </div>
+        <div class="modal-footer"><button class="btn-secondary" onclick="closeConfirmModal()">取消</button><button id="btn-confirm-action" class="btn-danger" onclick="executeConfirmAction()">確定執行</button></div>
     </div>
 </div>
 
 <div id="pin-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closePinModal()" style="z-index: 3600;">
     <div class="modal-content" style="max-width: 400px; height: 80vh; display: flex; flex-direction: column;">
-        <div class="modal-header" style="flex-shrink: 0;">
-            <span>📌 搜尋並加入置頂</span>
-            <button class="btn-close" onclick="closePinModal()">×</button>
-        </div>
-        <div style="flex-shrink: 0; margin-bottom: 10px;">
-            <input type="text" id="pin-search-modal-input" placeholder="搜尋區域、辦公室、人員、資產..." oninput="filterPinItemsModal()" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
-        </div>
+        <div class="modal-header" style="flex-shrink: 0;"><span>📌 搜尋並加入置頂</span><button class="btn-close" onclick="closePinModal()">×</button></div>
+        <div style="flex-shrink: 0; margin-bottom: 10px;"><input type="text" id="pin-search-modal-input" placeholder="搜尋區域、辦公室、人員、資產..." oninput="filterPinItemsModal()" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; box-sizing: border-box;"></div>
         <div id="pin-modal-list" style="flex: 1; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px;"></div>
     </div>
 </div>
 
 <div id="share-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeShareModal()" style="z-index: 3600;">
     <div class="modal-content">
-        <div class="modal-header">
-            <span>🔗 分享與邀請</span>
-            <button class="btn-close" onclick="closeShareModal()">×</button>
-        </div>
-        <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">
-            請複製下方網址傳送給需要訪問的同事。若對方是首次訪問，請先將其 Google 信箱加入白名單中。
-        </div>
-        
-        <div class="form-group">
-            <label>1. 複製系統連結：</label>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="share-link-input" readonly style="background: #f8fafc; color: #64748b;">
-                <button class="btn-primary" onclick="copyShareLink()" style="padding: 4px 12px; flex-shrink: 0;">複製</button>
-            </div>
-        </div>
-
-        <div class="form-group" style="margin-top: 20px; border-top: 1px dashed #cbd5e1; padding-top: 15px;">
-            <label>2. 加入白名單授權：</label>
-            <div style="display:flex; gap:5px;">
-                <input type="email" id="share-invite-input" placeholder="輸入同事的 Google 信箱...">
-                <button class="btn-primary" onclick="inviteUser()" style="padding: 4px 12px; flex-shrink: 0; background: #10b981;">授權</button>
-            </div>
-        </div>
+        <div class="modal-header"><span>🔗 分享與邀請</span><button class="btn-close" onclick="closeShareModal()">×</button></div>
+        <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">請複製下方網址傳送給需要訪問的同事。若對方是首次訪問，請先將其 Google 信箱加入白名單中。</div>
+        <div class="form-group"><label>1. 複製系統連結：</label><div style="display:flex; gap:5px;"><input type="text" id="share-link-input" readonly style="background: #f8fafc; color: #64748b;"><button class="btn-primary" onclick="copyShareLink()" style="padding: 4px 12px; flex-shrink: 0;">複製</button></div></div>
+        <div class="form-group" style="margin-top: 20px; border-top: 1px dashed #cbd5e1; padding-top: 15px;"><label>2. 加入白名單授權：</label><div style="display:flex; gap:5px;"><input type="email" id="share-invite-input" placeholder="輸入同事的 Google 信箱..."><button class="btn-primary" onclick="inviteUser()" style="padding: 4px 12px; flex-shrink: 0; background: #10b981;">授權</button></div></div>
         <div class="modal-footer" style="margin-top: 15px;"><button class="btn-secondary" onclick="closeShareModal()">完成</button></div>
     </div>
 </div>
 
 <div id="whitelist-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeWhitelistModal()" style="z-index: 3500;">
     <div class="modal-content" style="max-width: 450px;">
-        <div class="modal-header">
-            <span>🛡️ 權限白名單管理</span>
-            <button class="btn-close" onclick="closeWhitelistModal()">×</button>
-        </div>
+        <div class="modal-header"><span>🛡️ 權限白名單管理</span><button class="btn-close" onclick="closeWhitelistModal()">×</button></div>
         <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">此畫面僅管理員可見。</div>
         <div id="whitelist-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;"></div>
         <div class="modal-footer" style="margin-top: 15px;"><button class="btn-secondary" onclick="closeWhitelistModal()">關閉</button></div>
     </div>
 </div>
 
-<!-- 權限申請審核 Modal (管理員專用) -->
 <div id="approval-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeApprovalModal()" style="z-index: 3500;">
     <div class="modal-content" style="max-width: 450px;">
-        <div class="modal-header">
-            <span>🔔 待審核權限申請</span>
-            <button class="btn-close" onclick="closeApprovalModal()">×</button>
-        </div>
-        <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">
-            以下同事正在等待進入系統。點擊允許即可自動將對方加入白名單。
-        </div>
-        <div id="approval-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;">
-            <!-- JS 動態生成待審核名單 -->
-        </div>
+        <div class="modal-header"><span>🔔 待審核權限申請</span><button class="btn-close" onclick="closeApprovalModal()">×</button></div>
+        <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">以下同事正在等待進入系統。點擊允許即可自動將對方加入白名單。</div>
+        <div id="approval-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;"></div>
         <div class="modal-footer" style="margin-top: 15px;"><button class="btn-secondary" onclick="closeApprovalModal()">關閉</button></div>
     </div>
 </div>
 
 <div id="nickname-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeNicknameModal()" style="z-index: 3600;">
     <div class="modal-content">
-        <div class="modal-header">
-            <span>✏️ 設定個人暱稱</span>
-            <button class="btn-close" onclick="closeNicknameModal()">×</button>
-        </div>
+        <div class="modal-header"><span>✏️ 設定個人暱稱</span><button class="btn-close" onclick="closeNicknameModal()">×</button></div>
         <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">此暱稱將在管理員的授權名單中顯示，以方便辨識您的身分。</p>
         <div class="form-group"><input type="text" id="nickname-input" placeholder="輸入您的暱稱 (例如: 王小明)"></div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeNicknameModal()">取消</button>
-            <button class="btn-primary" onclick="saveNickname()">儲存</button>
-        </div>
+        <div class="modal-footer"><button class="btn-secondary" onclick="closeNicknameModal()">取消</button><button class="btn-primary" onclick="saveNickname()">儲存</button></div>
     </div>
 </div>
 
@@ -138,10 +88,7 @@
         <div class="modal-header"><span>➕ 新增友站連結</span><button class="btn-close" onclick="closeFriendlyLinkModal()">×</button></div>
         <div class="form-group"><label>顯示名稱</label><input type="text" id="link-name-input" placeholder="例如: 公司官方網站"></div>
         <div class="form-group"><label>網站位址 (URL)</label><input type="url" id="link-url-input" placeholder="例如: https://www.google.com"></div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeFriendlyLinkModal()">取消</button>
-            <button class="btn-primary" onclick="saveFriendlyLink()">儲存新增</button>
-        </div>
+        <div class="modal-footer"><button class="btn-secondary" onclick="closeFriendlyLinkModal()">取消</button><button class="btn-primary" onclick="saveFriendlyLink()">儲存新增</button></div>
     </div>
 </div>
 
@@ -161,8 +108,8 @@
         <div id="office-action-msg" style="font-size: 14px; margin-bottom: 20px; color: var(--text-main); font-weight: bold;"></div>
         <div class="form-group"><label>將此辦公室轉移至：</label><select id="office-move-floor-select" style="background: var(--accent); font-weight:bold;"></select></div>
         <div class="modal-footer" style="justify-content: space-between; margin-top: 30px;">
-            <button class="btn-danger" onclick="promptDeleteOffice()">🗑️ 永久刪除</button>
-            <div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeOfficeActionModal()">取消</button><button class="btn-primary" onclick="moveOfficeRegion()">轉移區域</button></div>
+            <button class="btn-danger" onclick="promptDeleteOffice()">🗑️ 刪除</button>
+            <div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeOfficeActionModal()">取消</button><button class="btn-primary" onclick="moveOfficeRegion()">轉移</button></div>
         </div>
     </div>
 </div>
@@ -175,25 +122,36 @@
     </div>
 </div>
 
+<div id="recycle-bin-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeRecycleBinModal()" style="z-index: 3500;">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header"><span>♻️ 復原已刪除物件</span><button class="btn-close" onclick="closeRecycleBinModal()">×</button></div>
+        <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">這裡暫存了最近刪除的 1000 筆資料 (包含區域、辦公室、資產等)。點擊「復原」即可將資料還原。</div>
+        <div id="recycle-bin-list" style="max-height: 50vh; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0;"></div>
+        <div class="modal-footer" style="margin-top: 15px;"><button class="btn-secondary" onclick="closeRecycleBinModal()">關閉</button></div>
+    </div>
+</div>
+
+<div id="region-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeRegionModal()" style="z-index: 3800;">
+    <div class="modal-content">
+        <div class="modal-header"><span>➕ 新增區域 (大樓/樓層)</span><button class="btn-close" onclick="closeRegionModal()">×</button></div>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">新增一個空白區域，後續可於該區域內新增辦公室。</p>
+        <div class="form-group"><label>區排名稱</label><input type="text" id="region-name-input" placeholder="例如：設計大樓５Ｆ"></div>
+        <div class="modal-footer"><button class="btn-secondary" onclick="closeRegionModal()">取消</button><button class="btn-primary" onclick="saveRegionData()">儲存</button></div>
+    </div>
+</div>
+
 <div id="loading-overlay">
     <div id="loading-spinner" style="font-size: 40px; animation: spin 1s linear infinite;">⏳</div>
     <div id="loading-text">資料讀取中...</div>
 </div>
-<style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
 
 <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 <div id="sidebar" class="sidebar">
-    <div class="sidebar-header">
-        <span>系統選單</span>
-        <button class="btn-close" onclick="closeSidebar()">×</button>
-    </div>
+    <div class="sidebar-header"><span>系統選單</span><button class="btn-close" onclick="closeSidebar()">×</button></div>
     <div class="sidebar-menu">
         <div id="sidebar-nav-tree"></div>
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
-        <div class="menu-item" style="cursor: default;">
-            <div style="display:flex; align-items:center; gap:10px;"><span>🛠️ 開發人員選項</span></div>
-            <label class="ios-switch"><input type="checkbox" id="dev-options-toggle" onchange="toggleDevOptions(event)"><span class="slider"></span></label>
-        </div>
+        <div class="menu-item" style="cursor: default;"><div style="display:flex; align-items:center; gap:10px;"><span>🛠️ 開發人員選項</span></div><label class="ios-switch"><input type="checkbox" id="dev-options-toggle" onchange="toggleDevOptions(event)"><span class="slider"></span></label></div>
         <div class="menu-item disabled tooltip-container" data-tooltip="辦公室地圖視角開發中！">🗺️ 地圖顯示</div>
         <div class="menu-item disabled tooltip-container" data-tooltip="在列資產總表開發中！">📦 在列資產總表</div>
         <div class="menu-item disabled tooltip-container" data-tooltip="縮時相機管理開發中！">📷 縮時相機管理</div>
@@ -202,9 +160,7 @@
         <div style="padding: 10px 20px 5px 20px; font-size: 12px; font-weight: bold; color: var(--text-muted);">🔗 友站連結</div>
         <div id="sidebar-friendly-links"></div>
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
-        <div class="menu-item" onclick="openUpdateLogModal()" style="font-size: 13px; justify-content:center; color: var(--text-muted);">
-            <span id="sidebar-version-display">系統版本載入中...</span>
-        </div>
+        <div class="menu-item" onclick="openUpdateLogModal()" style="font-size: 13px; justify-content:center; color: var(--text-muted);"><span id="sidebar-version-display">系統版本載入中...</span></div>
     </div>
 </div>
 
@@ -216,10 +172,7 @@
             <button class="btn-nav" id="btn-global-up" style="display:none;" onclick="goUpLevel()">← 上一層</button>
             <button class="btn-nav" id="btn-global-pin" onclick="togglePinSection()" style="display:none; color: var(--warning); border: 1px solid var(--warning); background: white;">📌 置頂區</button>
         </div>
-        <div class="title-container" id="title-container">
-            <h1 id="main-title" class="static-title">ＰＭＯ電子圖資系統</h1>
-        </div>
-        
+        <div class="title-container" id="title-container"><h1 id="main-title" class="static-title">ＰＭＯ電子圖資系統</h1></div>
         <div class="header-right" id="header-right">
             <div id="user-profile" style="display:none; align-items:center; gap:10px; position: relative;">
                 <div style="text-align: right; display: none;" id="user-info-text">
@@ -227,18 +180,12 @@
                     <div id="user-email-display" style="font-size: 11px; color: var(--text-muted);"></div>
                 </div>
                 <span id="admin-crown" onclick="openAdminWelcomeModal(event)" style="display:none; font-size:18px; margin-right:-5px; cursor:pointer; z-index:10;" title="點擊查看管理員專屬功能">👑</span>
-                
-                <!-- 大頭貼加入小紅點 -->
                 <div style="position:relative; cursor:pointer;" onclick="toggleAvatarMenu(event)">
                     <img id="user-avatar" src="" style="width:32px; height:32px; border-radius:50%; border: 2px solid #e2e8f0; transition: transform 0.2s;">
                     <span id="admin-badge" class="notification-badge" style="display:none;">0</span>
                 </div>
-                
                 <div id="avatar-dropdown" style="position: absolute; top: 45px; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 180px; display: none; flex-direction: column; overflow: hidden; z-index: 3100;">
-                    <!-- 待審核選單 -->
-                    <div id="menu-item-approval" class="avatar-dropdown-item" onclick="openApprovalModal()" style="display:none; color:var(--danger);">
-                        🔔 審核存取申請 <span id="admin-badge-menu" style="background:var(--danger); color:white; border-radius:10px; font-size:11px; padding:2px 6px; margin-left:auto;">0</span>
-                    </div>
+                    <div id="menu-item-approval" class="avatar-dropdown-item" onclick="openApprovalModal()" style="display:none; color:var(--danger);">🔔 審核存取申請 <span id="admin-badge-menu" style="background:var(--danger); color:white; border-radius:10px; font-size:11px; padding:2px 6px; margin-left:auto;">0</span></div>
                     <div class="avatar-dropdown-item" onclick="openNicknameModal()">✏️ 設定個人暱稱</div>
                     <div class="avatar-dropdown-item" onclick="openShareModal()">🔗 分享與邀請</div>
                     <div class="avatar-dropdown-item" onclick="openUpdateLogModal(); document.getElementById('avatar-dropdown').style.display='none';">📄 查看版本與修正</div>
@@ -253,20 +200,16 @@
     <div id="view-login" class="view">
         <div class="login-wrapper">
             <div id="login-orbit-container" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none;"></div>
-            
             <div class="login-center-box" style="pointer-events: auto;">
                 <div style="font-size: 48px; margin-bottom: 10px;">🏢</div>
                 <h2 style="margin-top:0; color: var(--text-main); font-size: 24px; white-space: nowrap;">系統授權登入</h2>
-                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
-                    為了保護圖資與資產安全，本系統已啟用權限控管。<br>請使用您的 Google 帳號進行登入。
-                </p>
+                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.6;">為了保護圖資與資產安全，本系統已啟用權限控管。<br>請使用您的 Google 帳號進行登入。</p>
                 <div style="margin-bottom: 25px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <input type="checkbox" id="remember-me" checked style="width: 16px; height: 16px; cursor: pointer;">
                     <label for="remember-me" style="font-size: 14px; color: var(--text-muted); cursor: pointer; user-select: none;">保持登入狀態</label>
                 </div>
                 <button onclick="loginWithGoogle()" style="display:flex; align-items:center; justify-content:center; gap:10px; width: 100%; padding: 12px; background: #fff; border: 1px solid #cbd5e1; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: var(--text-main);">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 20px;">
-                    使用 Google 帳號登入
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width: 20px;"> 使用 Google 帳號登入
                 </button>
             </div>
         </div>
@@ -276,17 +219,10 @@
         <div style="max-width: 500px; margin: 60px auto; background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;">
             <div style="font-size: 48px; margin-bottom: 10px;">🔒</div>
             <h2 style="margin-top:0; color: var(--text-main); font-size: 24px;">等待系統授權</h2>
-            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
-                您已成功登入 Google 帳號，但您的信箱尚未獲准進入系統。<br>您可以點擊下方按鈕直接向管理員送出存取申請。
-            </p>
-            
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.6;">您已成功登入 Google 帳號，但您的信箱尚未獲准進入系統。<br>您可以點擊下方按鈕直接向管理員送出存取申請。</p>
             <div id="request-access-container" style="background:#f1f5f9; padding:20px; border-radius:12px;">
-                <button id="btn-request-access" class="btn-primary" onclick="requestAccess()" style="width:100%; padding:12px 20px; font-size:16px; border-radius:30px; box-shadow: 0 4px 10px rgba(37,99,235,0.2);">
-                    👉 送出系統存取申請
-                </button>
-                <div id="request-access-status" style="display:none; color:var(--success); font-weight:bold; font-size:15px; margin-top:10px;">
-                    ✅ 申請已送出！請等待管理員審核放行。
-                </div>
+                <button id="btn-request-access" class="btn-primary" onclick="requestAccess()" style="width:100%; padding:12px 20px; font-size:16px; border-radius:30px; box-shadow: 0 4px 10px rgba(37,99,235,0.2);">👉 送出系統存取申請</button>
+                <div id="request-access-status" style="display:none; color:var(--success); font-weight:bold; font-size:15px; margin-top:10px;">✅ 申請已送出！請等待管理員審核放行。</div>
             </div>
         </div>
     </div>
@@ -294,15 +230,15 @@
     <div id="view-floor" class="view active">
         <div id="dev-tabs-container" class="dev-tabs">
             <button class="dev-tab-btn" onclick="openTitleRankModal()">📊 設定職稱排序</button>
-            <button class="dev-tab-btn" onclick="runDatabaseMigration()" style="color: var(--danger); border-color: var(--danger); background: #fee2e2;">⚠️ 執行 Phase 3 資料庫升級</button>
-            <button class="dev-tab-btn" onclick="restoreLostComputers()">🚑 復原測試資產</button>
+            <button class="dev-tab-btn" onclick="openRecycleBinModal()" style="color: var(--danger); border-color: var(--danger); background: #fee2e2;">♻️ 復原已刪除物件</button>
             <button id="btn-dev-whitelist" class="dev-tab-btn" onclick="openWhitelistModal()" style="color: var(--primary); border-color: var(--primary); background: #e0e7ff;">🛡️ 權限白名單管理</button>
-            <!-- ✨ 新增：匯入歷史未授權名單按鈕 -->
             <button class="dev-tab-btn" onclick="importLegacyRequests()" style="color: #8b5cf6; border-color: #8b5cf6; background: #ede9fe;">📥 匯入歷史名單</button>
         </div>
-        <div id="pinned-section" onclick="expandPinnedSection(event)">
+        
+        <div id="pinned-section">
             <div class="pinned-section-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
                 <div style="font-size: 16px; font-weight: bold; color: var(--warning); display:flex; align-items:center; gap:8px;">📌 我的常用置頂 <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(拖曳排序，最多 8 項)</span></div>
+                <button onclick="togglePinnedSectionCollapse(event)" id="pinned-collapse-btn" style="background:none; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:12px; color:var(--text-muted); padding:2px 8px;">[–] 收合</button>
             </div>
             <div id="pinned-items-wrapper" class="grid-nav"></div>
         </div>
@@ -317,15 +253,10 @@
             <div style="background: white; padding: 5px 15px; border-radius: 8px; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <label style="font-size: 13px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
                 <select id="staff-sort-select" onchange="updateDetailContent()" style="display: none; border: none; outline: none; font-size: 14px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
-                    <option value="name">🖋️ 依姓氏筆畫</option>
-                    <option value="title">💼 依職稱高低</option>
-                    <option value="join_date">📅 依入廠日期</option>
+                    <option value="name">🖋️ 依姓氏筆畫</option><option value="title">💼 依職稱高低</option><option value="join_date">📅 依入廠日期</option>
                 </select>
                 <select id="asset-sort-select" onchange="updateDetailContent()" style="display: none; border: none; outline: none; font-size: 14px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
-                    <option value="name">📌 依資產名稱</option>
-                    <option value="sn">🔢 依資產編號</option>
-                    <option value="status">🚦 依設備狀態</option>
-                    <option value="owner">👤 依使用者名稱</option>
+                    <option value="name">📌 依資產名稱</option><option value="sn">🔢 依資產編號</option><option value="status">🚦 依設備狀態</option><option value="owner">👤 依使用者名稱</option>
                 </select>
             </div>
         </div>
@@ -344,32 +275,21 @@
 <!-- ================= Modal 表單區域 ================= -->
 <div id="edit-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeEditModal()">
     <div class="modal-content">
-        <div class="modal-header">
-            <span id="modal-title">✏️ 編輯人員資料</span>
-            <button class="btn-close" onclick="closeEditModal()">×</button>
-        </div>
+        <div class="modal-header"><span id="modal-title">✏️ 編輯人員資料</span><button class="btn-close" onclick="closeEditModal()">×</button></div>
         <div class="form-group"><label>姓名</label><input type="text" id="edit-name" placeholder="輸入姓名 (必填)"></div>
         <div class="form-group"><label>職稱 (頭銜)</label><input type="text" id="edit-title" placeholder="例如：專案經理 (無則填 N/A)"></div>
         <div class="form-group"><label>入廠日</label><input type="date" id="edit-join-date"></div>
         <div class="form-group"><label>分機</label><input type="text" id="edit-ext" placeholder="例如：6100 (無則填 N/A)"></div>
-        
         <div class="modal-footer" style="justify-content: space-between;">
             <button id="btn-delete-member" class="btn-danger" style="display:none;" onclick="executeDeleteFromModal('member')">🗑️ 移除</button>
-            <div style="display:flex; gap:10px;">
-                <button class="btn-secondary" onclick="closeEditModal()">取消</button>
-                <button id="btn-save-next" class="btn-primary" onclick="saveMemberData(true)" style="display:none; background-color:#059669;">下一筆</button>
-                <button id="btn-save-member" class="btn-primary" onclick="saveMemberData(false)">儲存</button>
-            </div>
+            <div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeEditModal()">取消</button><button id="btn-save-next" class="btn-primary" onclick="saveMemberData(true)" style="display:none; background-color:#059669;">下一筆</button><button id="btn-save-member" class="btn-primary" onclick="saveMemberData(false)">儲存</button></div>
         </div>
     </div>
 </div>
 
 <div id="booking-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeBookingModal()">
     <div class="modal-content">
-        <div class="modal-header">
-            <span id="booking-modal-title">📅 新增預約排程</span>
-            <button class="btn-close" onclick="closeBookingModal()">×</button>
-        </div>
+        <div class="modal-header"><span id="booking-modal-title">📅 新增預約排程</span><button class="btn-close" onclick="closeBookingModal()">×</button></div>
         <div class="form-group"><label>會議名稱 (主題)</label><input type="text" id="booking-title" placeholder="例如：Phase 3 啟動會議"></div>
         <div class="form-group"><label>預約日期 <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">(僅限當天至下個月)</span></label><input type="date" id="booking-date"></div>
         <div style="display:flex; gap:10px;">
@@ -379,11 +299,7 @@
         <div class="form-group"><label>預約人</label><input type="text" id="booking-user" placeholder="輸入您的姓名"></div>
         <div class="modal-footer" style="justify-content: space-between;">
             <button id="btn-delete-booking" class="btn-danger" style="display:none;" onclick="promptDeleteBooking()">🗑️ 取消預約</button>
-            <div style="display:flex; gap:10px;">
-                <button class="btn-secondary" onclick="closeBookingModal()">返回</button>
-                <button id="btn-save-next-booking" class="btn-primary" onclick="saveBookingData(true)" style="display:none; background-color:#059669;">下一筆</button>
-                <button id="btn-save-booking" class="btn-primary" onclick="saveBookingData(false)">儲存</button>
-            </div>
+            <div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeBookingModal()">返回</button><button id="btn-save-next-booking" class="btn-primary" onclick="saveBookingData(true)" style="display:none; background-color:#059669;">下一筆</button><button id="btn-save-booking" class="btn-primary" onclick="saveBookingData(false)">儲存</button></div>
         </div>
     </div>
 </div>
@@ -391,7 +307,6 @@
 <div id="asset-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeAssetModal()">
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header"><span id="asset-modal-title">📦 新增/編輯資產</span><button class="btn-close" onclick="closeAssetModal()">×</button></div>
-        
         <div class="form-group">
             <label>資產類型</label>
             <div class="custom-dropdown-btn" onclick="toggleCategoryDropdown(event)"><span id="selected-category-text">選擇類型...</span><span style="font-size: 12px; color: var(--text-muted);">▼</span></div>
@@ -402,46 +317,25 @@
         </div>
         <div class="form-group"><label>資產名稱</label><input type="text" id="asset-item" placeholder="未命名設備 (選填)"></div>
         <div class="form-group"><label>資產編號 / SN (共同項)</label><input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)" oninput="syncSnPc('sn')"></div>
-        <div class="form-group">
-            <label>設備狀態 (共同項)</label>
-            <select id="asset-status">
-                <option value="正常">🟢 正常</option><option value="碳粉不足">🟡 碳粉不足</option>
-                <option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option>
-            </select>
-        </div>
-        
+        <div class="form-group"><label>設備狀態 (共同項)</label><select id="asset-status"><option value="正常">🟢 正常</option><option value="碳粉不足">🟡 碳粉不足</option><option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option></select></div>
         <div id="asset-computer-fields" style="border-top: 1px dashed #cbd5e1; margin: 20px 0 10px 0; padding-top: 15px; display:none;">
             <div class="form-group">
                 <label>使用者 <span style="font-weight:normal; font-size:12px; color:#94a3b8;">(限定本辦公室人員)</span></label>
                 <div class="custom-dropdown-btn" onclick="toggleOwnerDropdown(event)"><span id="selected-owner-text">💻 公用設備 (無指定)</span><span style="font-size: 12px; color: var(--text-muted);">▼</span></div>
                 <input type="hidden" id="asset-owner-id" value="">
-                <div class="custom-dropdown-panel" id="owner-panel">
-                    <div class="dropdown-search-row"><input type="text" id="owner-search-input" placeholder="搜尋或新增人員姓名..." oninput="filterOwners()" onclick="event.stopPropagation()"><button class="btn-primary" onclick="addOwnerFromAsset(event)" style="padding: 4px 8px; flex-shrink: 0;">➕</button></div>
-                    <div class="dropdown-list" id="owner-list"></div>
-                </div>
+                <div class="custom-dropdown-panel" id="owner-panel"><div class="dropdown-search-row"><input type="text" id="owner-search-input" placeholder="搜尋或新增人員姓名..." oninput="filterOwners()" onclick="event.stopPropagation()"><button class="btn-primary" onclick="addOwnerFromAsset(event)" style="padding: 4px 8px; flex-shrink: 0;">➕</button></div><div class="dropdown-list" id="owner-list"></div></div>
             </div>
             <div class="form-group"><label>電腦編號 (PC ID)</label><input type="text" id="asset-pc" placeholder="例如：9059145 (無則填 N/A)" oninput="syncSnPc('pc')"></div>
-            <div class="form-group">
-                <label>網域</label>
-                <select id="asset-domain"><option value="外網">🌍 外網</option><option value="內網">🏢 內網</option><option value="混合">🔄 混合</option></select>
-            </div>
-            <div class="form-group" style="display:flex; gap: 10px;">
-                <div style="flex:1;"><label>網路孔</label><input type="text" id="asset-net" placeholder="N/A"></div>
-                <div style="flex:1;"><label>電話孔</label><input type="text" id="asset-phone" placeholder="N/A"></div>
-            </div>
+            <div class="form-group"><label>網域</label><select id="asset-domain"><option value="外網">🌍 外網</option><option value="內網">🏢 內網</option><option value="混合">🔄 混合</option></select></div>
+            <div class="form-group" style="display:flex; gap: 10px;"><div style="flex:1;"><label>網路孔</label><input type="text" id="asset-net" placeholder="N/A"></div><div style="flex:1;"><label>電話孔</label><input type="text" id="asset-phone" placeholder="N/A"></div></div>
         </div>
-
-        <div class="modal-footer" style="justify-content: space-between;">
-            <button id="btn-delete-asset" class="btn-danger" style="display:none;" onclick="executeDeleteFromModal('asset')">🗑️ 移除</button>
-            <div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeAssetModal()">取消</button><button id="btn-save-asset" class="btn-primary" onclick="saveAssetData()">儲存</button></div>
-        </div>
+        <div class="modal-footer" style="justify-content: space-between;"><button id="btn-delete-asset" class="btn-danger" style="display:none;" onclick="executeDeleteFromModal('asset')">🗑️ 移除</button><div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeAssetModal()">取消</button><button id="btn-save-asset" class="btn-primary" onclick="saveAssetData()">儲存</button></div></div>
     </div>
 </div>
 
 <div id="office-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeOfficeModal()">
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header"><span id="office-modal-title">✏️ 編輯房間資訊</span><button class="btn-close" onclick="closeOfficeModal()">×</button></div>
-        
         <div class="form-group" id="office-floor-group" style="display: none;"><label>所屬區域 (樓層)</label><input type="text" id="office-floor" disabled style="background-color: #f1f5f9; color: #94a3b8;"></div>
         <div class="form-group">
             <label>房間類型 <span id="room-type-lock-hint" style="color:var(--danger); display:none; font-size:12px;">(建立後不可更改)</span></label>
@@ -453,7 +347,6 @@
         </div>
         <div class="form-group"><label>房間名稱</label><input type="text" id="office-name" placeholder="輸入房間或辦公室名稱"></div>
         <div class="form-group"><label>門禁密碼</label><input type="text" id="office-pwd" placeholder="例如：0857# (無則填 N/A)"></div>
-
         <div class="modal-footer" style="justify-content: space-between;">
             <button id="btn-delete-office" class="btn-danger" style="display:none;" onclick="executeDeleteFromModal('office')">🗑️ 移除整個房間</button>
             <div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeOfficeModal()">取消</button><button id="btn-save-office" class="btn-primary" onclick="saveOfficeData()">儲存</button></div>
@@ -463,5 +356,6 @@
 
 <!-- ✨ 引入系統大腦 (ES6 模組) -->
 <script type="module" src="./js/app.js"></script>
+
 </body>
 </html>

@@ -159,7 +159,6 @@ export function updateDetailContent() {
     let om = state.globalMembers.filter(m => m.office_id === state.currentOfficeId); 
     const officeAssetsList = state.globalAssets.filter(a => a.office_id === state.currentOfficeId);
     
-    // ✨ 將資產分為「固定」與「消耗品」
     const fixedAssets = officeAssetsList.filter(a => a.assetType !== 'consumable');
     const consumableAssets = officeAssetsList.filter(a => a.assetType === 'consumable');
 
@@ -224,7 +223,6 @@ export function updateDetailContent() {
         
         let html = '';
         
-        // 1. 固定資產區塊
         if (fixedAssets.length > 0) {
             html += `<div style="grid-column: 1/-1; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid var(--primary); font-size:16px;">📌 固定資產</h3></div>`;
             let displayFixed = fixedAssets.map(a => { let on = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) on = `👤 使用者: ${owner.name}`; } let t = a.item || '未命名設備'; if (a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`; return { ...a, _on: on, _t: t }; });
@@ -234,7 +232,6 @@ export function updateDetailContent() {
             });
         }
 
-        // 2. 消耗品區塊 (Dashboard 卡片)
         if (consumableAssets.length > 0) {
             html += `<div style="grid-column: 1/-1; margin-top: 20px; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid #8b5cf6; font-size:16px; color:#8b5cf6;">📦 消耗品</h3></div>`;
             consumableAssets.forEach(a => {
@@ -271,7 +268,6 @@ export function showExtensionsView(push = true) {
     switchView('view-extensions');
 }
 
-// ✨ 在列資產總表：支援消耗品渲染
 export function showAssetsTotalView(push = true) {
     closeSidebar(); state.currentLevel = 4; if (push) history.pushState({ level: 4 }, ""); 
     const container = document.getElementById('assets-total-container');
@@ -282,7 +278,6 @@ export function showAssetsTotalView(push = true) {
 
     let html = '';
 
-    // 1. 渲染固定資產 (按辦公室分組)
     html += `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">📌 固定資產總表 (${fixedAssets.length}件)</h2>`;
     const officeMap = {};
     fixedAssets.forEach(a => { const off = state.globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配區域'; if (!officeMap[offName]) officeMap[offName] = []; officeMap[offName].push(a); });
@@ -303,7 +298,6 @@ export function showAssetsTotalView(push = true) {
         html += `</div></div>`;
     }
 
-    // 2. 渲染消耗品 (按標籤分組 Dashboard)
     html += `<h2 style="border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; margin-top: 40px; margin-bottom: 15px; font-size: 18px; color: #8b5cf6;">📦 消耗品總庫存 (${consumableAssets.length}項)</h2>`;
     if (consumableAssets.length === 0) {
         html += `<div style="text-align:center; padding:30px; background:white; border-radius:12px; color:var(--text-muted); border:1px dashed #cbd5e1;">目前尚無登錄任何消耗品。未來可在此統一盤點庫存數量與聯絡資訊。</div>`;
@@ -401,6 +395,48 @@ export async function trackLinkClick(i, url) {
     setDoc(doc(db, 'settings', 'friendlyLinks'), { list: state.globalFriendlyLinks }).catch(e => console.log(e)); 
     window.open(url, '_blank'); 
 }
+
+// ✨ 新增：全域鍵盤事件監聽 (支援 Esc 鍵關閉一切)
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' || e.keyCode === 27) {
+        
+        // 1. 優先關閉自訂下拉選單 (表單內的類型、人員等)
+        const activeDropdowns = document.querySelectorAll('.custom-dropdown-panel.active');
+        if (activeDropdowns.length > 0) {
+            activeDropdowns.forEach(d => d.classList.remove('active'));
+            return; // 攔截，先不往下關閉整個 Modal
+        }
+
+        // 2. 關閉彈出視窗 Modal (利用觸發 overlay 的點擊事件，完美呼叫各自原本寫在 HTML 裡的 close 函數)
+        const activeModals = document.querySelectorAll('.modal-overlay.active');
+        if (activeModals.length > 0) {
+            // 關閉最後一個 (最上層) 的 Modal
+            activeModals[activeModals.length - 1].click();
+            return; 
+        }
+
+        // 3. 關閉右上角頭貼下拉選單
+        const avatarDropdown = document.getElementById('avatar-dropdown');
+        if (avatarDropdown && avatarDropdown.style.display === 'flex') {
+            avatarDropdown.style.display = 'none';
+            return;
+        }
+
+        // 4. 關閉左側導覽選單 (Sidebar)
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && sidebar.classList.contains('active')) {
+            closeSidebar();
+            return;
+        }
+
+        // 5. 關閉右下角 FAB 浮動選單
+        const fabMenu = document.getElementById('fab-menu');
+        if (fabMenu && fabMenu.classList.contains('active')) {
+            closeFabMenu();
+            return;
+        }
+    }
+});
 
 // 過渡期掛載
 window.customAlert = customAlert;

@@ -11,15 +11,25 @@
     <style>
         body { padding-top: 20px; }
         .header-bar { 
-            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
-            margin-bottom: 30px; border-bottom: 2px solid var(--primary); padding-bottom: 15px; 
+            display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 15px;
+            margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 15px; 
         }
+        /* 表頭標題放大至 45 級並置中 */
+        .header-title {
+            margin: 0; font-size: 45px; color: var(--primary); 
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+            width: 100%; text-align: center; flex-wrap: wrap;
+        }
+        .search-container {
+            margin-bottom: 40px; width: 100%;
+        }
+        /* 搜尋條放大至 35 級，全頁寬度 */
         .search-box { 
-            padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 30px; 
-            min-width: 250px; font-size: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            padding: 15px 25px; border: 2px solid #cbd5e1; border-radius: 40px; 
+            width: 100%; box-sizing: border-box; font-size: 35px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
             transition: border-color 0.2s; outline: none;
         }
-        .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+        .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.2); }
         .office-group { margin-bottom: 40px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .office-title { 
             font-size: 18px; font-weight: bold; color: var(--text-main); 
@@ -30,11 +40,14 @@
 <body>
 
 <div class="app-container">
+    <!-- 上方標題區塊 -->
     <div class="header-bar">
-        <h1 style="margin:0; font-size: 24px; color: var(--primary); display: flex; align-items: center; gap: 10px;">
-            📞 辦公室分機總表
-        </h1>
-        <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋姓名或分機號碼...">
+        <h1 class="header-title">📞 辦公室分機總表</h1>
+    </div>
+
+    <!-- 獨立於標題下方的全寬度搜尋條 -->
+    <div class="search-container">
+        <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋姓名、分機或辦公室名稱...">
     </div>
 
     <div id="loading-msg" style="text-align: center; color: var(--text-muted); padding: 50px; font-size: 18px;">
@@ -48,7 +61,7 @@
 <!-- ✨ 遵守混合模式守則：單一檔案處理 Firebase 資料撈取與渲染邏輯 -->
 <script type="module">
     import { collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { onAuthStateChanged, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { onAuthStateChanged, signInWithPopup, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     let db, auth, provider;
     let globalOffices = [];
@@ -58,7 +71,6 @@
     const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
 
     if (isRealEnvironment) {
-        // 只有在實際環境才動態引入，徹底避免預覽器因為找不到相對路徑而全域報錯
         import('./js/firebase-config.js')
             .then(module => {
                 db = module.db;
@@ -93,9 +105,22 @@
                 `;
                 document.getElementById('loading-msg').style.color = 'var(--danger)';
                 
-                // 綁定登入事件
-                document.getElementById('ext-login-btn').onclick = () => {
-                    signInWithPopup(auth, provider).catch(err => alert("登入失敗：" + err.message));
+                // 綁定登入事件，加入本地端降級訪客模式防護
+                document.getElementById('ext-login-btn').onclick = async () => {
+                    try {
+                        await signInWithPopup(auth, provider);
+                    } catch (error) {
+                        if (error.code === 'auth/unauthorized-domain') {
+                            if (window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) { 
+                                alert('本地端無法使用 Google 登入，為您啟用訪客預覽模式！'); 
+                                await signInAnonymously(auth); 
+                            } else { 
+                                alert('登入失敗：網址未獲 Firebase 授權！'); 
+                            }
+                        } else if (error.code !== 'auth/popup-closed-by-user') { 
+                            alert('登入失敗：' + error.message); 
+                        }
+                    }
                 };
                 return;
             }
@@ -133,15 +158,18 @@
         if(loading) loading.style.display = 'none';
         container.innerHTML = '';
 
-        // 根據搜尋關鍵字過濾人員
+        // 根據搜尋關鍵字過濾人員 (支援姓名、分機、辦公室名稱)
         const filteredMembers = globalMembers.filter(m => {
             const nameMatch = (m.name || '').toLowerCase().includes(keyword);
             const extMatch = (m.ext || '').toLowerCase().includes(keyword);
-            return nameMatch || extMatch;
+            const office = globalOffices.find(o => o.id === m.office_id);
+            const officeNameMatch = (office ? office.name : (m.office_id || '')).toLowerCase().includes(keyword);
+            
+            return nameMatch || extMatch || officeNameMatch;
         });
 
         if (filteredMembers.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:50px; color:var(--text-muted); background:white; border-radius:12px; border:1px dashed #cbd5e1;">找不到符合條件的人員或分機。</div>';
+            container.innerHTML = '<div style="text-align:center; padding:50px; color:var(--text-muted); background:white; border-radius:12px; border:1px dashed #cbd5e1;">找不到符合條件的人員、分機或辦公室。</div>';
             return;
         }
 

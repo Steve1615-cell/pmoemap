@@ -48,36 +48,60 @@
 <!-- ✨ 遵守混合模式守則：單一檔案處理 Firebase 資料撈取與渲染邏輯 -->
 <script type="module">
     import { collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { onAuthStateChanged, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    let db, auth;
+    let db, auth, provider;
     let globalOffices = [];
     let globalMembers = [];
 
-    try {
-        // 直接從底層共用設定引入 db 與 auth，絕對不重複初始化
-        // 使用動態 import() 搭配 try-catch，以修復線上預覽環境 (Canvas) 因找不到相對路徑而報錯卡死的問題，
-        // 在您的本機 VS Code (Live Server) 環境中，這段語法會完美載入。
-        const firebaseConfig = await import('./js/firebase-config.js');
-        db = firebaseConfig.db;
-        auth = firebaseConfig.auth;
-    } catch (error) {
-        console.warn("無法解析模組路徑，這通常是因為在預覽環境中執行。請在本機 (Live Server) 環境測試。", error);
+    // 偵測是否為實際的開發或發布環境 (過濾掉 Canvas 的 Blob/Iframe 預覽環境以防 TypeError)
+    const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
+
+    if (isRealEnvironment) {
+        // 只有在實際環境才動態引入，徹底避免預覽器因為找不到相對路徑而全域報錯
+        import('./js/firebase-config.js')
+            .then(module => {
+                db = module.db;
+                auth = module.auth;
+                provider = module.provider;
+                initializeApp();
+            })
+            .catch(err => {
+                showError('載入設定檔失敗：' + err.message);
+            });
+    } else {
+        showError('⚠️ 線上預覽模式無法跨檔案載入，請於本機 VS Code (Live Server) 中測試與檢視。');
+    }
+
+    function showError(msg) {
         const loadingMsg = document.getElementById('loading-msg');
         if (loadingMsg) {
-            loadingMsg.innerHTML = '⚠️ 線上預覽模式無法載入外部 Firebase 設定檔，請於本機 VS Code (Live Server) 中測試。';
+            loadingMsg.innerHTML = msg;
             loadingMsg.style.color = 'var(--danger)';
         }
     }
 
-    if (auth && db) {
-        // 1. 身分防護網：確保未登入者無法看到資料
+    function initializeApp() {
+        // 1. 身分防護網：確保未登入者無法看到資料，並提供本地測試用登入按鈕
         onAuthStateChanged(auth, (user) => {
             if (!user) {
-                document.getElementById('loading-msg').innerHTML = '⛔ 您尚未登入或無權限存取，請先從主系統登入。';
+                document.getElementById('loading-msg').innerHTML = `
+                    ⛔ 您尚未登入，請先登入以存取資料。<br><br>
+                    <button id="ext-login-btn" style="padding:10px 20px; background:var(--primary); color:white; border:none; border-radius:30px; cursor:pointer; font-weight:bold; font-size:16px;">
+                        使用 Google 帳號登入
+                    </button>
+                `;
                 document.getElementById('loading-msg').style.color = 'var(--danger)';
+                
+                // 綁定登入事件
+                document.getElementById('ext-login-btn').onclick = () => {
+                    signInWithPopup(auth, provider).catch(err => alert("登入失敗：" + err.message));
+                };
                 return;
             }
+            
+            document.getElementById('loading-msg').innerHTML = '⏳ 資料讀取中...';
+            document.getElementById('loading-msg').style.color = 'var(--text-muted)';
             fetchData(); // 驗證通過後才去撈資料
         });
     }

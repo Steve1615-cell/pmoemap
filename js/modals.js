@@ -1,398 +1,444 @@
-// js/modals.js
-import { collection, doc, updateDoc, setDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+// js/ui.js
+import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { auth, db } from './firebase-config.js';
 import { state } from './state.js';
-import { safeWrite, backupToRecycleBin } from './db.js';
-import { customAlert, closeSidebar, closeFabMenu, updateDetailContent, showOffices, initView, goHome, goUpLevel } from './ui.js';
-import { approveRequest, rejectRequest, promptStrictAction } from './auth.js';
 
-export function openApprovalModal() { closeSidebar(); document.getElementById('avatar-dropdown').style.display = 'none'; renderApprovalList(); document.getElementById('approval-modal-overlay').classList.add('active'); }
-export function closeApprovalModal() { document.getElementById('approval-modal-overlay').classList.remove('active'); }
-export function renderApprovalList() {
-    const d = document.getElementById('approval-list'); d.innerHTML = '';
-    if (state.globalAccessRequests.length === 0) return d.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-muted);">🎉 目前沒有待審核的申請！</div>';
-    state.globalAccessRequests.forEach(r => {
-        const div = document.createElement('div'); div.className = 'draggable-item'; div.style.justifyContent = 'space-between';
-        div.innerHTML = `<div style="display:flex; flex-direction:column; gap:4px; flex:1;"><span style="font-size:14px; font-weight:bold;">${r.name}</span><span style="font-size:12px; color:var(--text-muted);">${r.email}</span></div><div style="display:flex; gap:5px; align-items:center;"><button class="btn-primary" style="background:var(--success); font-size:12px; padding:6px 10px;" onclick="window.approveRequest('${r.email}')">✅ 允許</button><button class="btn-danger" style="font-size:12px; padding:6px 10px;" onclick="window.rejectRequest('${r.email}')">❌</button></div>`; d.appendChild(div);
-    });
+export function customAlert(msg, isDanger = false) {
+    const toast = document.getElementById('custom-toast');
+    if(!toast) return;
+    toast.innerText = msg;
+    if (isDanger) toast.classList.add('danger'); else toast.classList.remove('danger');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
-export function openNicknameModal() { const u = state.globalUsers.find(x => x.id === (auth.currentUser?.email || '')); document.getElementById('nickname-input').value = u?.nickname || ''; document.getElementById('nickname-modal-overlay').classList.add('active'); document.getElementById('avatar-dropdown').style.display = 'none'; }
-export function closeNicknameModal() { document.getElementById('nickname-modal-overlay').classList.remove('active'); }
-export async function saveNickname() { try { await safeWrite(setDoc(doc(db, 'users', auth.currentUser?.email || 'anonymous@preview.com'), { nickname: document.getElementById('nickname-input').value.trim() }, { merge: true })); customAlert('暱稱設定成功！'); closeNicknameModal(); } catch (e) { customAlert('暱稱設定失敗', true); } }
-
-export function openShareModal() { document.getElementById('avatar-dropdown').style.display = 'none'; document.getElementById('share-link-input').value = window.location.origin + window.location.pathname; document.getElementById('share-invite-input').value = ''; document.getElementById('share-modal-overlay').classList.add('active'); }
-export function closeShareModal() { document.getElementById('share-modal-overlay').classList.remove('active'); }
-export function copyShareLink() { const c = document.getElementById('share-link-input'); c.select(); document.execCommand("copy"); customAlert('✅ 連結已複製！'); }
-export async function inviteUser() { const e = document.getElementById('share-invite-input').value.trim().toLowerCase(); if (!e || !e.includes('@')) return customAlert('信箱格式無效！', true); if (state.globalWhitelist.includes(e) || e === state.SUPER_ADMIN) return customAlert('信箱已在授權名單中！', true); try { await safeWrite(setDoc(doc(db, 'settings', 'whitelist'), { emails: [...state.globalWhitelist, e] })); document.getElementById('share-invite-input').value = ''; customAlert(`成功開通 ${e}`); } catch(err) { customAlert('授權失敗', true); } }
-
-export function openWhitelistModal() { closeSidebar(); const e = auth.currentUser?.email || 'anonymous@preview.com'; if (!(state.globalAdmins.includes(e) || e === state.SUPER_ADMIN || auth.currentUser?.isAnonymous)) return customAlert('⛔ 僅限管理員', true); renderWhitelist(); document.getElementById('whitelist-modal-overlay').classList.add('active'); }
-export function closeWhitelistModal() { document.getElementById('whitelist-modal-overlay').classList.remove('active'); }
-export function renderWhitelist() {
-    const d = document.getElementById('whitelist-list'); d.innerHTML = ''; let l = [...state.globalWhitelist]; if (!l.includes(state.SUPER_ADMIN)) l.unshift(state.SUPER_ADMIN);
-    l.forEach(e => {
-        const u = state.globalUsers.find(x => x.id === e); const isA = state.globalAdmins.includes(e) || e === state.SUPER_ADMIN; const div = document.createElement('div'); div.className = 'draggable-item'; div.style.justifyContent = 'space-between'; div.style.flexWrap = 'wrap';
-        let html = `<div style="display:flex; align-items:center; gap:8px; flex:1; min-width:180px;"><span style="font-size:14px;">${e}</span>${u && u.nickname ? `<span style="font-size:11px; color:white; background:var(--primary); padding:2px 8px; border-radius:12px; font-weight:bold;">${u.nickname}</span>` : ''}</div>`;
-        if (e === state.SUPER_ADMIN) html += `<span style="font-size:12px; background:var(--warning); color:white; font-weight:bold; padding:4px 8px; border-radius:4px; flex-shrink: 0;">👑 創辦人</span>`;
-        else if (isA) html += `<div style="display:flex; gap:5px; align-items:center;"><span style="font-size:12px; background:var(--accent); color:var(--text-main); font-weight:bold; padding:4px 8px; border-radius:4px; margin-right:5px; flex-shrink: 0;">👑 管理員</span><button class="btn-edit" style="color:var(--danger); border-color:var(--danger);" onclick="window.promptStrictAction('removeAdmin', '${e}')">🗑️ 降級移除</button></div>`;
-        else html += `<div style="display:flex; gap:5px; align-items:center;"><button class="btn-edit" style="color:var(--primary); border-color:var(--primary);" onclick="window.promptStrictAction('promoteAdmin', '${e}')">⬆️ 授權管理員</button><button class="btn-edit" style="color:var(--danger);" onclick="window.promptStrictAction('removeUser', '${e}')">🗑️</button></div>`;
-        div.innerHTML = html; d.appendChild(div);
-    });
-}
-export async function addWhitelistEmail() { const input = document.getElementById('whitelist-input'); const email = input.value.trim().toLowerCase(); if (!email || !email.includes('@')) return customAlert('格式無效！', true); if (state.globalWhitelist.includes(email) || email === state.SUPER_ADMIN) return customAlert('已在白名單！', true); try { await safeWrite(setDoc(doc(db, 'settings', 'whitelist'), { emails: [...state.globalWhitelist, email] })); input.value = ''; customAlert(`成功加入白名單！`); } catch(e) { customAlert('失敗', true); } }
-export function promptDeleteWhitelist(email) { promptStrictAction('removeUser', email); }
-
-export function openFriendlyLinkModal() { document.getElementById('link-name-input').value = ''; document.getElementById('link-url-input').value = ''; document.getElementById('friendly-link-modal-overlay').classList.add('active'); closeSidebar(); }
-export function closeFriendlyLinkModal() { document.getElementById('friendly-link-modal-overlay').classList.remove('active'); }
-export async function saveFriendlyLink() {
-    const name = document.getElementById('link-name-input').value.trim(); let url = document.getElementById('link-url-input').value.trim();
-    if (!name || !url) return customAlert('名稱與網址皆為必填！', true); if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    if (state.globalFriendlyLinks.length >= 20) return customAlert('友站連結已達 20 個上限！', true);
-    try { await safeWrite(setDoc(doc(db, 'settings', 'friendlyLinks'), { list: [...state.globalFriendlyLinks, { name, url, clicks: 0 }] })); customAlert('成功新增友站連結！'); closeFriendlyLinkModal(); } catch (e) { customAlert('儲存失敗', true); }
-}
-export function promptDeleteFriendlyLink(i) {
-    state.pendingDeleteAction = { type: 'friendlyLink', index: i }; document.getElementById('confirm-modal-title').innerText = '⚠️ 移除友站連結'; document.getElementById('confirm-msg').innerText = `確定要刪除常用連結「${state.globalFriendlyLinks[i].name}」嗎？`; document.getElementById('strict-input-container').style.display = 'none'; document.getElementById('btn-confirm-action').innerText = '確定移除'; document.getElementById('btn-confirm-action').disabled = false; document.getElementById('confirm-modal-overlay').classList.add('active');
+export function togglePinnedSectionCollapse(e) {
+    if(e) e.stopPropagation();
+    const p = document.getElementById('pinned-section'), b = document.getElementById('pinned-collapse-btn');
+    if (p.classList.contains('collapsed')) { p.classList.remove('collapsed'); b.innerText = '[–] 收合'; } 
+    else { p.classList.add('collapsed'); b.innerText = '[+] 展開'; }
 }
 
-export function openPinModal() { document.getElementById('pin-search-modal-input').value = ''; window.filterPinItemsModal(); document.getElementById('pin-modal-overlay').classList.add('active'); document.getElementById('pin-search-modal-input').focus(); }
-export function closePinModal() { document.getElementById('pin-modal-overlay').classList.remove('active'); }
-export function filterPinItemsModal() {
-    const t = document.getElementById('pin-search-modal-input').value.toLowerCase(); const d = document.getElementById('pin-modal-list'); d.innerHTML = ''; let res = [];
-    [...new Set(state.globalOffices.map(o => o.floor || '未分類區域'))].forEach(f => { if(f.toLowerCase().includes(t)) res.push({type: 'floor', id: f, name: f, icon: '🏢'}); });
-    state.globalRegions.forEach(r => { if(r.name.toLowerCase().includes(t) && !res.some(x=>x.name===r.name)) res.push({type: 'floor', id: r.name, name: r.name, icon: '🏢'}); });
-    state.globalOffices.forEach(o => { if(o.name.toLowerCase().includes(t)) res.push({type: 'office', id: o.id, name: o.name, officeName: o.name, icon: '🚪'}); });
-    state.globalMembers.forEach(m => { if(m.name.toLowerCase().includes(t)) res.push({type: 'member', id: m.id, name: m.name, icon: '👤'}); });
-    state.globalAssets.forEach(a => { const n = a.item || '未命名設備'; if(n.toLowerCase().includes(t) || (a.sn && a.sn.toLowerCase().includes(t))) res.push({type: 'asset', id: a.id, name: n, icon: '📦'}); });
-    
-    res.slice(0, 30).forEach(x => {
-        const div = document.createElement('div'); div.className = 'dropdown-item'; let tl = x.type==='floor'?'大樓/區域':x.type==='office'?'辦公室':x.type==='member'?'人員':'資產';
-        div.innerHTML = `<span style="font-weight:bold; font-size:14px; display:flex; gap:8px;"><span>${x.icon}</span> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${x.name}</span></span><span style="font-size:11px; color:white; background:var(--text-muted); padding:2px 6px; border-radius:12px; font-weight:bold;">${tl}</span>`;
-        div.onclick = (e) => { e.stopPropagation(); window.addPinItem(x); }; d.appendChild(div);
-    });
-    if(res.length === 0) d.innerHTML = '<div style="padding:20px; color:#94a3b8; font-size:13px; text-align:center;">無符合項目</div>';
-}
-export async function addPinItem(res) {
-    if (state.myPinnedItems.length >= 8) return customAlert('置頂項目最多只能 8 個！', true);
-    if (state.myPinnedItems.find(p => p.id === res.id && p.type === res.type)) return customAlert('此項目已經在置頂清單中！', true);
-    const obj = { type: res.type, id: res.id, name: res.name, icon: res.icon }; if (res.officeName) obj.officeName = res.officeName; 
-    state.myPinnedItems = [...state.myPinnedItems, obj]; initView(); closePinModal(); 
-    try { await safeWrite(setDoc(doc(db, 'users', auth.currentUser?.email || 'anonymous@preview.com'), { pinnedItems: state.myPinnedItems }, { merge: true })); } catch(err) {}
-}
-export async function removePinItem(idx) {
-    state.myPinnedItems.splice(idx, 1); initView(); 
-    try { await safeWrite(setDoc(doc(db, 'users', auth.currentUser?.email || 'anonymous@preview.com'), { pinnedItems: state.myPinnedItems }, { merge: true })); } catch(e) {}
+export function expandPinnedSection(e) {
+    const p = document.getElementById('pinned-section');
+    if (p.classList.contains('collapsed')) { e.stopPropagation(); togglePinnedSectionCollapse(); }
 }
 
-let titleDragSrcEl = null; 
-export function openTitleRankModal() { closeSidebar(); const ss = document.getElementById('title-rank-scope'); ss.innerHTML = `<option value="global">🌍 套用至所有辦公室 (預設全域)</option>`; const owm = [...new Set(state.globalMembers.map(m => m.office_id))]; state.globalOffices.filter(o => owm.includes(o.id)).sort((a,b) => a.name.localeCompare(b.name)).forEach(o => { ss.innerHTML += `<option value="${o.id}">🏢 指定辦公室：${o.name}</option>`; }); ss.value = 'global'; changeTitleRankScope(); document.getElementById('title-rank-modal-overlay').classList.add('active'); }
-export function closeTitleRankModal() { document.getElementById('title-rank-modal-overlay').classList.remove('active'); }
-export function changeTitleRankScope() {
-    state.currentTitleRankScope = document.getElementById('title-rank-scope').value; const ats = new Set(); let tm = state.globalMembers;
-    if (state.currentTitleRankScope !== 'global') tm = state.globalMembers.filter(m => m.office_id === state.currentTitleRankScope);
-    tm.forEach(m => { if(m.title && m.title !== 'N/A' && m.title.trim() !== '') ats.add(m.title.trim()); });
-    if (state.currentTitleRankScope !== 'global' && ats.size === 0) { state.tempTitleRanks = []; renderTitleRankList(); return; }
-    let er = state.currentTitleRankScope === 'global' ? (state.globalTitleRankSettings.global || []) : (state.globalTitleRankSettings.offices[state.currentTitleRankScope] || []); if(er.length===0 && state.currentTitleRankScope!=='global') er = state.globalTitleRankSettings.global || [];
-    state.tempTitleRanks = [...er]; ats.forEach(t => { if (!state.tempTitleRanks.includes(t)) state.tempTitleRanks.push(t); }); state.tempTitleRanks = state.tempTitleRanks.filter(t => ats.has(t)); renderTitleRankList();
-}
-export function renderTitleRankList() {
-    const d = document.getElementById('title-rank-list'); d.innerHTML = '';
-    if (state.tempTitleRanks.length === 0) { d.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">此範圍內尚未登錄任何職稱</div>'; return; }
-    state.tempTitleRanks.forEach((t, i) => { const div = document.createElement('div'); div.className = 'draggable-item'; div.draggable = true; div.dataset.index = i; div.innerHTML = `<span class="drag-handle">☰</span><span style="background:var(--accent); color:var(--text-muted); font-size:12px; padding:2px 6px; border-radius:4px; font-family:monospace;">${i + 1}</span><span style="flex:1; font-weight:bold;">${t}</span>`; div.addEventListener('dragstart', function(e){ titleDragSrcEl = this; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/html', this.innerHTML); this.classList.add('dragging'); }); div.addEventListener('dragover', function(e){ if(e.preventDefault) e.preventDefault(); e.dataTransfer.dropEffect='move'; return false; }); div.addEventListener('dragenter', function(e){ this.classList.add('drag-over'); }); div.addEventListener('dragleave', function(e){ this.classList.remove('drag-over'); }); div.addEventListener('drop', function(e){ if (e.stopPropagation) e.stopPropagation(); if (titleDragSrcEl !== this) { const f = parseInt(titleDragSrcEl.dataset.index), t = parseInt(this.dataset.index), item = state.tempTitleRanks.splice(f, 1)[0]; state.tempTitleRanks.splice(t, 0, item); renderTitleRankList(); } return false; }); div.addEventListener('dragend', function(e){ this.classList.remove('dragging'); document.querySelectorAll('.draggable-item').forEach(col => col.classList.remove('drag-over')); }); d.appendChild(div); });
-}
-export function promptSaveTitleRanks() { const t = document.getElementById('title-rank-scope').options[document.getElementById('title-rank-scope').selectedIndex].text; state.pendingDeleteAction = { type: 'titleRanks' }; document.getElementById('confirm-modal-title').innerText = '⚠️ 套用設定確認'; document.getElementById('confirm-msg').innerText = `確定將此排序套用至\n「${t}」？`; document.getElementById('confirm-modal-overlay').classList.add('active'); }
-
-export function openUpdateLogModal() { closeSidebar(); document.getElementById('update-log-modal-overlay').classList.add('active'); }
-export function closeUpdateLogModal() { document.getElementById('update-log-modal-overlay').classList.remove('active'); }
-
-export function openRecycleBinModal() { closeSidebar(); window.renderRecycleBinList(); document.getElementById('recycle-bin-modal-overlay').classList.add('active'); }
-export function closeRecycleBinModal() { document.getElementById('recycle-bin-modal-overlay').classList.remove('active'); }
-export function renderRecycleBinList() {
-    const listDiv = document.getElementById('recycle-bin-list'); listDiv.innerHTML = '';
-    if(state.globalDeletedItems.length === 0) { listDiv.innerHTML = '<div style="padding:30px; text-align:center; color:#94a3b8;">回收桶目前是空的</div>'; return; }
-    const sorted = [...state.globalDeletedItems].sort((a,b) => b.deletedAt.localeCompare(a.deletedAt));
-    sorted.forEach(item => {
-        const itemDiv = document.createElement('div'); itemDiv.className = 'draggable-item'; itemDiv.style.justifyContent = 'space-between';
-        const dateStr = new Date(item.deletedAt).toLocaleString('zh-TW', {hour12: false});
-        itemDiv.innerHTML = `<div style="display:flex; flex-direction:column; gap:4px; flex:1;"><span style="font-size:14px; font-weight:bold; color:var(--text-main);">${item.itemTitle}</span><span style="font-size:11px; color:var(--text-muted);">${dateStr} | 類型: ${item.collectionPath}</span></div><button class="btn-primary" style="padding:6px 12px; font-size:12px; flex-shrink:0;" onclick="window.restoreDeletedItem('${item.id}')">復原</button>`;
-        listDiv.appendChild(itemDiv);
-    });
-}
-
-export function openRegionModal() { closeFabMenu(); document.getElementById('region-name-input').value = ''; document.getElementById('region-modal-overlay').classList.add('active'); }
-export function closeRegionModal() { document.getElementById('region-modal-overlay').classList.remove('active'); }
-export async function saveRegionData() {
-    const n = document.getElementById('region-name-input').value.trim(); if (!n) return customAlert('名稱不能為空！', true);
-    if (state.globalRegions.find(r => r.name === n) || state.globalOffices.find(o => o.floor === n)) return customAlert('此區域已存在！', true);
-    try { await safeWrite(setDoc(doc(collection(db, 'regions')), { name: n, createdAt: new Date().toISOString() })); closeRegionModal(); customAlert(`成功新增區域：${n}`); } catch(e) { customAlert('新增失敗', true); }
-}
-export function promptDeleteRegion(rName, rId) {
-    const off = state.globalOffices.filter(o => o.floor === rName);
-    if (off.length === 0) { if(confirm(`確定刪除空白區域「${rName}」？`)) safeWrite(deleteDoc(doc(db, 'regions', rId))).then(() => customAlert(`已刪除區域：${rName}`)); } 
-    else {
-        let c = off.length; off.forEach(o => { c += state.globalMembers.filter(m => m.office_id === o.id).length; c += state.globalAssets.filter(a => a.office_id === o.id).length; c += state.globalBookings.filter(b => b.office_id === o.id).length; });
-        state.pendingDeleteAction = { type: 'region', payload: { rId, rName, off }, count: c, step: 1 };
-        document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告'; document.getElementById('confirm-msg').innerText = `區域「${rName}」內包含 ${c} 項資料。\n刪除將連帶永久刪除所有房間與資產！\n確認進入刪除程序？`; document.getElementById('confirm-modal-overlay').classList.add('active');
-    }
-}
-
-export function openOfficeModal(id) {
-    closeFabMenu(); state.isOfficeEditMode = true; state.currentEditOfficeId = id; const o = state.globalOffices.find(x => x.id === id); if (!o) return customAlert('找不到辦公室！', true);
-    document.getElementById('office-modal-title').innerText = '✏️ 編輯房間資訊'; document.getElementById('office-floor-group').style.display = 'none'; document.getElementById('office-name').value = o.name; document.getElementById('office-pwd').value = o.pwd || '';
-    document.getElementById('btn-delete-office').style.display = 'inline-block'; document.getElementById('room-type-dropdown-btn').style.pointerEvents = 'none'; document.getElementById('room-type-dropdown-btn').style.background = '#f1f5f9'; document.getElementById('room-type-lock-hint').style.display = 'inline'; document.getElementById('room-type-dropdown-arrow').style.display = 'none';
-    window.selectRoomType(o.roomType || '辦公室'); document.getElementById('office-modal-overlay').classList.add('active');
-}
-export function openAddOfficeModal() {
-    closeFabMenu(); state.isOfficeEditMode = false; state.currentEditOfficeId = null; document.getElementById('office-modal-title').innerText = '➕ 新增房間/辦公室'; document.getElementById('office-floor-group').style.display = 'block'; document.getElementById('office-floor').value = state.currentFloor; document.getElementById('office-name').value = ''; document.getElementById('office-pwd').value = ''; document.getElementById('btn-delete-office').style.display = 'none'; document.getElementById('room-type-dropdown-btn').style.pointerEvents = 'auto'; document.getElementById('room-type-dropdown-btn').style.background = 'white'; document.getElementById('room-type-lock-hint').style.display = 'none'; document.getElementById('room-type-dropdown-arrow').style.display = 'inline'; window.selectRoomType('辦公室'); document.getElementById('office-modal-overlay').classList.add('active');
-}
-export function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
-export async function saveOfficeData() {
-    const n = document.getElementById('office-name').value.trim(), p = document.getElementById('office-pwd').value || 'N/A'; if (!n) return customAlert('辦公室名稱不能為空！', true); const btn = document.getElementById('btn-save-office'); btn.disabled = true; btn.innerText = '儲存中...';
-    try {
-        if (state.isOfficeEditMode) {
-            if (state.globalOffices.find(o => o.name === n && o.id !== state.currentEditOfficeId)) return (customAlert('名稱存在', true), btn.disabled = false, btn.innerText = '儲存'); 
-            await safeWrite(updateDoc(doc(db, 'offices', state.currentEditOfficeId), { name: n, pwd: p })); closeOfficeModal(); customAlert(`房間資訊已更新！`);
+export function initView() {
+    const gridNav = document.getElementById('floor-list-container');
+    if (gridNav) {
+        gridNav.innerHTML = ''; const floorMap = {};
+        state.globalRegions.forEach(r => { floorMap[r.name] = { id: r.id, name: r.name, offices: [], isRegion: true }; });
+        state.globalOffices.forEach(o => { const f = o.floor || '未分類區域'; if (!floorMap[f]) floorMap[f] = { id: f, name: f, offices: [], isRegion: false }; floorMap[f].offices.push(o); });
+        let sortedFloors = Object.keys(floorMap).sort();
+        
+        if (sortedFloors.length === 0) {
+            gridNav.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">系統內尚無大樓與區域，請點擊右下角「＋」新增。</div>`;
         } else {
-            if (state.globalOffices.find(o => o.name === n)) return (customAlert('名稱存在', true), btn.disabled = false, btn.innerText = '儲存'); 
-            await safeWrite(setDoc(doc(collection(db, 'offices')), { name: n, floor: state.currentFloor, pwd: p, roomType: state.currentRoomType })); closeOfficeModal(); customAlert(`成功新增房間：${n}`);
-        }
-    } catch(err) { customAlert("錯誤", true); } finally { btn.disabled = false; btn.innerText = '儲存'; }
-}
-
-export function openMemberModal(id = null) {
-    closeFabMenu(); const bn = document.getElementById('btn-save-next'), bd = document.getElementById('btn-delete-member');
-    if (id && typeof id === 'string') {
-        state.isEditMode = true; state.currentEditMemberId = id; document.getElementById('modal-title').innerText = '✏️ 編輯人員資料'; bn.style.display = 'none'; bd.style.display = 'inline-block';
-        const m = state.globalMembers.find(x => x.id === id); if(m) { document.getElementById('edit-name').value = m.name || ''; document.getElementById('edit-title').value = m.title || ''; document.getElementById('edit-join-date').value = m.join_date || ''; document.getElementById('edit-ext').value = m.ext || ''; }
-    } else {
-        state.isEditMode = false; state.currentEditMemberId = null; document.getElementById('modal-title').innerText = '➕ 新增人員資料'; bn.style.display = 'inline-block'; bd.style.display = 'none';
-        document.getElementById('edit-name').value = ''; document.getElementById('edit-title').value = ''; document.getElementById('edit-ext').value = '';
-    }
-    document.getElementById('edit-modal-overlay').classList.add('active');
-}
-export function closeEditModal() { document.getElementById('edit-modal-overlay').classList.remove('active'); }
-export async function saveMemberData(continueNext = false) {
-    const n = document.getElementById('edit-name').value.trim(); if (!n) return customAlert('姓名必填！', true); const btn = document.getElementById(continueNext ? 'btn-save-next' : 'btn-save-member'), ot = btn.innerText; btn.disabled = true; btn.innerText = '儲存中...';
-    try {
-        const pay = { name: n, title: document.getElementById('edit-title').value || 'N/A', join_date: document.getElementById('edit-join-date').value || '', ext: document.getElementById('edit-ext').value || 'N/A', office_id: state.currentOfficeId };
-        if (state.isEditMode) await safeWrite(updateDoc(doc(db, 'members', state.currentEditMemberId), pay)); 
-        else { pay.dept = state.currentOfficeName.includes('接艦') ? '接艦人員' : state.currentOfficeName.includes('ABS') ? '監造人員' : state.currentOfficeName; await safeWrite(setDoc(doc(collection(db, 'members')), pay)); }
-        if (continueNext && !state.isEditMode) { btn.innerText = '已新增 ✔'; ['edit-name', 'edit-title', 'edit-ext'].forEach(id => document.getElementById(id).value = ''); document.getElementById('edit-name').focus(); setTimeout(() => { btn.innerText = ot; btn.disabled = false; }, 800); } else { closeEditModal(); btn.disabled = false; btn.innerText = ot; }
-    } catch(err) { customAlert("錯誤", true); btn.disabled = false; btn.innerText = ot; }
-}
-
-export function handleStartTimeChange() { const s = document.getElementById('booking-start'), e = document.getElementById('booking-end'); if (s.value) { let [h, m] = s.value.split(':').map(Number); h = (h + 1) % 24; e.value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; } }
-export function openBookingModal(id = null) {
-    closeFabMenu(); document.getElementById('btn-save-booking').disabled = false; document.getElementById('btn-save-booking').innerText = '儲存'; document.getElementById('btn-save-next-booking').disabled = false; document.getElementById('btn-save-next-booking').innerText = '下一筆';
-    const bd = document.getElementById('btn-delete-booking'), bn = document.getElementById('btn-save-next-booking'), dInp = document.getElementById('booking-date');
-    const p = state.globalUsers.find(u => u.id === (auth.currentUser?.email || '')); const dn = (p && p.nickname) ? p.nickname : (auth.currentUser?.displayName || '');
-    const to = new Date(), min = `${to.getFullYear()}-${String(to.getMonth() + 1).padStart(2, '0')}-${String(to.getDate()).padStart(2, '0')}`;
-    const nm = new Date(to.getFullYear(), to.getMonth() + 2, 0), max = `${nm.getFullYear()}-${String(nm.getMonth() + 1).padStart(2, '0')}-${String(nm.getDate()).padStart(2, '0')}`;
-    dInp.min = min; dInp.max = max;
-
-    if (id && typeof id === 'string') {
-        state.currentEditBookingId = id; document.getElementById('booking-modal-title').innerText = '✏️ 編輯預約排程'; bd.style.display = 'inline-block'; bn.style.display = 'none';
-        const b = state.globalBookings.find(x => x.id === id); if (b) { document.getElementById('booking-title').value = b.title || ''; dInp.value = b.date || ''; document.getElementById('booking-start').value = b.startTime || ''; document.getElementById('booking-end').value = b.endTime || ''; document.getElementById('booking-user').value = b.booker || ''; }
-    } else {
-        state.currentEditBookingId = null; document.getElementById('booking-modal-title').innerText = '📅 新增預約排程'; bd.style.display = 'none'; bn.style.display = 'inline-block';
-        document.getElementById('booking-title').value = ''; dInp.value = state.selectedCalendarDate >= min ? state.selectedCalendarDate : min; document.getElementById('booking-start').value = '09:00'; document.getElementById('booking-end').value = '10:00'; document.getElementById('booking-user').value = dn;
-    }
-    document.getElementById('booking-modal-overlay').classList.add('active');
-}
-export function closeBookingModal() { document.getElementById('booking-modal-overlay').classList.remove('active'); }
-export async function saveBookingData(cN = false) {
-    const t = document.getElementById('booking-title').value.trim(), di = document.getElementById('booking-date'), d = di.value, s = document.getElementById('booking-start').value, e = document.getElementById('booking-end').value, bkr = document.getElementById('booking-user').value.trim();
-    if (!t || !d || !s || !e || !bkr) return customAlert('欄位皆為必填！', true); if (s >= e) return customAlert('結束時間需晚於開始時間！', true); if (d < di.min || d > di.max) return customAlert(`請選擇 ${di.min} 至 ${di.max} 的日期！`, true);
-    const isConflict = state.globalBookings.some(b => { if (b.office_id !== state.currentOfficeId || b.date !== d) return false; if (state.currentEditBookingId && b.id === state.currentEditBookingId) return false; return s < b.endTime && e > b.startTime; });
-    if (isConflict) return customAlert('❌ 此時段已被預約，確認是否衝堂！', true);
-
-    const btn = document.getElementById(cN ? 'btn-save-next-booking' : 'btn-save-booking'), ot = btn.innerText; btn.disabled = true; btn.innerText = '儲存中...';
-    try {
-        const pay = { office_id: state.currentOfficeId, title: t, date: d, startTime: s, endTime: e, booker: bkr, updatedAt: new Date().toISOString() };
-        if (state.currentEditBookingId) await safeWrite(updateDoc(doc(db, 'bookings', state.currentEditBookingId), pay)); else { pay.creatorEmail = auth.currentUser?.email || 'anon'; await safeWrite(addDoc(collection(db, 'bookings'), pay)); }
-        window.selectCalendarDate(d);
-        if (cN && !state.currentEditBookingId) { btn.innerText = '已新增 ✔'; setTimeout(() => { btn.innerText = ot; btn.disabled = false; }, 800); customAlert('預約已儲存！請修改時間或日期以新增下一筆。'); } 
-        else { closeBookingModal(); customAlert('預約儲存成功！'); }
-    } catch (err) { customAlert('儲存失敗', true); btn.disabled = false; btn.innerText = ot; }
-}
-export function promptDeleteBooking() { state.pendingDeleteAction = { type: 'booking', id: state.currentEditBookingId }; document.getElementById('confirm-modal-title').innerText = '⚠️ 取消預約'; document.getElementById('confirm-msg').innerText = '確定取消並刪除這筆預約？'; document.getElementById('confirm-modal-overlay').classList.add('active'); }
-
-export function syncSnPc(src) { if (state.currentAssetCategory !== '電腦') return; if (src === 'sn') document.getElementById('asset-pc').value = document.getElementById('asset-sn').value; else document.getElementById('asset-sn').value = document.getElementById('asset-pc').value; }
-export function openAssetModal(id = null) {
-    closeFabMenu(); const bd = document.getElementById('btn-delete-asset');
-    if (id && typeof id === 'string') {
-        state.currentEditAssetId = id; document.getElementById('asset-modal-title').innerText = '📦 編輯資產資料'; bd.style.display = 'inline-block';
-        const a = state.globalAssets.find(x => x.id === id);
-        if(a) {
-            window.selectCategory(a.category || '其他'); document.getElementById('asset-item').value = a.item || ''; document.getElementById('asset-sn').value = a.sn || ''; document.getElementById('asset-status').value = a.status || '正常';
-            if (a.category === '電腦') { document.getElementById('asset-domain').value = a.domain || '外網'; document.getElementById('asset-pc').value = a.pc_id || ''; document.getElementById('asset-net').value = a.net_port || ''; document.getElementById('asset-phone').value = a.phone_port || ''; if (a.owner_id) { const o = state.globalMembers.find(m => m.id === a.owner_id); if(o) window.selectOwner(o.id, o.name); else window.selectOwner('', '公用設備'); } else window.selectOwner('', '公用設備'); }
-        }
-    } else {
-        state.currentEditAssetId = null; document.getElementById('asset-modal-title').innerText = '➕ 新增資產'; bd.style.display = 'none';
-        window.selectCategory('電腦'); document.getElementById('asset-item').value = ''; document.getElementById('asset-sn').value = ''; document.getElementById('asset-status').value = '正常';
-        window.selectOwner('', '公用設備'); document.getElementById('asset-domain').value = '外網'; document.getElementById('asset-pc').value = ''; document.getElementById('asset-net').value = ''; document.getElementById('asset-phone').value = '';
-    }
-    document.getElementById('asset-modal-overlay').classList.add('active');
-}
-export function closeAssetModal() { document.getElementById('asset-modal-overlay').classList.remove('active'); }
-export async function saveAssetData() {
-    let i = document.getElementById('asset-item').value.trim(); if (!i) i = state.currentAssetCategory; const btn = document.getElementById('btn-save-asset'); btn.disabled = true; btn.innerText = '儲存中...';
-    try {
-        const pay = { item: i, category: state.currentAssetCategory, sn: document.getElementById('asset-sn').value || 'N/A', status: document.getElementById('asset-status').value, office_id: state.currentOfficeId };
-        if (state.currentAssetCategory === '電腦') { pay.domain = document.getElementById('asset-domain').value; pay.pc_id = document.getElementById('asset-pc').value || 'N/A'; pay.net_port = document.getElementById('asset-net').value || 'N/A'; pay.phone_port = document.getElementById('asset-phone').value || 'N/A'; pay.owner_id = document.getElementById('asset-owner-id').value || null; }
-        if (state.currentEditAssetId) await safeWrite(updateDoc(doc(db, 'assets', state.currentEditAssetId), pay)); else await safeWrite(setDoc(doc(collection(db, 'assets')), pay));
-        closeAssetModal(); customAlert("資產已儲存！");
-    } catch(err) { customAlert("錯誤", true); } finally { btn.disabled = false; btn.innerText = '儲存'; }
-}
-
-export function toggleCategoryDropdown(e) { if(e) e.stopPropagation(); const p = document.getElementById('category-panel'); document.getElementById('owner-panel').classList.remove('active'); if(document.getElementById('room-type-panel')) document.getElementById('room-type-panel').classList.remove('active'); p.classList.toggle('active'); if(p.classList.contains('active')) { document.getElementById('category-search-input').value = ''; window.renderCategoryDropdown(); document.getElementById('category-search-input').focus(); } }
-export function renderCategoryDropdown(t = '') {
-    const l = document.getElementById('category-list'); l.innerHTML = ''; const f = state.globalCategories.filter(c => c.toLowerCase().includes(t.toLowerCase()));
-    if(f.length === 0) return l.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到結果，可點擊上方 ➕ 新增</div>';
-    f.forEach(c => { const d = document.createElement('div'); d.className = 'dropdown-item'; d.innerHTML = `<span style="flex:1;">${c}</span><button class="dropdown-item-delete" onclick="event.stopPropagation(); window.promptDeleteCategory('${c}')">🗑️</button>`; d.querySelector('span').onclick = () => window.selectCategory(c); l.appendChild(d); });
-}
-export function filterCategories() { window.renderCategoryDropdown(document.getElementById('category-search-input').value); }
-export function selectCategory(c) { state.currentAssetCategory = c; document.getElementById('selected-category-text').innerText = c; document.getElementById('category-panel').classList.remove('active'); document.getElementById('asset-computer-fields').style.display = c === '電腦' ? 'block' : 'none'; }
-export async function addCategory(e) { if(e) e.stopPropagation(); const i = document.getElementById('category-search-input'), c = i.value.trim(); if(!c) return customAlert('請輸入類型！', true); if(state.globalCategories.includes(c)) return customAlert('類型已存在！', true); try { state.globalCategories.push(c); await safeWrite(setDoc(doc(db, "settings", "categories"), { list: state.globalCategories })); i.value = ''; window.renderCategoryDropdown(); window.selectCategory(c); customAlert(`新增：${c}`); } catch(err) { customAlert('新增失敗', true); } }
-export function promptDeleteCategory(c) { state.pendingDeleteAction = { type: 'category', payload: c }; const u = state.globalAssets.filter(a => a.category === c); document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告'; document.getElementById('confirm-msg').innerText = u.length > 0 ? `曾以此類型「${c}」登錄的資產（共 ${u.length} 件）將一併刪除！\n\n請問確定？` : `確定刪除類型「${c}」？`; document.getElementById('confirm-modal-overlay').classList.add('active'); }
-
-export function toggleRoomTypeDropdown(e) { if(e) e.stopPropagation(); const p = document.getElementById('room-type-panel'); p.classList.toggle('active'); if(p.classList.contains('active')) { document.getElementById('room-type-search-input').value = ''; window.renderRoomTypeDropdown(); document.getElementById('room-type-search-input').focus(); } }
-export function renderRoomTypeDropdown(t = '') {
-    const l = document.getElementById('room-type-list'); l.innerHTML = ''; const f = state.globalRoomTypes.filter(c => c.toLowerCase().includes(t.toLowerCase()));
-    if(f.length === 0) return l.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到結果</div>';
-    f.forEach(c => { const d = document.createElement('div'); d.className = 'dropdown-item'; d.innerHTML = `<span style="flex:1;">${c}</span><button class="dropdown-item-delete" onclick="event.stopPropagation(); window.promptDeleteRoomType('${c}')">🗑️</button>`; d.querySelector('span').onclick = () => window.selectRoomType(c); l.appendChild(d); });
-}
-export function filterRoomTypes() { window.renderRoomTypeDropdown(document.getElementById('room-type-search-input').value); }
-export function selectRoomType(c) { state.currentRoomType = c; document.getElementById('selected-room-type-text').innerText = c; document.getElementById('room-type-panel').classList.remove('active'); }
-export async function addRoomType(e) { if(e) e.stopPropagation(); const i = document.getElementById('room-type-search-input'), c = i.value.trim(); if(!c) return customAlert('請輸入類型！', true); if(state.globalRoomTypes.includes(c)) return customAlert('類型已存在！', true); try { state.globalRoomTypes.push(c); await safeWrite(setDoc(doc(db, "settings", "roomTypes"), { list: state.globalRoomTypes })); i.value = ''; window.renderRoomTypeDropdown(); window.selectRoomType(c); customAlert(`新增：${c}`); } catch(err) { customAlert('新增失敗', true); } }
-export function promptDeleteRoomType(c) { state.pendingDeleteAction = { type: 'roomType', payload: c }; const u = state.globalOffices.filter(o => o.roomType === c); document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告'; document.getElementById('confirm-msg').innerText = u.length > 0 ? `有 ${u.length} 間房間使用此類型「${c}」，刪除後將恢復預設。\n請問確定？` : `確定刪除房間類型「${c}」？`; document.getElementById('confirm-modal-overlay').classList.add('active'); }
-
-export function toggleOwnerDropdown(e) { if(e) e.stopPropagation(); const p = document.getElementById('owner-panel'); document.getElementById('category-panel').classList.remove('active'); p.classList.toggle('active'); if(p.classList.contains('active')) { document.getElementById('owner-search-input').value = ''; window.renderOwnerDropdown(); document.getElementById('owner-search-input').focus(); } }
-export function renderOwnerDropdown(t = '') {
-    const l = document.getElementById('owner-list'); l.innerHTML = ''; const f = state.globalMembers.filter(m => m.office_id === state.currentOfficeId && m.name.toLowerCase().includes(t.toLowerCase()));
-    if ("公用設備 (無指定)".includes(t) || t === '') { const d = document.createElement('div'); d.className = 'dropdown-item'; d.innerHTML = `<span style="flex:1;">💻 公用設備 (無指定)</span>`; d.onclick = () => window.selectOwner('', '公用設備 (無指定)'); l.appendChild(d); }
-    if(f.length === 0 && l.innerHTML === '') return l.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到結果，點擊 ➕ 新增人員</div>';
-    f.forEach(m => { const d = document.createElement('div'); d.className = 'dropdown-item'; d.innerHTML = `<span style="flex:1;">👤 ${m.name}</span><button class="dropdown-item-delete" onclick="event.stopPropagation(); window.promptDeleteOwner('${m.id}', '${m.name}')">🗑️</button>`; d.querySelector('span').onclick = () => window.selectOwner(m.id, m.name); l.appendChild(d); });
-}
-export function filterOwners() { window.renderOwnerDropdown(document.getElementById('owner-search-input').value); }
-export function selectOwner(id, n) { document.getElementById('asset-owner-id').value = id; document.getElementById('selected-owner-text').innerText = id ? `👤 ${n}` : '💻 公用設備 (無指定)'; document.getElementById('owner-panel').classList.remove('active'); }
-export async function addOwnerFromAsset(e) { if(e) e.stopPropagation(); const i = document.getElementById('owner-search-input'), n = i.value.trim(); if(!n) return customAlert('輸入姓名！', true); try { let d = state.currentOfficeName; if (d.includes('接艦')) d = '高緯度接艦人員'; else if (d.includes('ABS')) d = '高緯度監造人員'; const r = doc(collection(db, 'members')); await safeWrite(setDoc(r, { name: n, title: 'N/A', join_date: '', ext: 'N/A', office_id: state.currentOfficeId, dept: d })); i.value = ''; window.selectOwner(r.id, n); customAlert(`成功新增：${n}`); } catch(err) { customAlert('失敗', true); } }
-export function promptDeleteOwner(id, n) { state.pendingDeleteAction = { type: 'owner', id, name: n }; const u = state.globalAssets.filter(a => a.owner_id === id); document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告'; document.getElementById('confirm-msg').innerText = u.length > 0 ? `確定刪除人員「${n}」？\n該員名下綁定 ${u.length} 件設備，將轉退為公用。` : `確定刪除人員「${n}」？`; document.getElementById('confirm-modal-overlay').classList.add('active'); }
-
-export function executeDeleteFromModal(t) {
-    if (t === 'member') { const m = state.globalMembers.find(x => x.id === state.currentEditMemberId); if (m) promptDeleteOwner(m.id, m.name); }
-    else if (t === 'asset') { const a = state.globalAssets.find(x => x.id === state.currentEditAssetId); if (a) { state.pendingDeleteAction = { type: 'asset', id: a.id, data: a }; document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告'; let ext = ''; if (a.owner_id) { const o = state.globalMembers.find(m => m.id === a.owner_id); if (o) ext = `\n\n⚠️ 配發給「${o.name}」。`; } document.getElementById('confirm-msg').innerText = `將資產「${a.item || '設備'}」移至回收桶？${ext}`; document.getElementById('confirm-modal-overlay').classList.add('active'); } } 
-    else if (t === 'office') {
-        const om = state.globalMembers.filter(m => m.office_id === state.currentEditOfficeId), oa = state.globalAssets.filter(a => a.office_id === state.currentEditOfficeId), len = om.length + oa.length;
-        if (len >= 3) { const s = document.getElementById('office-move-floor-select'); s.innerHTML = ''; const fm = {}; state.globalOffices.forEach(o => { const f = o.floor || '其他'; if (!fm[f]) fm[f] = true; }); Object.keys(fm).sort().forEach(f => { s.innerHTML += `<option value="${f}">🏢 轉移至：${f}</option>`; }); s.innerHTML += `<option value="ADD_NEW">➕ 新增區域 (未開放)</option>`; document.getElementById('office-action-msg').innerText = `房間內有 ${len} 項目。可轉移或刪除。`; document.getElementById('office-action-modal-overlay').classList.add('active'); } 
-        else promptDeleteOffice();
-    }
-}
-export function closeOfficeActionModal() { document.getElementById('office-action-modal-overlay').classList.remove('active'); }
-export function promptDeleteOffice() {
-    closeOfficeActionModal(); const len = state.globalMembers.filter(m => m.office_id === state.currentEditOfficeId).length + state.globalAssets.filter(a => a.office_id === state.currentEditOfficeId).length;
-    const o = state.globalOffices.find(x => x.id === state.currentEditOfficeId), nm = o ? o.name : state.currentEditOfficeId; state.pendingDeleteAction = { type: 'office', payload: state.currentEditOfficeId, data: o, name: nm, count: len, step: 1 };
-    document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告'; document.getElementById('confirm-msg').innerText = len >= 10 ? `警告：房間內有 ${len} 項物件。移除將全數移至回收桶！確認？` : len > 0 ? `警告：內有 ${len} 項物件，將移至回收桶！確定？` : `移至回收桶？`; document.getElementById('confirm-modal-overlay').classList.add('active');
-}
-export async function moveOfficeRegion() { const t = document.getElementById('office-move-floor-select').value; if (t === 'ADD_NEW') return customAlert('未開放！', true); const b = document.querySelector('#office-action-modal-overlay .btn-primary'); b.disabled = true; b.innerText = '處理中...'; try { await safeWrite(updateDoc(doc(db, 'offices', state.currentEditOfficeId), { floor: t })); closeOfficeActionModal(); window.closeOfficeModal(); customAlert(`轉移至：${t}`); if (state.currentLevel === 1) showOffices(state.currentFloor); } catch(e) { customAlert('失敗', true); } finally { b.disabled = false; b.innerText = '轉移區域'; } }
-
-export async function executeConfirmAction() {
-    if (!state.pendingDeleteAction) return; const btn = document.getElementById('btn-confirm-action');
-    if (state.pendingDeleteAction.strict) { const inputVal = document.getElementById('strict-confirm-input').value.trim().toLowerCase(); if (inputVal !== state.pendingDeleteAction.payload.toLowerCase()) return customAlert('輸入的信箱不相符，請重新確認！', true); }
-    if ((state.pendingDeleteAction.type === 'office' || state.pendingDeleteAction.type === 'region') && state.pendingDeleteAction.count >= 10 && state.pendingDeleteAction.step === 1) {
-        state.pendingDeleteAction.step = 2; document.getElementById('confirm-modal-title').innerText = '⛔ 最終防護鎖'; document.getElementById('confirm-msg').innerText = `【最終確認】\n您即將一次性刪除大量資料 (${state.pendingDeleteAction.count} 件) 至回收桶！\n\n為防止誤觸，請等待 5 秒鐘解鎖按鈕...`;
-        btn.disabled = true; let timeLeft = 5; btn.innerText = `等待 ${timeLeft} 秒...`;
-        if (state.strictCountdownTimer) clearInterval(state.strictCountdownTimer);
-        state.strictCountdownTimer = setInterval(() => { timeLeft--; if (timeLeft > 0) { btn.innerText = `等待 ${timeLeft} 秒...`; } else { clearInterval(state.strictCountdownTimer); state.strictCountdownTimer = null; btn.disabled = false; btn.innerText = '確定執行'; btn.classList.add('btn-danger'); } }, 1000); return;
-    }
-
-    btn.disabled = true; btn.innerText = '處理中...';
-    try {
-        if (state.pendingDeleteAction.type === 'friendlyLink') {
-            const newLinks = [...state.globalFriendlyLinks]; newLinks.splice(state.pendingDeleteAction.index, 1); await safeWrite(setDoc(doc(db, 'settings', 'friendlyLinks'), { list: newLinks }));
-            closeConfirmModal(); customAlert(`已移除友站連結！`);
-        } else if (state.pendingDeleteAction.type === 'booking') {
-            const bData = state.globalBookings.find(b => b.id === state.pendingDeleteAction.id); if (bData) await backupToRecycleBin('bookings', state.pendingDeleteAction.id, bData, `預約：${bData.title}`);
-            await safeWrite(deleteDoc(doc(db, 'bookings', state.pendingDeleteAction.id))); if (document.getElementById('booking-modal-overlay').classList.contains('active')) window.closeBookingModal(); closeConfirmModal(); customAlert(`已成功取消預約！`);
-        } else if (state.pendingDeleteAction.type === 'promoteAdmin') {
-            const targetEmail = state.pendingDeleteAction.payload; const newAdmins = [...state.globalAdmins, targetEmail]; await safeWrite(setDoc(doc(db, 'settings', 'admins'), { emails: newAdmins }));
-            closeConfirmModal(); customAlert(`成功！「${targetEmail}」已升級為管理員。`);
-        } else if (state.pendingDeleteAction.type === 'removeAdmin') {
-            const targetEmail = state.pendingDeleteAction.payload; const newAdmins = state.globalAdmins.filter(e => e !== targetEmail); await safeWrite(setDoc(doc(db, 'settings', 'admins'), { emails: newAdmins }));
-            closeConfirmModal(); customAlert(`已剝奪「${targetEmail}」的管理員權限！`);
-        } else if (state.pendingDeleteAction.type === 'removeUser') {
-            const targetEmail = state.pendingDeleteAction.payload; const newWl = state.globalWhitelist.filter(e => e !== targetEmail); await safeWrite(setDoc(doc(db, 'settings', 'whitelist'), { emails: newWl }));
-            closeConfirmModal(); customAlert(`已將「${targetEmail}」移出系統白名單！`);
-        } else if (state.pendingDeleteAction.type === 'titleRanks') {
-            if (state.currentTitleRankScope === 'global') state.globalTitleRankSettings.global = [...state.tempTitleRanks]; else state.globalTitleRankSettings.offices[state.currentTitleRankScope] = [...state.tempTitleRanks];
-            await safeWrite(setDoc(doc(db, "settings", "titleRanks"), state.globalTitleRankSettings)); window.closeTitleRankModal(); closeConfirmModal(); customAlert("職稱排序設定已儲存！");
-            if (document.getElementById('staff-sort-select').value === 'title') updateDetailContent();
-        } else if (state.pendingDeleteAction.type === 'category') {
-            const cat = state.pendingDeleteAction.payload; const usedAssets = state.globalAssets.filter(a => a.category === cat); const ops = usedAssets.map(a => deleteDoc(doc(db, 'assets', a.id)));
-            state.globalCategories = state.globalCategories.filter(c => c !== cat); ops.push(setDoc(doc(db, "settings", "categories"), { list: state.globalCategories }));
-            await safeWrite(Promise.all(ops)); if (state.currentAssetCategory === cat) window.selectCategory('電腦'); if (document.getElementById('category-panel').classList.contains('active')) window.renderCategoryDropdown(); closeConfirmModal(); customAlert(`已刪除類型「${cat}」及其相關資產！`);
-        } else if (state.pendingDeleteAction.type === 'roomType') {
-            const cat = state.pendingDeleteAction.payload; const usedOffices = state.globalOffices.filter(o => o.roomType === cat); const ops = usedOffices.map(o => updateDoc(doc(db, 'offices', o.id), { roomType: '辦公室' }));
-            state.globalRoomTypes = state.globalRoomTypes.filter(c => c !== cat); ops.push(setDoc(doc(db, "settings", "roomTypes"), { list: state.globalRoomTypes }));
-            await safeWrite(Promise.all(ops)); if (state.currentRoomType === cat) window.selectRoomType('辦公室'); if (document.getElementById('room-type-panel').classList.contains('active')) window.renderRoomTypeDropdown(); closeConfirmModal(); customAlert(`已刪除房間類型「${cat}」！`);
-        } else if (state.pendingDeleteAction.type === 'owner') {
-            const ownerId = state.pendingDeleteAction.id; const userAssets = state.globalAssets.filter(a => a.owner_id === ownerId); const ops = userAssets.map(a => updateDoc(doc(db, 'assets', a.id), { owner_id: null }));
-            const mData = state.globalMembers.find(m => m.id === ownerId); if(mData) ops.push(backupToRecycleBin('members', ownerId, mData, `人員：${mData.name}`)); ops.push(deleteDoc(doc(db, 'members', ownerId))); await safeWrite(Promise.all(ops));
-            if (document.getElementById('asset-owner-id').value === ownerId) window.selectOwner('', '公用設備 (無指定)'); if (document.getElementById('owner-panel').classList.contains('active')) window.renderOwnerDropdown(document.getElementById('owner-search-input').value);
-            if (document.getElementById('edit-modal-overlay').classList.contains('active')) window.closeEditModal(); closeConfirmModal(); customAlert(`已將該人員移至回收桶！`);
-        } else if (state.pendingDeleteAction.type === 'asset') {
-            const aData = state.pendingDeleteAction.data; if(aData) await backupToRecycleBin('assets', state.pendingDeleteAction.id, aData, `資產：${aData.item || aData.category}`);
-            await safeWrite(deleteDoc(doc(db, 'assets', state.pendingDeleteAction.id))); if (document.getElementById('asset-modal-overlay').classList.contains('active')) window.closeAssetModal(); closeConfirmModal(); customAlert(`已將該資產移至回收桶！`);
-        } else if (state.pendingDeleteAction.type === 'office') {
-            const offId = state.pendingDeleteAction.payload; const offName = state.pendingDeleteAction.name; const membersToDelete = state.globalMembers.filter(m => m.office_id === offId); const assetsToDelete = state.globalAssets.filter(a => a.office_id === offId); const bookingsToDelete = state.globalBookings.filter(b => b.office_id === offId);
-            const ops = []; 
-            const oData = state.pendingDeleteAction.data; if(oData) ops.push(backupToRecycleBin('offices', offId, oData, `辦公室：${oData.name}`));
-            membersToDelete.forEach(m => { ops.push(backupToRecycleBin('members', m.id, m, `人員：${m.name}`)); ops.push(deleteDoc(doc(db, 'members', m.id))); });
-            assetsToDelete.forEach(a => { ops.push(backupToRecycleBin('assets', a.id, a, `資產：${a.item || a.category}`)); ops.push(deleteDoc(doc(db, 'assets', a.id))); });
-            bookingsToDelete.forEach(b => { ops.push(backupToRecycleBin('bookings', b.id, b, `預約：${b.title}`)); ops.push(deleteDoc(doc(db, 'bookings', b.id))); });
-            ops.push(deleteDoc(doc(db, 'offices', offId))); await safeWrite(Promise.all(ops));
-            if (document.getElementById('office-modal-overlay').classList.contains('active')) window.closeOfficeModal(); closeConfirmModal(); customAlert(`房間「${offName}」及內部資料已移至回收桶！`); if (state.currentLevel === 2) goUpLevel();
-        } else if (state.pendingDeleteAction.type === 'region') {
-            const rId = state.pendingDeleteAction.payload.regionId; const rName = state.pendingDeleteAction.payload.regionName; const offices = state.pendingDeleteAction.payload.offices; const ops = [];
-            const rData = state.globalRegions.find(r => r.id === rId); if(rData) ops.push(backupToRecycleBin('regions', rId, rData, `區域：${rName}`));
-            offices.forEach(o => {
-                ops.push(backupToRecycleBin('offices', o.id, o, `辦公室：${o.name}`));
-                const membersToDelete = state.globalMembers.filter(m => m.office_id === o.id); const assetsToDelete = state.globalAssets.filter(a => a.office_id === o.id); const bookingsToDelete = state.globalBookings.filter(b => b.office_id === o.id);
-                membersToDelete.forEach(m => { ops.push(backupToRecycleBin('members', m.id, m, `人員：${m.name}`)); ops.push(deleteDoc(doc(db, 'members', m.id))); });
-                assetsToDelete.forEach(a => { ops.push(backupToRecycleBin('assets', a.id, a, `資產：${a.item || a.category}`)); ops.push(deleteDoc(doc(db, 'assets', a.id))); });
-                bookingsToDelete.forEach(b => { ops.push(backupToRecycleBin('bookings', b.id, b, `預約：${b.title}`)); ops.push(deleteDoc(doc(db, 'bookings', b.id))); });
-                ops.push(deleteDoc(doc(db, 'offices', o.id)));
+            sortedFloors.forEach((floor, idx) => {
+                const regionObj = floorMap[floor]; const card = document.createElement('div'); card.className = 'nav-card'; card.onclick = () => showOffices(floor);
+                let delBtn = ''; if (regionObj.isRegion) { delBtn = `<button class="card-edit-btn" onclick="event.stopPropagation(); window.promptDeleteRegion('${regionObj.name}', '${regionObj.id}')">🗑️</button>`; }
+                let html = `${delBtn}<h2>${floor}</h2><ul class="preview-list" id="preview-floor-${idx}">`;
+                const sortedOffices = regionObj.offices.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+                if (sortedOffices.length > 0) { sortedOffices.forEach(o => { html += `<li>• ${o.name}</li>`; }); } else { html += `<li style="color: #94a3b8; font-style: italic;">此區域為空</li>`; }
+                html += `</ul>`; card.innerHTML = html; gridNav.appendChild(card);
             });
-            if(rId) ops.push(deleteDoc(doc(db, 'regions', rId))); await safeWrite(Promise.all(ops)); closeConfirmModal(); customAlert(`區域「${rName}」及內部資料已移至回收桶！`); if (state.currentLevel === 1) goHome();
         }
-    } catch(e) { console.error(e); customAlert('操作發生錯誤', true); } finally { btn.disabled = false; btn.innerText = '確定執行'; }
+    }
+    document.getElementById('dev-tabs-container').style.display = (state.devOptionsEnabled && state.currentLevel === 0) ? 'flex' : 'none';
+    if (state.currentLevel === 0) {
+        const p = document.getElementById('pinned-section'), b = document.getElementById('btn-global-pin');
+        if (state.myPinnedItems.length > 0) { b.style.display = 'none'; p.style.display = 'block'; state.isPinSectionVisible = true; } 
+        else { b.style.display = 'inline-block'; p.style.display = state.isPinSectionVisible ? 'block' : 'none'; }
+        renderPinnedItems(); 
+    }
+    updateNavigationUI(); if (!history.state) history.replaceState({ level: 0 }, "");
 }
 
-export function closeConfirmModal() { document.getElementById('confirm-modal-overlay').classList.remove('active'); document.getElementById('strict-input-container').style.display = 'none'; state.pendingDeleteAction = null; if (state.strictCountdownTimer) { clearInterval(state.strictCountdownTimer); state.strictCountdownTimer = null; } }
-
-export async function importLegacyRequests() {
-    if(!confirm('匯入歷史名單？')) return; const lo = document.getElementById('loading-overlay'); lo.querySelector('#loading-text').innerText = '匯入中...'; lo.style.display = 'flex'; lo.style.opacity = '1';
-    try {
-        const ops = []; let c = 0; state.globalUsers.forEach(u => { const isA = state.globalAdmins.includes(u.id) || u.id === state.SUPER_ADMIN; if (!(state.globalWhitelist.includes(u.id) || isA) && !state.globalAccessRequests.some(r => r.id === u.id) && u.id !== 'anonymous@preview.com') { ops.push(setDoc(doc(db, 'access_requests', u.id), { email: u.id, name: u.nickname || u.id.split('@')[0], timestamp: new Date().toISOString(), isLegacy: true })); c++; } });
-        if (ops.length > 0) { await safeWrite(Promise.all(ops)); customAlert(`匯入 ${c} 筆`); } else customAlert('無匯入項目。');
-    } catch(e) { customAlert('失敗！', true); } finally { lo.style.display = 'none'; }
+export function updateMainTitle(text) {
+    const t = document.getElementById('title-container'); t.innerHTML = `<h1 id="main-title" class="static-title">${text}</h1>`; void t.offsetWidth; 
+    requestAnimationFrame(() => setTimeout(() => { const m = document.getElementById('main-title'); if (m && m.scrollWidth > t.clientWidth) t.innerHTML = `<div class="marquee-wrapper"><h1 class="marquee-text">${text}</h1><h1 class="marquee-text">${text}</h1></div>`; }, 50));
 }
 
-// 掛載至 window
-window.openApprovalModal = openApprovalModal; window.closeApprovalModal = closeApprovalModal; window.renderApprovalList = renderApprovalList;
-window.openNicknameModal = openNicknameModal; window.closeNicknameModal = closeNicknameModal; window.saveNickname = saveNickname;
-window.openShareModal = openShareModal; window.closeShareModal = closeShareModal; window.copyShareLink = copyShareLink; window.inviteUser = inviteUser;
-window.openWhitelistModal = openWhitelistModal; window.closeWhitelistModal = closeWhitelistModal; window.renderWhitelist = renderWhitelist; window.addWhitelistEmail = addWhitelistEmail; window.promptDeleteWhitelist = promptDeleteWhitelist;
-window.openFriendlyLinkModal = openFriendlyLinkModal; window.closeFriendlyLinkModal = closeFriendlyLinkModal; window.saveFriendlyLink = saveFriendlyLink; window.promptDeleteFriendlyLink = promptDeleteFriendlyLink;
-window.openPinModal = openPinModal; window.closePinModal = closePinModal; window.filterPinItemsModal = filterPinItemsModal;
-window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal; window.changeTitleRankScope = changeTitleRankScope; window.renderTitleRankList = renderTitleRankList; window.promptSaveTitleRanks = promptSaveTitleRanks;
-window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
-window.openRecycleBinModal = openRecycleBinModal; window.closeRecycleBinModal = closeRecycleBinModal; window.renderRecycleBinList = renderRecycleBinList;
-window.openRegionModal = openRegionModal; window.closeRegionModal = closeRegionModal; window.saveRegionData = saveRegionData; window.promptDeleteRegion = promptDeleteRegion;
-window.openOfficeModal = openOfficeModal; window.openAddOfficeModal = openAddOfficeModal; window.closeOfficeModal = closeOfficeModal; window.saveOfficeData = saveOfficeData;
-window.openMemberModal = openMemberModal; window.closeEditModal = closeEditModal; window.saveMemberData = saveMemberData;
-window.handleStartTimeChange = handleStartTimeChange; window.openBookingModal = openBookingModal; window.closeBookingModal = closeBookingModal; window.saveBookingData = saveBookingData; window.promptDeleteBooking = promptDeleteBooking;
-window.syncSnPc = syncSnPc; window.openAssetModal = openAssetModal; window.closeAssetModal = closeAssetModal; window.saveAssetData = saveAssetData;
-window.toggleCategoryDropdown = toggleCategoryDropdown; window.renderCategoryDropdown = renderCategoryDropdown; window.filterCategories = filterCategories; window.selectCategory = selectCategory; window.addCategory = addCategory; window.promptDeleteCategory = promptDeleteCategory;
-window.toggleRoomTypeDropdown = toggleRoomTypeDropdown; window.renderRoomTypeDropdown = renderRoomTypeDropdown; window.filterRoomTypes = filterRoomTypes; window.selectRoomType = selectRoomType; window.addRoomType = addRoomType; window.promptDeleteRoomType = promptDeleteRoomType;
-window.toggleOwnerDropdown = toggleOwnerDropdown; window.renderOwnerDropdown = renderOwnerDropdown; window.filterOwners = filterOwners; window.selectOwner = selectOwner; window.addOwnerFromAsset = addOwnerFromAsset; window.promptDeleteOwner = promptDeleteOwner;
-window.executeDeleteFromModal = executeDeleteFromModal; window.closeOfficeActionModal = closeOfficeActionModal; window.promptDeleteOffice = promptDeleteOffice; window.moveOfficeRegion = moveOfficeRegion; window.executeConfirmAction = executeConfirmAction; window.closeConfirmModal = closeConfirmModal; window.importLegacyRequests = importLegacyRequests;
+export function syncHeaderLayout() { const l = document.getElementById('header-left'), r = document.getElementById('header-right'); if (l && r) r.style.width = l.offsetWidth + 'px'; }
+
+export function renderSidebarTree() {
+    const t = document.getElementById('sidebar-nav-tree'); if (!t) return;
+    let html = `<div class="menu-item" onclick="window.goHome(); window.closeSidebar();" style="border-bottom: 1px solid #f1f5f9;">🏠 首頁</div>`;
+    const map = {}; state.globalRegions.forEach(r => map[r.name] = []); state.globalOffices.forEach(o => { const f = o.floor || '其他樓層'; if (!map[f]) map[f] = []; map[f].push(o); });
+    Object.keys(map).sort().forEach((f, idx) => {
+        html += `<div class="tree-floor" onclick="window.toggleTreeFloor('floor-${idx}')"><span>🏢 ${f}</span><span id="floor-${idx}-arrow" style="font-size:12px; transition: transform 0.3s;">▼</span></div><ul class="tree-office-list" id="floor-${idx}-list">`;
+        if (map[f].length > 0) { map[f].sort((a,b)=>(a.name||'').localeCompare(b.name||'')).forEach(off => { html += `<li class="tree-office" onclick="window.showDetail('${off.id}', '${off.name}'); window.closeSidebar();">↳ ${off.name}</li>`; }); } else { html += `<li class="tree-office" style="color:#cbd5e1; cursor:default;">(無房間)</li>`; }
+        html += `</ul>`;
+    });
+    t.innerHTML = html;
+}
+
+export function toggleTreeFloor(id) { const l = document.getElementById(`${id}-list`), a = document.getElementById(`${id}-arrow`); if (l.classList.contains('open')) { l.classList.remove('open'); a.style.transform = 'rotate(0deg)'; } else { l.classList.add('open'); a.style.transform = 'rotate(180deg)'; } }
+export function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('sidebar-overlay').classList.toggle('active'); }
+export function closeSidebar() { document.getElementById('sidebar').classList.remove('active'); document.getElementById('sidebar-overlay').classList.remove('active'); }
+export function toggleFabMenu(e) { if(e) e.stopPropagation(); document.getElementById('fab-container').classList.toggle('active'); document.getElementById('fab-menu').classList.toggle('active'); }
+export function closeFabMenu() { document.getElementById('fab-container').classList.remove('active'); document.getElementById('fab-menu').classList.remove('active'); }
+
+export function toggleDevOptions(e) {
+    state.devOptionsEnabled = e.target.checked;
+    if (state.currentLevel === 0) { document.getElementById('dev-tabs-container').style.display = state.devOptionsEnabled ? 'flex' : 'none'; }
+}
+
+export function updateFabMenu() {
+    const m = document.getElementById('fab-menu'), c = document.getElementById('fab-container'); m.innerHTML = ''; closeFabMenu(); 
+    if (state.currentLevel < 0) { c.style.display = 'none'; return; }
+    if (state.currentLevel === 0) { c.style.display = 'flex'; m.innerHTML = `<button class="fab-item" onclick="window.openRegionModal()">➕ 新增區域 (大樓/樓層)</button>`; } 
+    else if (state.currentLevel === 1) { c.style.display = 'flex'; m.innerHTML = `<button class="fab-item" onclick="window.openAddOfficeModal()">➕ 新增辦公室</button><button class="fab-item disabled" style="color: #94a3b8; cursor: not-allowed;">🗺️ 綁定地圖區塊 (未開放)</button>`; } 
+    else if (state.currentLevel === 2) {
+        c.style.display = 'flex'; let act = '';
+        if (state.currentTab === 'staff') act = `<button class="fab-item" onclick="window.openMemberModal()">➕ 新增人員</button>`;
+        else if (state.currentTab === 'assets') act = `<button class="fab-item" onclick="window.openAssetModal()">➕ 新增資產</button>`;
+        else if (state.currentTab === 'checkout') act = `<button class="fab-item" onclick="window.customAlert('尚未開放')">➕ 新增紀錄</button>`;
+        else if (state.currentTab === 'booking') act = `<button class="fab-item" onclick="window.openBookingModal()">📅 新增會議預約</button>`;
+        m.innerHTML = `${act}<button class="fab-item" onclick="window.openOfficeModal('${state.currentOfficeId}')">✏️ 編輯房間資訊</button>`;
+    } else { c.style.display = 'none'; }
+}
+
+export function updateNavigationUI() {
+    const bh = document.getElementById('btn-global-home'), bu = document.getElementById('btn-global-up'), bc = document.getElementById('breadcrumb'), bp = document.getElementById('btn-global-pin');
+    if (state.currentLevel < 0) { bh.style.display = 'none'; bu.style.display = 'none'; bp.style.display = 'none'; bc.style.display = 'none'; document.getElementById('dev-tabs-container').style.display = 'none'; document.getElementById('pinned-section').style.display = 'none'; return; }
+    bc.style.display = 'flex'; 
+    if (state.currentLevel === 0) { bh.style.display = 'none'; bu.style.display = 'none'; bp.style.display = state.myPinnedItems.length === 0 ? 'inline-block' : 'none'; } 
+    else { bh.style.display = 'inline-block'; bu.style.display = 'inline-block'; bp.style.display = 'none'; document.getElementById('pinned-section').style.display = 'none'; }
+    
+    document.getElementById('dev-tabs-container').style.display = (state.currentLevel === 0 && state.devOptionsEnabled) ? 'flex' : 'none'; syncHeaderLayout();
+    
+    if (state.currentLevel === 0) updateMainTitle('ＰＭＯ電子圖資系統'); 
+    else if (state.currentLevel === 1) updateMainTitle(state.currentFloor); 
+    else if (state.currentLevel === 2) updateMainTitle(state.currentOfficeName); 
+    else if (state.currentLevel === 3) updateMainTitle('辦公室分機總表');
+    else if (state.currentLevel === 4) updateMainTitle('在列資產總表');
+
+    let html = state.currentLevel === 0 ? `<span class="breadcrumb-item current">首頁</span>` : `<span class="breadcrumb-item" onclick="window.goHome()">首頁</span>`;
+    if (state.currentLevel === 1 || state.currentLevel === 2) html += `<span class="breadcrumb-separator">/</span>${state.currentLevel === 1 ? `<span class="breadcrumb-item current">${state.currentFloor}</span>` : `<span class="breadcrumb-item" onclick="window.showOffices('${state.currentFloor}')">${state.currentFloor}</span>`}`;
+    if (state.currentLevel === 2) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">${state.currentOfficeName}</span>`;
+    if (state.currentLevel === 3) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">分機總表</span>`;
+    if (state.currentLevel === 4) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">在列資產總表</span>`;
+    bc.innerHTML = html; updateFabMenu();
+}
+
+export function switchView(id) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(id).classList.add('active'); updateNavigationUI(); }
+export function goHome(push = true) { state.currentLevel = 0; state.currentFloor = ''; state.currentOfficeId = ''; state.currentOfficeName = ''; if (push) history.pushState({ level: 0 }, ""); initView(); switchView('view-floor'); }
+export function goUpLevel(push = true) { if (state.currentLevel === 3 || state.currentLevel === 4) goHome(push); else if (state.currentLevel === 2) showOffices(state.currentFloor, push); else if (state.currentLevel === 1) goHome(push); }
+
+export function showOffices(floor, push = true) {
+    state.currentLevel = 1; state.currentFloor = floor; state.currentOfficeId = ''; state.currentOfficeName = ''; if (push) history.pushState({ level: 1, floor: floor }, "");
+    const l = document.getElementById('office-list'); l.innerHTML = '';
+    state.globalOffices.filter(o => o.floor === floor).forEach(off => {
+        const c = document.createElement('div'); c.className = 'nav-card'; const rt = off.roomType || '辦公室';
+        c.innerHTML = `${rt !== '辦公室' ? `<div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${rt}</div>` : ''}<button class="card-edit-btn" onclick="event.stopPropagation(); window.openOfficeModal('${off.id}')">✏️</button><h2>${off.name} ${rt === '會議室' ? `<span style="font-size:12px; color:var(--success); font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; margin-left:10px;">🟢 可預約</span>` : ''}</h2><div class="password-container"><span class="password-badge">${off.pwd || 'N/A'}</span></div><div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>`;
+        c.onclick = () => showDetail(off.id, off.name); l.appendChild(c);
+    });
+    switchView('view-office');
+}
+
+export function showDetail(id, name, push = true) {
+    state.currentLevel = 2; state.currentOfficeId = id; state.currentOfficeName = name; 
+    const od = state.globalOffices.find(o => o.id === state.currentOfficeId); if (od && od.floor) state.currentFloor = od.floor;
+    if (push) history.pushState({ level: 2, floor: state.currentFloor, officeId: id, officeName: name }, "");
+    const rt = od ? (od.roomType || '辦公室') : '辦公室'; const tr = state.ROOM_TRAITS[rt] || state.ROOM_TRAITS['DEFAULT'];
+    const tc = document.getElementById('dynamic-room-tabs'); tc.innerHTML = tr.tabs.map(k => `<button id="tab-${k}" class="tab-btn" onclick="window.switchTab('${k}')">${state.TAB_LABELS[k]}</button>`).join('');
+    state.currentTab = tr.defaultTab; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); const ab = document.getElementById(`tab-${state.currentTab}`); if(ab) ab.classList.add('active');
+    updateDetailContent(); switchView('view-detail');
+}
+
+export function switchTab(tab) { state.currentTab = tab; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); const ab = document.getElementById(`tab-${tab}`); if(ab) ab.classList.add('active'); updateDetailContent(); updateFabMenu(); }
+export function changeCalendarMonth(d) { state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + d); updateDetailContent(); }
+export function selectCalendarDate(d) { state.selectedCalendarDate = d; state.calendarViewMode = 'day'; updateDetailContent(); }
+export function setCalendarViewMode(m) { state.calendarViewMode = m; updateDetailContent(); }
+export function goToToday() { state.currentCalendarDate = new Date(); state.selectedCalendarDate = new Date().toISOString().split('T')[0]; state.calendarViewMode = 'day'; updateDetailContent(); }
+
+export function updateDetailContent() {
+    const grid = document.getElementById('detail-grid'); grid.innerHTML = '';
+    let om = state.globalMembers.filter(m => m.office_id === state.currentOfficeId); 
+    const officeAssetsList = state.globalAssets.filter(a => a.office_id === state.currentOfficeId);
+    
+    // ✨ 將資產分為「固定」與「消耗品」
+    const fixedAssets = officeAssetsList.filter(a => a.assetType !== 'consumable');
+    const consumableAssets = officeAssetsList.filter(a => a.assetType === 'consumable');
+
+    const stb = document.getElementById('tab-staff'); if(stb) stb.innerText = `人員 (${om.length})`; 
+    const atb = document.getElementById('tab-assets'); if(atb) atb.innerText = `資產 (${officeAssetsList.length})`;
+    document.getElementById('filter-container').style.display = (state.currentTab === 'staff' || state.currentTab === 'assets') ? 'flex' : 'none'; document.getElementById('staff-sort-select').style.display = state.currentTab === 'staff' ? 'block' : 'none'; document.getElementById('asset-sort-select').style.display = state.currentTab === 'assets' ? 'block' : 'none';
+
+    if (state.currentTab === 'checkout') { grid.className = 'grid-nav'; grid.innerHTML = `<div class="locked-feature-panel"><h3>🔒 此模組功能開發中</h3></div>`; return; }
+    
+    if (state.currentTab === 'booking') {
+        grid.className = ''; grid.style.display = 'block'; let rb = state.globalBookings.filter(b => b.office_id === state.currentOfficeId); const todayStr = new Date().toISOString().split('T')[0];
+        let html = `<div style="display:flex; justify-content:center; gap:8px; margin-bottom:15px; flex-wrap:wrap;"><div style="display:flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;"><button onclick="window.setCalendarViewMode('day')" style="padding:6px 15px; border:none; background:${state.calendarViewMode === 'day' ? 'var(--primary)' : 'white'}; color:${state.calendarViewMode === 'day' ? 'white' : 'var(--text-main)'}; cursor:pointer; font-weight:bold;">日</button><button onclick="window.setCalendarViewMode('week')" style="padding:6px 15px; border:none; border-left:1px solid #cbd5e1; border-right:1px solid #cbd5e1; background:${state.calendarViewMode === 'week' ? 'var(--primary)' : 'white'}; color:${state.calendarViewMode === 'week' ? 'white' : 'var(--text-main)'}; cursor:pointer; font-weight:bold;">週</button><button onclick="window.setCalendarViewMode('month')" style="padding:6px 15px; border:none; background:${state.calendarViewMode === 'month' ? 'var(--primary)' : 'white'}; color:${state.calendarViewMode === 'month' ? 'white' : 'var(--text-main)'}; cursor:pointer; font-weight:bold;">月</button></div><button onclick="window.goToToday()" class="btn-secondary" style="border:1px solid #cbd5e1; background:white;">回今天</button></div>`;
+
+        if (state.calendarViewMode === 'month') {
+            const yy = state.currentCalendarDate.getFullYear(), mm = state.currentCalendarDate.getMonth(), fd = new Date(yy, mm, 1).getDay(), dim = new Date(yy, mm + 1, 0).getDate();
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; background:white; padding:10px 15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05);"><button class="btn-secondary" onclick="window.changeCalendarMonth(-1)" style="padding:4px 12px;">◀ 上月</button><h3 style="margin:0; color:var(--primary); font-size:18px;">${yy}年 ${mm + 1}月</h3><button class="btn-secondary" onclick="window.changeCalendarMonth(1)" style="padding:4px 12px;">下月 ▶</button></div><div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:1px; background:#cbd5e1; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">`;
+            ['日', '一', '二', '三', '四', '五', '六'].forEach(w => { html += `<div style="background:#f8fafc; padding:8px; text-align:center; font-size:13px; font-weight:bold; color:${w==='日'||w==='六'?'var(--danger)':'var(--text-muted)'};">${w}</div>`; });
+            for(let i=0; i<fd; i++) html += `<div style="background:white; min-height:80px; padding:5px; opacity:0.3;"></div>`;
+            for(let d=1; d<=dim; d++) {
+                const dStr = `${yy}-${String(mm+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; const dbks = rb.filter(b => b.date === dStr).sort((a,b) => a.startTime.localeCompare(b.startTime));
+                const isSel = dStr === state.selectedCalendarDate, isTdy = dStr === todayStr; let bg = isSel ? '#eff6ff' : 'white'; let border = isSel ? '2px solid var(--primary)' : '2px solid transparent'; let dayColor = isTdy ? 'white' : 'var(--text-main)'; let dayBg = isTdy ? 'var(--danger)' : 'transparent';
+                let badges = ''; dbks.slice(0, 3).forEach(b => { badges += `<div style="font-size:10px; background:var(--primary); color:white; border-radius:3px; padding:2px 4px; margin-top:3px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${b.startTime} ${b.title}</div>`; }); if(dbks.length > 3) badges += `<div style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:2px;">+${dbks.length - 3} 更多</div>`;
+                html += `<div style="background:${bg}; border:${border}; box-sizing:border-box; min-height:80px; padding:5px; cursor:pointer; transition:background 0.2s;" onclick="window.selectCalendarDate('${dStr}')"><div style="display:inline-block; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; font-size:12px; font-weight:bold; color:${dayColor}; background:${dayBg};">${d}</div>${badges}</div>`;
+            }
+            const rmd = (fd + dim) % 7; if(rmd !== 0) for(let i=0; i<7-rmd; i++) html += `<div style="background:white; min-height:80px; padding:5px; opacity:0.3;"></div>`;
+            html += `</div>`;
+        } else if (state.calendarViewMode === 'week') {
+            const cD = new Date(state.currentCalendarDate), dOw = cD.getDay(), sw = new Date(cD); sw.setDate(cD.getDate() - dOw); const ew = new Date(sw); ew.setDate(sw.getDate() + 6);
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; background:white; padding:10px 15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05);"><button class="btn-secondary" onclick="window.currentCalendarDate.setDate(window.currentCalendarDate.getDate() - 7); window.updateDetailContent();" style="padding:4px 12px;">◀ 上週</button><h3 style="margin:0; color:var(--primary); font-size:18px;">${sw.getMonth()+1}/${sw.getDate()} - ${ew.getMonth()+1}/${ew.getDate()}</h3><button class="btn-secondary" onclick="window.currentCalendarDate.setDate(window.currentCalendarDate.getDate() + 7); window.updateDetailContent();" style="padding:4px 12px;">下週 ▶</button></div><div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:1px; background:#cbd5e1; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">`;
+            for (let i = 0; i < 7; i++) { const cd = new Date(sw); cd.setDate(sw.getDate() + i); html += `<div style="background:#f8fafc; padding:8px; text-align:center; font-size:13px; font-weight:bold; color:${(i===0||i===6) ? 'var(--danger)' : 'var(--text-muted)'};">${['日','一','二','三','四','五','六'][i]}<br><span style="font-size:18px; color:var(--text-main);">${String(cd.getDate()).padStart(2,'0')}</span></div>`; }
+            for (let i = 0; i < 7; i++) {
+                const cd = new Date(sw); cd.setDate(sw.getDate() + i); const dStr = `${cd.getFullYear()}-${String(cd.getMonth()+1).padStart(2,'0')}-${String(cd.getDate()).padStart(2,'0')}`;
+                const dbks = rb.filter(b => b.date === dStr).sort((a,b) => a.startTime.localeCompare(b.startTime)); const isSel = dStr === state.selectedCalendarDate; let bg = isSel ? '#eff6ff' : 'white'; let border = isSel ? '2px solid var(--primary)' : '2px solid transparent';
+                let badges = ''; dbks.forEach(b => { badges += `<div style="font-size:11px; background:var(--primary); color:white; border-radius:4px; padding:4px; margin-top:4px; overflow:hidden; white-space:normal; line-height:1.2;"><b>${b.startTime}</b><br>${b.title}</div>`; }); if(dbks.length === 0) badges = `<div style="text-align:center; color:#cbd5e1; margin-top:20px; font-size:12px;">無排程</div>`;
+                html += `<div style="background:${bg}; border:${border}; box-sizing:border-box; min-height:150px; padding:5px; cursor:pointer; transition:background 0.2s;" onclick="window.selectCalendarDate('${dStr}')">${badges}</div>`;
+            }
+            html += `</div>`;
+        }
+
+        if (state.calendarViewMode === 'day' || state.calendarViewMode === 'month') {
+            const sbks = rb.filter(b => b.date === state.selectedCalendarDate).sort((a,b) => a.startTime.localeCompare(b.startTime));
+            let dD = state.selectedCalendarDate === todayStr ? state.selectedCalendarDate.replace(/-/g,'/') + ' (今天)' : state.selectedCalendarDate.replace(/-/g,'/');
+            if (state.calendarViewMode === 'day') { html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; background:white; padding:10px 15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05);"><button class="btn-secondary" onclick="let d=new Date(window.selectedCalendarDate); d.setDate(d.getDate()-1); window.selectedCalendarDate = d.toISOString().split('T')[0]; window.updateDetailContent();" style="padding:4px 12px;">◀ 前一天</button><h3 style="margin:0; color:var(--primary); font-size:18px;">📌 ${dD} 預約清單</h3><button class="btn-secondary" onclick="let d=new Date(window.selectedCalendarDate); d.setDate(d.getDate()+1); window.selectedCalendarDate = d.toISOString().split('T')[0]; window.updateDetailContent();" style="padding:4px 12px;">後一天 ▶</button></div>`; } 
+            else { html += `<h3 style="margin-top:30px; border-bottom:2px solid #e2e8f0; padding-bottom:10px; color:var(--text-main);">📌 ${dD} 預約清單</h3>`; }
+            html += `<div class="grid-nav" id="calendar-agenda-grid"></div>`; grid.innerHTML = html; const ag = document.getElementById('calendar-agenda-grid');
+            if(sbks.length === 0) { ag.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 30px; color: #64748b; background:white; border-radius:12px; border:1px dashed #cbd5e1;">這天尚無會議預約，點擊右下角「＋」可新增。</div>`; } 
+            else { sbks.forEach(b => { const c = document.createElement('div'); c.className = 'nav-card'; c.style.textAlign = 'left'; c.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:10px;"><div><h3 style="margin:0; color:var(--primary); font-size:18px;">${b.title}</h3></div><button class="btn-edit" onclick="window.openBookingModal('${b.id}')">✏️ 編輯</button></div><div style="font-size:14px; margin-bottom:6px;"><b>時間：</b> <span style="font-family:monospace; font-size:15px; font-weight:bold; color:var(--danger);">${b.startTime} - ${b.endTime}</span></div><div style="font-size:14px;"><b>預約人：</b> ${b.booker}</div>`; ag.appendChild(c); }); }
+        } else { grid.innerHTML = html; }
+        return;
+    }
+
+    grid.className = 'grid-nav'; grid.style.display = '';
+
+    if (state.currentTab === 'staff') {
+        if(om.length === 0) return grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
+        const sm = document.getElementById('staff-sort-select').value;
+        om.sort((a, b) => { if (sm === 'name') return (a.name||'').localeCompare(b.name||'', 'zh-TW'); else if (sm === 'title') { const r = state.globalTitleRankSettings.offices[state.currentOfficeId] || state.globalTitleRankSettings.global || []; const ra = r.indexOf(a.title), rb = r.indexOf(b.title), va = ra !== -1 ? ra : 999, vb = rb !== -1 ? rb : 999; if (va !== vb) return va - vb; return (a.name||'').localeCompare(b.name||'', 'zh-TW'); } else if (sm === 'join_date') { const da = a.join_date || '9999-99-99', db = b.join_date || '9999-99-99'; if (da !== db) return da.localeCompare(db); return (a.name||'').localeCompare(b.name||'', 'zh-TW'); } return 0; });
+        om.forEach(m => { const c = document.createElement('div'); c.className = 'nav-card'; const pc = fixedAssets.find(a => a.category === '電腦' && a.owner_id === m.id); c.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;"><div style="text-align: left;"><h3 style="margin:0 0 5px 0;">${m.name}</h3></div><button class="btn-edit" onclick="window.openMemberModal('${m.id}')">✏️ 編輯</button></div><div class="detail-info" style="border-top: none; padding-top: 0; margin-top: 5px;"><div><b>職稱：</b>${m.title || 'N/A'}</div><div><b>分機：</b>${m.ext}</div><div><b>入廠日：</b>${m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A'}</div><div><b>電腦編號：</b>${pc && pc.pc_id && pc.pc_id !== 'N/A' ? pc.pc_id : '無設備'}</div></div>`; grid.appendChild(c); });
+    } 
+    else if (state.currentTab === 'assets') {
+        if(officeAssetsList.length === 0) return grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無資產資料</div>';
+        
+        let html = '';
+        
+        // 1. 固定資產區塊
+        if (fixedAssets.length > 0) {
+            html += `<div style="grid-column: 1/-1; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid var(--primary); font-size:16px;">📌 固定資產</h3></div>`;
+            let displayFixed = fixedAssets.map(a => { let on = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) on = `👤 使用者: ${owner.name}`; } let t = a.item || '未命名設備'; if (a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`; return { ...a, _on: on, _t: t }; });
+            displayFixed.forEach(a => {
+                let si = a.status === '正常' ? '🟢' : a.status === '待修' ? '🔴' : a.status === '報廢' ? '⚫' : a.status === '碳粉不足' ? '🟡' : '⚪'; 
+                html += `<div class="nav-card"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><h3 style="margin:0; text-align:left;">${a._t}</h3><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></div>${a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${a._on}</div>` : ''}<div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div><div style="font-size:12px; font-weight:bold; color: var(--text-main);">${si} ${a.status || '未登記'}</div></div>`; 
+            });
+        }
+
+        // 2. 消耗品區塊 (Dashboard 卡片)
+        if (consumableAssets.length > 0) {
+            html += `<div style="grid-column: 1/-1; margin-top: 20px; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid #8b5cf6; font-size:16px; color:#8b5cf6;">📦 消耗品</h3></div>`;
+            consumableAssets.forEach(a => {
+                html += `
+                <div class="nav-card" style="border: 2px solid #ede9fe; background: white;">
+                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                       <span style="background:#ede9fe; color:#8b5cf6; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">🏷️ ${a.tag || '未分類'}</span>
+                       <button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button>
+                   </div>
+                   <h3 style="margin: 0 0 10px 0; color:var(--text-main); font-size: 16px;">${a.item}</h3>
+                   <div style="font-size: 36px; font-weight: bold; color: var(--primary); margin: 15px 0;">
+                       ${a.quantity || 0} <span style="font-size:14px; color:var(--text-muted); font-weight:normal;">${a.unit || '個'}</span>
+                   </div>
+                   <div style="font-size:12px; color:var(--text-muted); text-align:left; background:#f8fafc; padding:10px; border-radius:8px; border: 1px solid #e2e8f0;">
+                       <div style="margin-bottom:6px;">📞 <b>領取找:</b> ${a.contactPerson || '無指定'}</div>
+                       <div>📝 <b>備註:</b> ${a.remarks || '無'}</div>
+                   </div>
+                </div>`;
+            });
+        }
+        
+        grid.innerHTML = html;
+    }
+    else if (state.currentTab === 'facilities') {
+        const cp = fixedAssets.filter(a => a.category === '電腦'); if(cp.length === 0) return grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無電腦或孔位配置</div>';
+        cp.forEach(a => { const c = document.createElement('div'); c.className = 'nav-card'; c.style.textAlign = 'left'; let on = '💻 公用設備'; if (a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) on = `👤 ${owner.name}`; } c.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start;"><h3 style="margin:0; margin-bottom: 4px; color: var(--primary);">${on}</h3><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></div><div style="font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${a.pc_id && a.pc_id !== 'N/A' ? a.pc_id : '未編號'}</div><table class="facility-table"><tr><td class="facility-label">網路孔</td><td>${a.net_port || 'N/A'} ${a.domain ? `<span style="color:#94a3b8; font-size:11px;">(${a.domain})</span>` : ''}</td></tr><tr><td class="facility-label">電話孔</td><td>${a.phone_port || 'N/A'}</td></tr></table>`; grid.appendChild(c); });
+    }
+}
+
+export function showExtensionsView(push = true) {
+    closeSidebar(); state.currentLevel = 3; if (push) history.pushState({ level: 3 }, ""); const c = document.getElementById('ext-container'); c.innerHTML = '';
+    const m = {}; state.globalMembers.forEach(x => { const o = state.globalOffices.find(y => y.id === x.office_id); const n = o ? o.name : (x.office_id || '未分配辦公室'); if (!m[n]) m[n] = []; m[n].push(x); });
+    for (let n in m) { const g = document.createElement('div'); g.style.marginBottom = '30px'; let h = `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">${n}</h2><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px;">`; m[n].forEach(x => { const he = (x.ext && x.ext !== 'N/A'); h += `<div class="nav-card no-hover" style="padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center;"><div><div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${x.name}</div><div style="font-size: 12px; color: var(--text-muted);">${x.title && x.title !== 'N/A' ? x.title : ''}</div></div><div style="font-size: 24px; font-weight: bold; color: ${he ? 'var(--primary)' : 'var(--text-muted)'}; font-family: monospace;">${he ? x.ext : '無分機'}</div></div>`; }); h += `</div>`; g.innerHTML = h; c.appendChild(g); }
+    switchView('view-extensions');
+}
+
+// ✨ 在列資產總表：支援消耗品渲染
+export function showAssetsTotalView(push = true) {
+    closeSidebar(); state.currentLevel = 4; if (push) history.pushState({ level: 4 }, ""); 
+    const container = document.getElementById('assets-total-container');
+    container.innerHTML = '';
+
+    const fixedAssets = state.globalAssets.filter(a => a.assetType !== 'consumable');
+    const consumableAssets = state.globalAssets.filter(a => a.assetType === 'consumable');
+
+    let html = '';
+
+    // 1. 渲染固定資產 (按辦公室分組)
+    html += `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">📌 固定資產總表 (${fixedAssets.length}件)</h2>`;
+    const officeMap = {};
+    fixedAssets.forEach(a => { const off = state.globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配區域'; if (!officeMap[offName]) officeMap[offName] = []; officeMap[offName].push(a); });
+
+    for (let offName in officeMap) {
+        html += `<div style="margin-bottom: 25px;"><h3 style="font-size: 15px; color: var(--text-muted); margin-bottom: 10px;">🏢 ${offName}</h3><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">`;
+        officeMap[offName].forEach(a => {
+            let oName = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) oName = `👤 ${owner.name}`; }
+            let t = a.item || '未命名設備'; if (a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`;
+            let si = a.status === '正常' ? '🟢' : a.status === '待修' ? '🔴' : a.status === '報廢' ? '⚫' : a.status === '碳粉不足' ? '🟡' : '⚪';
+            html += `<div class="nav-card no-hover" style="padding: 15px; text-align: left; cursor: default;">
+                <h4 style="margin:0 0 5px 0; color:var(--primary); font-size:15px;">${t}</h4>
+                ${a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${oName}</div>` : ''}
+                <div style="font-size:12px; margin-bottom: 4px; font-family:monospace; color:var(--danger); font-weight:bold;">SN: ${a.sn || 'N/A'}</div>
+                <div style="font-size:12px; color: var(--text-main); font-weight:bold;">${si} ${a.status || '未知'}</div>
+            </div>`;
+        });
+        html += `</div></div>`;
+    }
+
+    // 2. 渲染消耗品 (按標籤分組 Dashboard)
+    html += `<h2 style="border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; margin-top: 40px; margin-bottom: 15px; font-size: 18px; color: #8b5cf6;">📦 消耗品總庫存 (${consumableAssets.length}項)</h2>`;
+    if (consumableAssets.length === 0) {
+        html += `<div style="text-align:center; padding:30px; background:white; border-radius:12px; color:var(--text-muted); border:1px dashed #cbd5e1;">目前尚無登錄任何消耗品。未來可在此統一盤點庫存數量與聯絡資訊。</div>`;
+    } else {
+        html += `<div class="grid-nav">`;
+        consumableAssets.forEach(a => {
+            const off = state.globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配區域';
+            html += `
+            <div class="nav-card no-hover" style="border: 2px solid #ede9fe; background: white;">
+               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                   <span style="background:#ede9fe; color:#8b5cf6; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">🏷️ ${a.tag || '未分類'}</span>
+                   <span style="font-size:12px; color:var(--text-muted); font-weight:bold;">🏢 ${offName}</span>
+               </div>
+               <h3 style="margin: 0 0 10px 0; color:var(--text-main); font-size: 16px;">${a.item}</h3>
+               <div style="font-size: 36px; font-weight: bold; color: var(--primary); margin: 15px 0;">
+                   ${a.quantity || 0} <span style="font-size:14px; color:var(--text-muted); font-weight:normal;">${a.unit || '個'}</span>
+               </div>
+               <div style="font-size:12px; color:var(--text-muted); text-align:left; background:#f8fafc; padding:10px; border-radius:8px; border: 1px solid #e2e8f0;">
+                   <div style="margin-bottom:6px;">📞 <b>領取找:</b> ${a.contactPerson || '無指定'}</div>
+                   <div>📝 <b>備註:</b> ${a.remarks || '無'}</div>
+               </div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    container.innerHTML = html;
+    switchView('view-assets-total');
+}
+
+export function renderPinnedItems() {
+    const wrap = document.getElementById('pinned-items-wrapper'); if(!wrap) return; wrap.innerHTML = ''; 
+    state.myPinnedItems.forEach((item, idx) => {
+        const c = document.createElement('div'); c.className = 'nav-card pinned-full-card'; c.draggable = true; c.dataset.index = idx;
+        let h = '', oc = `window.handlePinClick('${item.type}', '${item.id}', event)`, b = `<div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">區域</div>`;
+        if (item.type === 'floor') h = `${b}<h2 style="margin-top:15px;">${item.name}</h2><div class="card-content-detail" style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看樓層</div>`;
+        else if (item.type === 'office') { const o = state.globalOffices.find(x => x.id === item.id); if (o) { const rt = o.roomType || '辦公室'; h = `<div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${rt}</div><h2 style="margin-top:15px;">${o.name} ${rt === '會議室' ? `<span style="font-size:12px; color:var(--success); font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; margin-left:10px;">🟢 可預約</span>` : ''}</h2><div class="password-container" style="max-height:none; opacity:1;"><span class="password-badge">${o.pwd || 'N/A'}</span></div><div class="card-content-detail" style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>`; } else h = `<h2 style="color:var(--danger)">該房間已移除</h2>`; }
+        else if (item.type === 'member') { const m = state.globalMembers.find(x => x.id === item.id); if (m) { const pc = state.globalAssets.find(a => a.category === '電腦' && a.owner_id === m.id); h = `<div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">人員</div><div style="text-align: left; margin-top:5px;"><h3 style="margin:0 0 5px 0;">${m.name}</h3></div><div class="detail-info card-content-detail" style="border-top: none; padding-top: 0; margin-top: 5px; opacity: 1; max-height: none;"><div><b>職稱：</b>${m.title || 'N/A'}</div><div><b>分機：</b>${m.ext}</div><div><b>入廠日：</b>${m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A'}</div><div><b>電腦編號：</b>${pc && pc.pc_id && pc.pc_id !== 'N/A' ? pc.pc_id : '無設備'}</div></div>`; } else h = `<h2 style="color:var(--danger)">該人員已移除</h2>`; }
+        else if (item.type === 'asset') { const a = state.globalAssets.find(x => x.id === item.id); if (a) { let oName = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) oName = `👤 使用者: ${owner.name}`; } let t = a.item || '未命名設備'; if (a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`; h = `<div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${a.category || '資產'}</div><div style="text-align:left; margin-top:5px;"><h3 style="margin:0;">${t}</h3></div><div class="card-content-detail">${a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${oName}</div>` : ''}<div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div><div style="font-size:12px; font-weight:bold; color: var(--text-main);">${a.status === '正常' ? '🟢' : a.status === '待修' ? '🔴' : a.status === '報廢' ? '⚫' : a.status === '碳粉不足' ? '🟡' : '⚪'} ${a.status || '未登記'}</div></div>`; } else h = `<h2 style="color:var(--danger)">該資產已移除</h2>`; }
+        c.innerHTML = `<button class="unpin-btn" onclick="event.stopPropagation(); window.removePinItem(${idx})" title="取消置頂">×</button><div onclick="${oc}" style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center;">${h}</div>`;
+        c.addEventListener('dragstart', window.handlePinDragStart); c.addEventListener('dragover', window.handlePinDragOver); c.addEventListener('dragenter', window.handlePinDragEnter); c.addEventListener('dragleave', window.handlePinDragLeave); c.addEventListener('drop', window.handlePinDrop); c.addEventListener('dragend', window.handlePinDragEnd); wrap.appendChild(c);
+    });
+    if (state.myPinnedItems.length < 8) { const c = document.createElement('div'); c.className = 'nav-card pinned-full-card'; c.style.cssText = 'display:flex; justify-content:center; align-items:center; border:2px dashed #cbd5e1; box-shadow:none; background:transparent; cursor:pointer;'; c.innerHTML = `<div style="font-size: 36px; color: #94a3b8; width: 100%; height: 100%;">＋</div>`; c.onclick = () => window.openPinModal(); wrap.appendChild(c); }
+}
+
+export function handlePinClick(type, id, event) {
+    if (document.getElementById('pinned-section').classList.contains('collapsed')) { if(event) event.stopPropagation(); expandPinnedSection(event); return; }
+    if (type === 'floor') { showOffices(id); } else if (type === 'office') { const off = state.globalOffices.find(o => o.id === id); if (off) showDetail(off.id, off.name); } 
+    else if (type === 'member') { const m = state.globalMembers.find(x => x.id === id); if(m) { const off = state.globalOffices.find(o => o.id === m.office_id); if(off) { showDetail(off.id, off.name); switchTab('staff'); } } else customAlert('該人員已被移除', true); } 
+    else if (type === 'asset') { const a = state.globalAssets.find(x => x.id === id); if(a) { const off = state.globalOffices.find(o => o.id === a.office_id); if(off) { showDetail(off.id, off.name); switchTab('assets'); } } else customAlert('該資產已被移除', true); }
+}
+
+let pinDragSrcEl = null;
+export function handlePinDragStart(e) { pinDragSrcEl = this; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/html', this.innerHTML); this.classList.add('dragging'); }
+export function handlePinDragOver(e) { if (e.preventDefault) e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
+export function handlePinDragEnter(e) { this.classList.add('drag-over'); }
+export function handlePinDragLeave(e) { this.classList.remove('drag-over'); }
+export async function handlePinDrop(e) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (pinDragSrcEl !== this) {
+        const fromIndex = parseInt(pinDragSrcEl.dataset.index); const toIndex = parseInt(this.dataset.index);
+        const item = state.myPinnedItems.splice(fromIndex, 1)[0]; state.myPinnedItems.splice(toIndex, 0, item);
+        renderPinnedItems();
+        try { await setDoc(doc(db, 'users', auth.currentUser?.email || 'anonymous@preview.com'), { pinnedItems: state.myPinnedItems }, { merge: true }); } catch(err) { console.error(err); }
+    }
+    return false;
+}
+export function handlePinDragEnd(e) { this.classList.remove('dragging'); document.querySelectorAll('.pinned-full-card').forEach(col => col.classList.remove('drag-over')); }
+
+export function toggleAvatarMenu(e) { e.stopPropagation(); const d = document.getElementById('avatar-dropdown'); d.style.display = d.style.display === 'flex' ? 'none' : 'flex'; }
+
+export function renderFriendlyLinks() {
+    const isAuth = auth.currentUser && (state.globalWhitelist.includes(auth.currentUser.email) || state.globalAdmins.includes(auth.currentUser.email) || auth.currentUser.email === state.SUPER_ADMIN || auth.currentUser.isAnonymous);
+    const sl = document.getElementById('sidebar-friendly-links');
+    if (sl) {
+        sl.innerHTML = state.globalFriendlyLinks.map((l, i) => `<div class="menu-item" style="font-size: 14px; font-weight: normal; padding: 10px 25px; display:flex; align-items:center;"><a href="#" onclick="window.trackLinkClick(${i}, '${l.url}')" style="color: var(--text-main); text-decoration: none; flex:1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🌍 ${l.name}</a>${isAuth ? `<button onclick="window.promptDeleteFriendlyLink(${i})" style="background:none; border:none; cursor:pointer; color:var(--danger); opacity:0.5; font-size:16px; padding:0 5px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5">×</button>` : ''}</div>`).join('');
+        if (isAuth && state.globalFriendlyLinks.length < 20) sl.innerHTML += `<div class="menu-item" onclick="window.openFriendlyLinkModal()" style="font-size: 13px; color: var(--primary); justify-content:center; border-top: 1px dashed #e2e8f0; margin-top: 5px;">➕ 新增友站連結</div>`;
+    }
+    const oc = document.getElementById('login-orbit-container');
+    if (oc && state.currentLevel === -1) {
+        oc.innerHTML = ''; const maxC = Math.max(...state.globalFriendlyLinks.map(l => l.clicks || 0), 1);
+        if (state.globalFriendlyLinks.length === 0) return;
+        state.globalFriendlyLinks.forEach((l, i) => {
+            const angle = (i / state.globalFriendlyLinks.length) * 2 * Math.PI, rx = window.innerWidth > 768 ? window.innerWidth * 0.28 : 0, ry = window.innerWidth > 768 ? window.innerHeight * 0.35 : 0; 
+            let scale = Math.min(0.8 + ((l.clicks || 0) / maxC) * 0.7, 1.5);
+            const a = document.createElement('a'); a.href = "#"; a.className = "orbit-link"; a.innerHTML = `<div class="orbit-link-name">🌍 ${l.name}</div><div class="orbit-link-url">${l.url}</div>`;
+            if (window.innerWidth > 768) { a.style.left = `calc(50% + ${Math.cos(angle) * rx}px)`; a.style.top = `calc(50% + ${Math.sin(angle) * ry}px)`; a.style.transform = `translate(-50%, -50%) scale(${scale})`; }
+            a.onclick = (e) => { e.preventDefault(); window.trackLinkClick(i, l.url); }; oc.appendChild(a);
+        });
+    }
+}
+
+export async function trackLinkClick(i, url) { 
+    state.globalFriendlyLinks[i].clicks = (state.globalFriendlyLinks[i].clicks || 0) + 1; 
+    setDoc(doc(db, 'settings', 'friendlyLinks'), { list: state.globalFriendlyLinks }).catch(e => console.log(e)); 
+    window.open(url, '_blank'); 
+}
+
+// 過渡期掛載
+window.customAlert = customAlert;
+window.togglePinnedSectionCollapse = togglePinnedSectionCollapse;
+window.expandPinnedSection = expandPinnedSection;
+window.initView = initView;
+window.updateMainTitle = updateMainTitle;
+window.syncHeaderLayout = syncHeaderLayout;
+window.renderSidebarTree = renderSidebarTree;
+window.toggleTreeFloor = toggleTreeFloor;
+window.toggleSidebar = toggleSidebar;
+window.closeSidebar = closeSidebar;
+window.toggleFabMenu = toggleFabMenu;
+window.closeFabMenu = closeFabMenu;
+window.updateFabMenu = updateFabMenu;
+window.toggleDevOptions = toggleDevOptions;
+window.updateNavigationUI = updateNavigationUI;
+window.switchView = switchView;
+window.goHome = goHome;
+window.goUpLevel = goUpLevel;
+window.showOffices = showOffices;
+window.showDetail = showDetail;
+window.switchTab = switchTab;
+window.changeCalendarMonth = changeCalendarMonth;
+window.selectCalendarDate = selectCalendarDate;
+window.setCalendarViewMode = setCalendarViewMode;
+window.goToToday = goToToday;
+window.updateDetailContent = updateDetailContent;
+window.showExtensionsView = showExtensionsView;
+window.showAssetsTotalView = showAssetsTotalView;
+window.renderPinnedItems = renderPinnedItems;
+window.handlePinClick = handlePinClick;
+window.handlePinDragStart = handlePinDragStart;
+window.handlePinDragOver = handlePinDragOver;
+window.handlePinDragEnter = handlePinDragEnter;
+window.handlePinDragLeave = handlePinDragLeave;
+window.handlePinDrop = handlePinDrop;
+window.handlePinDragEnd = handlePinDragEnd;
+window.toggleAvatarMenu = toggleAvatarMenu;
+window.renderFriendlyLinks = renderFriendlyLinks;
+window.trackLinkClick = trackLinkClick;

@@ -80,6 +80,11 @@ export function closeSidebar() { document.getElementById('sidebar').classList.re
 export function toggleFabMenu(e) { if(e) e.stopPropagation(); document.getElementById('fab-container').classList.toggle('active'); document.getElementById('fab-menu').classList.toggle('active'); }
 export function closeFabMenu() { document.getElementById('fab-container').classList.remove('active'); document.getElementById('fab-menu').classList.remove('active'); }
 
+export function toggleDevOptions(e) {
+    state.devOptionsEnabled = e.target.checked;
+    if (state.currentLevel === 0) { document.getElementById('dev-tabs-container').style.display = state.devOptionsEnabled ? 'flex' : 'none'; }
+}
+
 export function updateFabMenu() {
     const m = document.getElementById('fab-menu'), c = document.getElementById('fab-container'); m.innerHTML = ''; closeFabMenu(); 
     if (state.currentLevel < 0) { c.style.display = 'none'; return; }
@@ -88,7 +93,7 @@ export function updateFabMenu() {
     else if (state.currentLevel === 2) {
         c.style.display = 'flex'; let act = '';
         if (state.currentTab === 'staff') act = `<button class="fab-item" onclick="window.openMemberModal()">➕ 新增人員</button>`;
-        else if (state.currentTab === 'assets') act = `<button class="fab-item" onclick="window.openAssetModal()">➕ 新增資產 (包含電腦)</button>`;
+        else if (state.currentTab === 'assets') act = `<button class="fab-item" onclick="window.openAssetModal()">➕ 新增資產</button>`;
         else if (state.currentTab === 'checkout') act = `<button class="fab-item" onclick="window.customAlert('尚未開放')">➕ 新增紀錄</button>`;
         else if (state.currentTab === 'booking') act = `<button class="fab-item" onclick="window.openBookingModal()">📅 新增會議預約</button>`;
         m.innerHTML = `${act}<button class="fab-item" onclick="window.openOfficeModal('${state.currentOfficeId}')">✏️ 編輯房間資訊</button>`;
@@ -103,17 +108,24 @@ export function updateNavigationUI() {
     else { bh.style.display = 'inline-block'; bu.style.display = 'inline-block'; bp.style.display = 'none'; document.getElementById('pinned-section').style.display = 'none'; }
     
     document.getElementById('dev-tabs-container').style.display = (state.currentLevel === 0 && state.devOptionsEnabled) ? 'flex' : 'none'; syncHeaderLayout();
-    if (state.currentLevel === 0) updateMainTitle('ＰＭＯ電子圖資系統'); else if (state.currentLevel === 1) updateMainTitle(state.currentFloor); else if (state.currentLevel === 2) updateMainTitle(state.currentOfficeName); else if (state.currentLevel === 3) updateMainTitle('辦公室分機總表');
+    
+    if (state.currentLevel === 0) updateMainTitle('ＰＭＯ電子圖資系統'); 
+    else if (state.currentLevel === 1) updateMainTitle(state.currentFloor); 
+    else if (state.currentLevel === 2) updateMainTitle(state.currentOfficeName); 
+    else if (state.currentLevel === 3) updateMainTitle('辦公室分機總表');
+    else if (state.currentLevel === 4) updateMainTitle('在列資產總表');
+
     let html = state.currentLevel === 0 ? `<span class="breadcrumb-item current">首頁</span>` : `<span class="breadcrumb-item" onclick="window.goHome()">首頁</span>`;
     if (state.currentLevel === 1 || state.currentLevel === 2) html += `<span class="breadcrumb-separator">/</span>${state.currentLevel === 1 ? `<span class="breadcrumb-item current">${state.currentFloor}</span>` : `<span class="breadcrumb-item" onclick="window.showOffices('${state.currentFloor}')">${state.currentFloor}</span>`}`;
     if (state.currentLevel === 2) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">${state.currentOfficeName}</span>`;
     if (state.currentLevel === 3) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">分機總表</span>`;
+    if (state.currentLevel === 4) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">在列資產總表</span>`;
     bc.innerHTML = html; updateFabMenu();
 }
 
 export function switchView(id) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(id).classList.add('active'); updateNavigationUI(); }
 export function goHome(push = true) { state.currentLevel = 0; state.currentFloor = ''; state.currentOfficeId = ''; state.currentOfficeName = ''; if (push) history.pushState({ level: 0 }, ""); initView(); switchView('view-floor'); }
-export function goUpLevel(push = true) { if (state.currentLevel === 3) goHome(push); else if (state.currentLevel === 2) showOffices(state.currentFloor, push); else if (state.currentLevel === 1) goHome(push); }
+export function goUpLevel(push = true) { if (state.currentLevel === 3 || state.currentLevel === 4) goHome(push); else if (state.currentLevel === 2) showOffices(state.currentFloor, push); else if (state.currentLevel === 1) goHome(push); }
 
 export function showOffices(floor, push = true) {
     state.currentLevel = 1; state.currentFloor = floor; state.currentOfficeId = ''; state.currentOfficeName = ''; if (push) history.pushState({ level: 1, floor: floor }, "");
@@ -144,8 +156,15 @@ export function goToToday() { state.currentCalendarDate = new Date(); state.sele
 
 export function updateDetailContent() {
     const grid = document.getElementById('detail-grid'); grid.innerHTML = '';
-    let om = state.globalMembers.filter(m => m.office_id === state.currentOfficeId); const oa = state.globalAssets.filter(a => a.office_id === state.currentOfficeId);
-    const stb = document.getElementById('tab-staff'); if(stb) stb.innerText = `人員 (${om.length})`; const atb = document.getElementById('tab-assets'); if(atb) atb.innerText = `資產 (${oa.length})`;
+    let om = state.globalMembers.filter(m => m.office_id === state.currentOfficeId); 
+    const officeAssetsList = state.globalAssets.filter(a => a.office_id === state.currentOfficeId);
+    
+    // ✨ 將資產分為「固定」與「消耗品」
+    const fixedAssets = officeAssetsList.filter(a => a.assetType !== 'consumable');
+    const consumableAssets = officeAssetsList.filter(a => a.assetType === 'consumable');
+
+    const stb = document.getElementById('tab-staff'); if(stb) stb.innerText = `人員 (${om.length})`; 
+    const atb = document.getElementById('tab-assets'); if(atb) atb.innerText = `資產 (${officeAssetsList.length})`;
     document.getElementById('filter-container').style.display = (state.currentTab === 'staff' || state.currentTab === 'assets') ? 'flex' : 'none'; document.getElementById('staff-sort-select').style.display = state.currentTab === 'staff' ? 'block' : 'none'; document.getElementById('asset-sort-select').style.display = state.currentTab === 'assets' ? 'block' : 'none';
 
     if (state.currentTab === 'checkout') { grid.className = 'grid-nav'; grid.innerHTML = `<div class="locked-feature-panel"><h3>🔒 此模組功能開發中</h3></div>`; return; }
@@ -198,14 +217,49 @@ export function updateDetailContent() {
         if(om.length === 0) return grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無人員資料</div>';
         const sm = document.getElementById('staff-sort-select').value;
         om.sort((a, b) => { if (sm === 'name') return (a.name||'').localeCompare(b.name||'', 'zh-TW'); else if (sm === 'title') { const r = state.globalTitleRankSettings.offices[state.currentOfficeId] || state.globalTitleRankSettings.global || []; const ra = r.indexOf(a.title), rb = r.indexOf(b.title), va = ra !== -1 ? ra : 999, vb = rb !== -1 ? rb : 999; if (va !== vb) return va - vb; return (a.name||'').localeCompare(b.name||'', 'zh-TW'); } else if (sm === 'join_date') { const da = a.join_date || '9999-99-99', db = b.join_date || '9999-99-99'; if (da !== db) return da.localeCompare(db); return (a.name||'').localeCompare(b.name||'', 'zh-TW'); } return 0; });
-        om.forEach(m => { const c = document.createElement('div'); c.className = 'nav-card'; const pc = oa.find(a => a.category === '電腦' && a.owner_id === m.id); c.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;"><div style="text-align: left;"><h3 style="margin:0 0 5px 0;">${m.name}</h3></div><button class="btn-edit" onclick="window.openMemberModal('${m.id}')">✏️ 編輯</button></div><div class="detail-info" style="border-top: none; padding-top: 0; margin-top: 5px;"><div><b>職稱：</b>${m.title || 'N/A'}</div><div><b>分機：</b>${m.ext}</div><div><b>入廠日：</b>${m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A'}</div><div><b>電腦編號：</b>${pc && pc.pc_id && pc.pc_id !== 'N/A' ? pc.pc_id : '無設備'}</div></div>`; grid.appendChild(c); });
+        om.forEach(m => { const c = document.createElement('div'); c.className = 'nav-card'; const pc = fixedAssets.find(a => a.category === '電腦' && a.owner_id === m.id); c.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;"><div style="text-align: left;"><h3 style="margin:0 0 5px 0;">${m.name}</h3></div><button class="btn-edit" onclick="window.openMemberModal('${m.id}')">✏️ 編輯</button></div><div class="detail-info" style="border-top: none; padding-top: 0; margin-top: 5px;"><div><b>職稱：</b>${m.title || 'N/A'}</div><div><b>分機：</b>${m.ext}</div><div><b>入廠日：</b>${m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A'}</div><div><b>電腦編號：</b>${pc && pc.pc_id && pc.pc_id !== 'N/A' ? pc.pc_id : '無設備'}</div></div>`; grid.appendChild(c); });
     } 
     else if (state.currentTab === 'assets') {
-        if(oa.length === 0) return grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無資產資料</div>';
-        oa.map(a => { let on = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) on = `👤 使用者: ${owner.name}`; } let t = a.item || '未命名設備'; if (a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`; return { ...a, _on: on, _t: t }; }).forEach(a => { const c = document.createElement('div'); c.className = 'nav-card'; let si = a.status === '正常' ? '🟢' : a.status === '待修' ? '🔴' : a.status === '報廢' ? '⚫' : a.status === '碳粉不足' ? '🟡' : '⚪'; c.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start;"><h3 style="margin:0; text-align:left;">${a._t}</h3><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></div>${a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${a._on}</div>` : ''}<div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div><div style="font-size:12px; font-weight:bold; color: var(--text-main);">${si} ${a.status || '未登記'}</div>`; grid.appendChild(c); });
+        if(officeAssetsList.length === 0) return grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無資產資料</div>';
+        
+        let html = '';
+        
+        // 1. 固定資產區塊
+        if (fixedAssets.length > 0) {
+            html += `<div style="grid-column: 1/-1; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid var(--primary); font-size:16px;">📌 固定資產</h3></div>`;
+            let displayFixed = fixedAssets.map(a => { let on = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) on = `👤 使用者: ${owner.name}`; } let t = a.item || '未命名設備'; if (a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`; return { ...a, _on: on, _t: t }; });
+            displayFixed.forEach(a => {
+                let si = a.status === '正常' ? '🟢' : a.status === '待修' ? '🔴' : a.status === '報廢' ? '⚫' : a.status === '碳粉不足' ? '🟡' : '⚪'; 
+                html += `<div class="nav-card"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><h3 style="margin:0; text-align:left;">${a._t}</h3><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></div>${a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${a._on}</div>` : ''}<div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div><div style="font-size:12px; font-weight:bold; color: var(--text-main);">${si} ${a.status || '未登記'}</div></div>`; 
+            });
+        }
+
+        // 2. 消耗品區塊 (Dashboard 卡片)
+        if (consumableAssets.length > 0) {
+            html += `<div style="grid-column: 1/-1; margin-top: 20px; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid #8b5cf6; font-size:16px; color:#8b5cf6;">📦 消耗品</h3></div>`;
+            consumableAssets.forEach(a => {
+                html += `
+                <div class="nav-card" style="border: 2px solid #ede9fe; background: white;">
+                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                       <span style="background:#ede9fe; color:#8b5cf6; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">🏷️ ${a.tag || '未分類'}</span>
+                       <button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button>
+                   </div>
+                   <h3 style="margin: 0 0 10px 0; color:var(--text-main); font-size: 16px;">${a.item}</h3>
+                   <div style="font-size: 36px; font-weight: bold; color: var(--primary); margin: 15px 0;">
+                       ${a.quantity || 0} <span style="font-size:14px; color:var(--text-muted); font-weight:normal;">${a.unit || '個'}</span>
+                   </div>
+                   <div style="font-size:12px; color:var(--text-muted); text-align:left; background:#f8fafc; padding:10px; border-radius:8px; border: 1px solid #e2e8f0;">
+                       <div style="margin-bottom:6px;">📞 <b>領取找:</b> ${a.contactPerson || '無指定'}</div>
+                       <div>📝 <b>備註:</b> ${a.remarks || '無'}</div>
+                   </div>
+                </div>`;
+            });
+        }
+        
+        grid.innerHTML = html;
     }
     else if (state.currentTab === 'facilities') {
-        const cp = oa.filter(a => a.category === '電腦'); if(cp.length === 0) return grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無電腦或孔位配置</div>';
+        const cp = fixedAssets.filter(a => a.category === '電腦'); if(cp.length === 0) return grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無電腦或孔位配置</div>';
         cp.forEach(a => { const c = document.createElement('div'); c.className = 'nav-card'; c.style.textAlign = 'left'; let on = '💻 公用設備'; if (a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) on = `👤 ${owner.name}`; } c.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start;"><h3 style="margin:0; margin-bottom: 4px; color: var(--primary);">${on}</h3><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></div><div style="font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${a.pc_id && a.pc_id !== 'N/A' ? a.pc_id : '未編號'}</div><table class="facility-table"><tr><td class="facility-label">網路孔</td><td>${a.net_port || 'N/A'} ${a.domain ? `<span style="color:#94a3b8; font-size:11px;">(${a.domain})</span>` : ''}</td></tr><tr><td class="facility-label">電話孔</td><td>${a.phone_port || 'N/A'}</td></tr></table>`; grid.appendChild(c); });
     }
 }
@@ -215,6 +269,69 @@ export function showExtensionsView(push = true) {
     const m = {}; state.globalMembers.forEach(x => { const o = state.globalOffices.find(y => y.id === x.office_id); const n = o ? o.name : (x.office_id || '未分配辦公室'); if (!m[n]) m[n] = []; m[n].push(x); });
     for (let n in m) { const g = document.createElement('div'); g.style.marginBottom = '30px'; let h = `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">${n}</h2><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px;">`; m[n].forEach(x => { const he = (x.ext && x.ext !== 'N/A'); h += `<div class="nav-card no-hover" style="padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center;"><div><div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${x.name}</div><div style="font-size: 12px; color: var(--text-muted);">${x.title && x.title !== 'N/A' ? x.title : ''}</div></div><div style="font-size: 24px; font-weight: bold; color: ${he ? 'var(--primary)' : 'var(--text-muted)'}; font-family: monospace;">${he ? x.ext : '無分機'}</div></div>`; }); h += `</div>`; g.innerHTML = h; c.appendChild(g); }
     switchView('view-extensions');
+}
+
+// ✨ 在列資產總表：支援消耗品渲染
+export function showAssetsTotalView(push = true) {
+    closeSidebar(); state.currentLevel = 4; if (push) history.pushState({ level: 4 }, ""); 
+    const container = document.getElementById('assets-total-container');
+    container.innerHTML = '';
+
+    const fixedAssets = state.globalAssets.filter(a => a.assetType !== 'consumable');
+    const consumableAssets = state.globalAssets.filter(a => a.assetType === 'consumable');
+
+    let html = '';
+
+    // 1. 渲染固定資產 (按辦公室分組)
+    html += `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">📌 固定資產總表 (${fixedAssets.length}件)</h2>`;
+    const officeMap = {};
+    fixedAssets.forEach(a => { const off = state.globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配區域'; if (!officeMap[offName]) officeMap[offName] = []; officeMap[offName].push(a); });
+
+    for (let offName in officeMap) {
+        html += `<div style="margin-bottom: 25px;"><h3 style="font-size: 15px; color: var(--text-muted); margin-bottom: 10px;">🏢 ${offName}</h3><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">`;
+        officeMap[offName].forEach(a => {
+            let oName = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) oName = `👤 ${owner.name}`; }
+            let t = a.item || '未命名設備'; if (a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`;
+            let si = a.status === '正常' ? '🟢' : a.status === '待修' ? '🔴' : a.status === '報廢' ? '⚫' : a.status === '碳粉不足' ? '🟡' : '⚪';
+            html += `<div class="nav-card no-hover" style="padding: 15px; text-align: left; cursor: default;">
+                <h4 style="margin:0 0 5px 0; color:var(--primary); font-size:15px;">${t}</h4>
+                ${a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${oName}</div>` : ''}
+                <div style="font-size:12px; margin-bottom: 4px; font-family:monospace; color:var(--danger); font-weight:bold;">SN: ${a.sn || 'N/A'}</div>
+                <div style="font-size:12px; color: var(--text-main); font-weight:bold;">${si} ${a.status || '未知'}</div>
+            </div>`;
+        });
+        html += `</div></div>`;
+    }
+
+    // 2. 渲染消耗品 (按標籤分組 Dashboard)
+    html += `<h2 style="border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; margin-top: 40px; margin-bottom: 15px; font-size: 18px; color: #8b5cf6;">📦 消耗品總庫存 (${consumableAssets.length}項)</h2>`;
+    if (consumableAssets.length === 0) {
+        html += `<div style="text-align:center; padding:30px; background:white; border-radius:12px; color:var(--text-muted); border:1px dashed #cbd5e1;">目前尚無登錄任何消耗品。未來可在此統一盤點庫存數量與聯絡資訊。</div>`;
+    } else {
+        html += `<div class="grid-nav">`;
+        consumableAssets.forEach(a => {
+            const off = state.globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配區域';
+            html += `
+            <div class="nav-card no-hover" style="border: 2px solid #ede9fe; background: white;">
+               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                   <span style="background:#ede9fe; color:#8b5cf6; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">🏷️ ${a.tag || '未分類'}</span>
+                   <span style="font-size:12px; color:var(--text-muted); font-weight:bold;">🏢 ${offName}</span>
+               </div>
+               <h3 style="margin: 0 0 10px 0; color:var(--text-main); font-size: 16px;">${a.item}</h3>
+               <div style="font-size: 36px; font-weight: bold; color: var(--primary); margin: 15px 0;">
+                   ${a.quantity || 0} <span style="font-size:14px; color:var(--text-muted); font-weight:normal;">${a.unit || '個'}</span>
+               </div>
+               <div style="font-size:12px; color:var(--text-muted); text-align:left; background:#f8fafc; padding:10px; border-radius:8px; border: 1px solid #e2e8f0;">
+                   <div style="margin-bottom:6px;">📞 <b>領取找:</b> ${a.contactPerson || '無指定'}</div>
+                   <div>📝 <b>備註:</b> ${a.remarks || '無'}</div>
+               </div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    container.innerHTML = html;
+    switchView('view-assets-total');
 }
 
 export function renderPinnedItems() {
@@ -299,6 +416,7 @@ window.closeSidebar = closeSidebar;
 window.toggleFabMenu = toggleFabMenu;
 window.closeFabMenu = closeFabMenu;
 window.updateFabMenu = updateFabMenu;
+window.toggleDevOptions = toggleDevOptions;
 window.updateNavigationUI = updateNavigationUI;
 window.switchView = switchView;
 window.goHome = goHome;
@@ -312,6 +430,7 @@ window.setCalendarViewMode = setCalendarViewMode;
 window.goToToday = goToToday;
 window.updateDetailContent = updateDetailContent;
 window.showExtensionsView = showExtensionsView;
+window.showAssetsTotalView = showAssetsTotalView;
 window.renderPinnedItems = renderPinnedItems;
 window.handlePinClick = handlePinClick;
 window.handlePinDragStart = handlePinDragStart;

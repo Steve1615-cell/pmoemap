@@ -112,20 +112,18 @@ export function updateNavigationUI() {
     if (state.currentLevel === 0) updateMainTitle('ＰＭＯ電子圖資系統'); 
     else if (state.currentLevel === 1) updateMainTitle(state.currentFloor); 
     else if (state.currentLevel === 2) updateMainTitle(state.currentOfficeName); 
-    else if (state.currentLevel === 3) updateMainTitle('辦公室分機總表');
     else if (state.currentLevel === 4) updateMainTitle('在列資產總表');
 
     let html = state.currentLevel === 0 ? `<span class="breadcrumb-item current">首頁</span>` : `<span class="breadcrumb-item" onclick="window.goHome()">首頁</span>`;
     if (state.currentLevel === 1 || state.currentLevel === 2) html += `<span class="breadcrumb-separator">/</span>${state.currentLevel === 1 ? `<span class="breadcrumb-item current">${state.currentFloor}</span>` : `<span class="breadcrumb-item" onclick="window.showOffices('${state.currentFloor}')">${state.currentFloor}</span>`}`;
     if (state.currentLevel === 2) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">${state.currentOfficeName}</span>`;
-    if (state.currentLevel === 3) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">分機總表</span>`;
     if (state.currentLevel === 4) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">在列資產總表</span>`;
     bc.innerHTML = html; updateFabMenu();
 }
 
 export function switchView(id) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(id).classList.add('active'); updateNavigationUI(); }
 export function goHome(push = true) { state.currentLevel = 0; state.currentFloor = ''; state.currentOfficeId = ''; state.currentOfficeName = ''; if (push) history.pushState({ level: 0 }, ""); initView(); switchView('view-floor'); }
-export function goUpLevel(push = true) { if (state.currentLevel === 3 || state.currentLevel === 4) goHome(push); else if (state.currentLevel === 2) showOffices(state.currentFloor, push); else if (state.currentLevel === 1) goHome(push); }
+export function goUpLevel(push = true) { if (state.currentLevel === 4) goHome(push); else if (state.currentLevel === 2) showOffices(state.currentFloor, push); else if (state.currentLevel === 1) goHome(push); }
 
 export function showOffices(floor, push = true) {
     state.currentLevel = 1; state.currentFloor = floor; state.currentOfficeId = ''; state.currentOfficeName = ''; if (push) history.pushState({ level: 1, floor: floor }, "");
@@ -259,13 +257,6 @@ export function updateDetailContent() {
         const cp = fixedAssets.filter(a => a.category === '電腦'); if(cp.length === 0) return grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無電腦或孔位配置</div>';
         cp.forEach(a => { const c = document.createElement('div'); c.className = 'nav-card'; c.style.textAlign = 'left'; let on = '💻 公用設備'; if (a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) on = `👤 ${owner.name}`; } c.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start;"><h3 style="margin:0; margin-bottom: 4px; color: var(--primary);">${on}</h3><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></div><div style="font-weight:bold; font-size:14px; color:var(--text-main); margin-bottom:12px;">PC: ${a.pc_id && a.pc_id !== 'N/A' ? a.pc_id : '未編號'}</div><table class="facility-table"><tr><td class="facility-label">網路孔</td><td>${a.net_port || 'N/A'} ${a.domain ? `<span style="color:#94a3b8; font-size:11px;">(${a.domain})</span>` : ''}</td></tr><tr><td class="facility-label">電話孔</td><td>${a.phone_port || 'N/A'}</td></tr></table>`; grid.appendChild(c); });
     }
-}
-
-export function showExtensionsView(push = true) {
-    closeSidebar(); state.currentLevel = 3; if (push) history.pushState({ level: 3 }, ""); const c = document.getElementById('ext-container'); c.innerHTML = '';
-    const m = {}; state.globalMembers.forEach(x => { const o = state.globalOffices.find(y => y.id === x.office_id); const n = o ? o.name : (x.office_id || '未分配辦公室'); if (!m[n]) m[n] = []; m[n].push(x); });
-    for (let n in m) { const g = document.createElement('div'); g.style.marginBottom = '30px'; let h = `<h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">${n}</h2><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px;">`; m[n].forEach(x => { const he = (x.ext && x.ext !== 'N/A'); h += `<div class="nav-card no-hover" style="padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center;"><div><div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${x.name}</div><div style="font-size: 12px; color: var(--text-muted);">${x.title && x.title !== 'N/A' ? x.title : ''}</div></div><div style="font-size: 24px; font-weight: bold; color: ${he ? 'var(--primary)' : 'var(--text-muted)'}; font-family: monospace;">${he ? x.ext : '無分機'}</div></div>`; }); h += `</div>`; g.innerHTML = h; c.appendChild(g); }
-    switchView('view-extensions');
 }
 
 export function showAssetsTotalView(push = true) {
@@ -465,7 +456,6 @@ window.selectCalendarDate = selectCalendarDate;
 window.setCalendarViewMode = setCalendarViewMode;
 window.goToToday = goToToday;
 window.updateDetailContent = updateDetailContent;
-window.showExtensionsView = showExtensionsView;
 window.showAssetsTotalView = showAssetsTotalView;
 window.renderPinnedItems = renderPinnedItems;
 window.handlePinClick = handlePinClick;

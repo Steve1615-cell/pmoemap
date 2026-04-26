@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ＰＭＯ電子圖資系統</title>
-    <!-- ✨ 乾淨俐落：只引入獨立的 CSS 樣式表 -->
+    <!-- ✨ 引入獨立的 CSS 樣式表 -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -108,7 +108,7 @@
         <div id="office-action-msg" style="font-size: 14px; margin-bottom: 20px; color: var(--text-main); font-weight: bold;"></div>
         <div class="form-group"><label>將此辦公室轉移至：</label><select id="office-move-floor-select" style="background: var(--accent); font-weight:bold;"></select></div>
         <div class="modal-footer" style="justify-content: space-between; margin-top: 30px;">
-            <button class="btn-danger" onclick="promptDeleteOffice()">🗑️ 刪除</button>
+            <button class="btn-danger" onclick="promptDeleteOffice()">🗑️ 刪除至回收桶</button>
             <div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeOfficeActionModal()">取消</button><button class="btn-primary" onclick="moveOfficeRegion()">轉移</button></div>
         </div>
     </div>
@@ -156,6 +156,7 @@
         <div class="menu-item" onclick="showAssetsTotalView()">📦 在列資產總表</div>
         <div class="menu-item disabled tooltip-container" data-tooltip="縮時相機管理開發中！">📷 縮時相機管理</div>
         <div class="menu-item" onclick="showExtensionsView()">📞 辦公室分機表</div>
+        <div class="menu-item disabled tooltip-container" data-tooltip="機車管理系統開發中！">🛵 公務機車總表</div>
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
         <div style="padding: 10px 20px 5px 20px; font-size: 12px; font-weight: bold; color: var(--text-muted);">🔗 友站連結</div>
         <div id="sidebar-friendly-links"></div>
@@ -256,6 +257,13 @@
                     <option value="name">🖋️ 依姓氏筆畫</option><option value="title">💼 依職稱高低</option><option value="join_date">📅 依入廠日期</option>
                 </select>
                 <select id="asset-sort-select" onchange="updateDetailContent()" style="display: none; border: none; outline: none; font-size: 14px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
+                    <option value="name">📌 依資產名稱</option><option value="sn">🔢 依資產編號</option><option value="status">🚦 依設備狀態</option><option value="owner">👤 依使用者名稱</option>
+                </select>
+            </div>
+        </div>
+        <div id="detail-grid" class="grid-nav"></div>
+    </div>
+
     <!-- 第四層：全辦公室分機總表 -->
     <div id="view-extensions" class="view">
         <div id="ext-container"></div>

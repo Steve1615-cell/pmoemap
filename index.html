@@ -153,7 +153,7 @@
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
         <div class="menu-item" style="cursor: default;"><div style="display:flex; align-items:center; gap:10px;"><span>🛠️ 開發人員選項</span></div><label class="ios-switch"><input type="checkbox" id="dev-options-toggle" onchange="toggleDevOptions(event)"><span class="slider"></span></label></div>
         <div class="menu-item disabled tooltip-container" data-tooltip="辦公室地圖視角開發中！">🗺️ 地圖顯示</div>
-        <div class="menu-item disabled tooltip-container" data-tooltip="在列資產總表開發中！">📦 在列資產總表</div>
+        <div class="menu-item" onclick="showAssetsTotalView()">📦 在列資產總表</div>
         <div class="menu-item disabled tooltip-container" data-tooltip="縮時相機管理開發中！">📷 縮時相機管理</div>
         <div class="menu-item" onclick="showExtensionsView()">📞 辦公室分機表</div>
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
@@ -256,15 +256,15 @@
                     <option value="name">🖋️ 依姓氏筆畫</option><option value="title">💼 依職稱高低</option><option value="join_date">📅 依入廠日期</option>
                 </select>
                 <select id="asset-sort-select" onchange="updateDetailContent()" style="display: none; border: none; outline: none; font-size: 14px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
-                    <option value="name">📌 依資產名稱</option><option value="sn">🔢 依資產編號</option><option value="status">🚦 依設備狀態</option><option value="owner">👤 依使用者名稱</option>
-                </select>
-            </div>
-        </div>
-        <div id="detail-grid" class="grid-nav"></div>
+    <!-- 第四層：全辦公室分機總表 -->
+    <div id="view-extensions" class="view">
+        <div id="ext-container"></div>
     </div>
 
-    <div id="view-extensions" class="view"><div id="ext-container"></div></div>
-    <div class="version-footer" onclick="openUpdateLogModal()"></div>
+    <!-- 第五層：在列資產總表 -->
+    <div id="view-assets-total" class="view">
+        <div id="assets-total-container"></div>
+    </div>
 </div>
 
 <div class="fab-container" id="fab-container">

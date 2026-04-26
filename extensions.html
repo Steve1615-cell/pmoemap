@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>辦公室分機總表 | PMO電子圖資系統</title>
+    <!-- ✨ 共用主系統的 CSS 樣式表，保持視覺一致性 -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- 此頁面專屬的微調樣式 -->
+    <style>
+        body { padding-top: 20px; }
+        .header-bar { 
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
+            margin-bottom: 30px; border-bottom: 2px solid var(--primary); padding-bottom: 15px; 
+        }
+        .search-box { 
+            padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 30px; 
+            min-width: 250px; font-size: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            transition: border-color 0.2s; outline: none;
+        }
+        .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+        .office-group { margin-bottom: 40px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .office-title { 
+            font-size: 18px; font-weight: bold; color: var(--text-main); 
+            border-bottom: 1px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 20px; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header-bar">
+        <h1 style="margin:0; font-size: 24px; color: var(--primary); display: flex; align-items: center; gap: 10px;">
+            📞 辦公室分機總表
+        </h1>
+        <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋姓名或分機號碼...">
+    </div>
+
+    <div id="loading-msg" style="text-align: center; color: var(--text-muted); padding: 50px; font-size: 18px;">
+        ⏳ 資料讀取與驗證中...
+    </div>
+
+    <!-- 分機卡片將會渲染在這裡 -->
+    <div id="ext-container"></div>
+</div>
+
+<!-- ✨ 遵守混合模式守則：單一檔案處理 Firebase 資料撈取與渲染邏輯 -->
+<script type="module">
+    import { collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    let db, auth;
+    let globalOffices = [];
+    let globalMembers = [];
+
+    try {
+        // 直接從底層共用設定引入 db 與 auth，絕對不重複初始化
+        // 使用動態 import() 搭配 try-catch，以修復線上預覽環境 (Canvas) 因找不到相對路徑而報錯卡死的問題，
+        // 在您的本機 VS Code (Live Server) 環境中，這段語法會完美載入。
+        const firebaseConfig = await import('./js/firebase-config.js');
+        db = firebaseConfig.db;
+        auth = firebaseConfig.auth;
+    } catch (error) {
+        console.warn("無法解析模組路徑，這通常是因為在預覽環境中執行。請在本機 (Live Server) 環境測試。", error);
+        const loadingMsg = document.getElementById('loading-msg');
+        if (loadingMsg) {
+            loadingMsg.innerHTML = '⚠️ 線上預覽模式無法載入外部 Firebase 設定檔，請於本機 VS Code (Live Server) 中測試。';
+            loadingMsg.style.color = 'var(--danger)';
+        }
+    }
+
+    if (auth && db) {
+        // 1. 身分防護網：確保未登入者無法看到資料
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                document.getElementById('loading-msg').innerHTML = '⛔ 您尚未登入或無權限存取，請先從主系統登入。';
+                document.getElementById('loading-msg').style.color = 'var(--danger)';
+                return;
+            }
+            fetchData(); // 驗證通過後才去撈資料
+        });
+    }
+
+    // 2. 抓取資料 (雙線並行)
+    function fetchData() {
+        let officesLoaded = false;
+        let membersLoaded = false;
+
+        onSnapshot(collection(db, "offices"), (snapshot) => {
+            globalOffices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            officesLoaded = true;
+            if (membersLoaded) renderExtensions();
+        });
+
+        onSnapshot(collection(db, "members"), (snapshot) => {
+            globalMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            membersLoaded = true;
+            if (officesLoaded) renderExtensions();
+        });
+    }
+
+    // 3. 畫面渲染與搜尋過濾邏輯
+    function renderExtensions() {
+        const container = document.getElementById('ext-container');
+        const loading = document.getElementById('loading-msg');
+        const keyword = document.getElementById('search-input').value.toLowerCase().trim();
+
+        if(loading) loading.style.display = 'none';
+        container.innerHTML = '';
+
+        // 根據搜尋關鍵字過濾人員
+        const filteredMembers = globalMembers.filter(m => {
+            const nameMatch = (m.name || '').toLowerCase().includes(keyword);
+            const extMatch = (m.ext || '').toLowerCase().includes(keyword);
+            return nameMatch || extMatch;
+        });
+
+        if (filteredMembers.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:50px; color:var(--text-muted); background:white; border-radius:12px; border:1px dashed #cbd5e1;">找不到符合條件的人員或分機。</div>';
+            return;
+        }
+
+        // 將過濾後的人員按照「辦公室名稱」進行分組 (Group By)
+        const map = {};
+        filteredMembers.forEach(m => {
+            const office = globalOffices.find(o => o.id === m.office_id);
+            const officeName = office ? office.name : (m.office_id || '未分配辦公室');
+            if (!map[officeName]) map[officeName] = [];
+            map[officeName].push(m);
+        });
+
+        // 渲染分組畫面
+        Object.keys(map).sort().forEach(officeName => {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'office-group';
+            let html = `<div class="office-title">🏢 ${officeName}</div><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">`;
+            
+            // 該辦公室內的人員按姓名排序
+            map[officeName].sort((a,b) => (a.name||'').localeCompare(b.name||'')).forEach(m => {
+                const hasExt = (m.ext && m.ext !== 'N/A');
+                html += `
+                <div class="nav-card no-hover" style="padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary);">
+                    <div>
+                        <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${m.name}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">${m.title && m.title !== 'N/A' ? m.title : ''}</div>
+                    </div>
+                    <div style="font-size: 22px; font-weight: bold; color: ${hasExt ? 'var(--primary)' : 'var(--text-muted)'}; font-family: monospace;">
+                        ${hasExt ? m.ext : '無分機'}
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+            groupDiv.innerHTML = html;
+            container.appendChild(groupDiv);
+        });
+    }
+
+    // 綁定輸入框的即時搜尋事件
+    document.getElementById('search-input').addEventListener('input', renderExtensions);
+</script>
+
+</body>
+</html>

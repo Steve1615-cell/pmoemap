@@ -11,7 +11,6 @@
         .header-bar { display: flex; justify-content: center; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 15px; }
         .header-title { margin: 0; font-size: 45px; color: var(--primary); text-align: center; }
         
-        /* ✨ 35級字全寬度搜尋條 */
         .search-container { margin-bottom: 30px; width: 100%; }
         .search-box { 
             padding: 15px 25px; border: 2px solid #cbd5e1; border-radius: 40px; 
@@ -81,7 +80,6 @@
 <div class="app-container">
     <div class="header-bar"><h1 class="header-title">📷 縮時相機管理</h1></div>
     
-    <!-- 全寬度搜尋條 -->
     <div class="search-container">
         <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋機台編號、地點、工項或參與人..." oninput="window.renderCurrentView()">
     </div>
@@ -94,11 +92,12 @@
     
     <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
         
-        <!-- 過濾器 (修復 display: none 干擾問題) -->
+        <!-- 過濾器 wrapper -->
         <div id="filter-container-wrapper" style="position: relative; display: none; margin-right: auto;">
             <button class="btn-secondary" onclick="window.toggleFilterPanel(event)" id="filter-btn-text" style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer;">
                 🏷️ 專案過濾 (載入中...) ▼
             </button>
+            <!-- ✨ 修復：徹底移除 display:none，改用樣式類別控制 -->
             <div class="custom-dropdown-panel" id="opt-filter-panel" style="position: absolute; top: 100%; left: 0; width: 300px; padding: 15px; z-index: 3100;" onclick="event.stopPropagation()">
                 <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px; font-weight:bold; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">☑️ 勾選顯示的專案</div>
                 <div id="filter-checkboxes" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;"></div>
@@ -294,8 +293,12 @@
     let currentUserProfile = {};
     let currentSelectedTags = { location: [], task: [], participant: [] };
     
+    // 過濾器狀態管理 (新增已知專案記憶機制)
     let activeFilters = JSON.parse(localStorage.getItem('timelapse_project_filter'));
     if (!Array.isArray(activeFilters)) activeFilters = null;
+    
+    let knownProjects = JSON.parse(localStorage.getItem('timelapse_known_projects'));
+    if (!Array.isArray(knownProjects)) knownProjects = [];
     
     let deletedRecordsQueue = [], restoreTimerInt = null, restoreTimeLeft = 0;
 
@@ -344,36 +347,46 @@
             cameras = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.category === '縮時相機' && a.item && a.item.trim() !== '');
             renderFilterUI(); window.renderCurrentView();
         });
+        // ✨ 修復 B：在此觸發 renderFilterUI，確保匯入的新歷史專案能即時加入過濾選單
         onSnapshot(collection(db, "timelapse_records"), (s) => {
-            records = s.docs.map(d => ({ id: d.id, ...d.data() })); window.renderCurrentView();
+            records = s.docs.map(d => ({ id: d.id, ...d.data() })); 
+            renderFilterUI(); window.renderCurrentView();
         });
     }
 
-    // ✨ 核心升級：融合實體相機與純歷史紀錄 (確保 CSV 匯入的紀錄不會被消失)
     function getMergedCameras() {
         const merged = [...cameras];
         const camIds = new Set(cameras.map(c => c.id));
         records.forEach(r => {
             if (!camIds.has(r.cameraId)) {
                 camIds.add(r.cameraId);
-                merged.push({
-                    id: r.cameraId,
-                    item: r.cameraName,
-                    project: r.project || '閒置',
-                    isHistorical: true // 標記為純歷史機台
-                });
+                merged.push({ id: r.cameraId, item: r.cameraName, project: r.project || '閒置', isHistorical: true });
             }
         });
         return merged;
     }
 
-    // ======== 專案過濾器 ========
+    // ======== 專案過濾器 (加入自動勾選新專案的智慧機制) ========
     function renderFilterUI() {
         let allProjs = new Set(options.project || []);
         getMergedCameras().forEach(c => allProjs.add(c.project || '閒置'));
         allProjs = Array.from(allProjs).sort();
         
-        if (!activeFilters) { activeFilters = [...allProjs]; localStorage.setItem('timelapse_project_filter', JSON.stringify(activeFilters)); }
+        if (!activeFilters) { 
+            activeFilters = [...allProjs]; 
+        } else {
+            // ✨ 修復 C：自動把系統裡第一次見到的新專案加入預設勾選，避免匯入後找不到
+            allProjs.forEach(p => {
+                if (!knownProjects.includes(p) && !activeFilters.includes(p)) {
+                    activeFilters.push(p);
+                }
+            });
+        }
+        
+        // 更新並儲存已知專案庫
+        knownProjects = [...allProjs];
+        localStorage.setItem('timelapse_project_filter', JSON.stringify(activeFilters)); 
+        localStorage.setItem('timelapse_known_projects', JSON.stringify(knownProjects));
 
         const ctn = $('filter-checkboxes'); ctn.innerHTML = '';
         allProjs.forEach(p => {
@@ -414,11 +427,8 @@
         $('import-submenu').classList.toggle('open');
     };
 
-    // ✨ 表頭寬容尋找工具
     const getVal = (row, possibleKeys) => {
-        // 先找完全符合的
         for (let pk of possibleKeys) { for (let k of Object.keys(row)) { if (k.trim().toLowerCase() === pk.toLowerCase()) return row[k]; } }
-        // 再找包含字串的
         for (let pk of possibleKeys) { for (let k of Object.keys(row)) { if (k.toLowerCase().includes(pk.toLowerCase())) return row[k]; } }
         return '';
     };
@@ -438,6 +448,7 @@
                 for (const row of j) {
                     const rawCamName = getVal(row, ['機台名稱', 'name']);
                     if (!rawCamName) continue;
+                    // ✨ 修復 A：自動去除匯出的字眼，以利準確對應系統中的純數字相機
                     const camName = String(rawCamName).replace(/縮時/g, '').trim();
                     if (!camName) continue;
 
@@ -456,7 +467,7 @@
                     if (dateStr) { const parsed = new Date(dateStr); if (!isNaN(parsed.getTime())) createdAt = parsed.toISOString(); }
 
                     const exCam = cameras.find(c => String(c.item).trim() === camName);
-                    const camId = exCam ? exCam.id : `historical_${camName}`;
+                    const camId = exCam ? exCam.id : `historical_${camName}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
                     const proj = getVal(row, ['專案', 'project']) || (exCam ? exCam.project : '閒置');
 
                     ops.push(addDoc(collection(db, "timelapse_records"), {
@@ -520,7 +531,7 @@
         else if (window.currentTab === 'feed') window.renderFeed();
     };
 
-    // 1. 渲染：資產方塊 (嚴格顯示真實相機)
+    // 1. 渲染：資產方塊
     window.renderAssets = () => {
         const grid = $('assets-grid'); grid.innerHTML = '';
         
@@ -572,7 +583,7 @@
 
     const fmtTags = (val, bg, tc) => (!val || val.length === 0) ? '-' : (Array.isArray(val) ? val : [val]).map(v => `<span style="background:${bg}; color:${tc}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; margin:2px; display:inline-block;">${v}</span>`).join('');
 
-    // 2. 渲染：列表表格 (顯示合併相機，包含純歷史紀錄)
+    // 2. 渲染：列表表格
     window.renderList = () => {
         const tb = $('list-tbody'); tb.innerHTML = ''; $('cb-select-all').checked = false;
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
@@ -624,7 +635,6 @@
             const col = document.createElement('div'); col.className = 'board-col'; 
             col.innerHTML = `<div class="board-col-header"><span>🏷️ ${proj}</span><span style="font-size:12px; background:white; padding:2px 8px; border-radius:12px;">專案動態</span></div>`;
             
-            // 加入關鍵字過濾
             const projRecords = records.filter(r => r.project === proj && (
                 (r.cameraName||'').toLowerCase().includes(keyword) ||
                 (r.location||[]).join(',').toLowerCase().includes(keyword) ||
@@ -656,7 +666,7 @@
                             <button class="btn-like ${liked ? 'liked' : ''}" onclick="window.toggleLike('${rec.id}')">
                                 ${liked ? '❤️' : '🤍'} ${rec.likes ? rec.likes.length : 0}
                             </button>
-                            <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteSingleRecord('${rec.id}', event)">🗑️ 刪除紀錄</button>
+                            <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteSingleRecord('${rec.id}', event)">🗑️ 刪除</button>
                         </div>
                     </div>`;
             }); 
@@ -670,7 +680,7 @@
         await setDoc(doc(db, "timelapse_records", rId), { likes: lk }, { merge: true }); 
     };
 
-    // ======== ✨ 刪除與安全復原系統 ========
+    // ======== 刪除與安全復原系統 ========
     window.toggleAllRecords = (el) => $$('.cb-record-row').forEach(cb => cb.checked = el.checked);
 
     window.deleteCameraAsset = async (cId) => { 

@@ -9,8 +9,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { padding-top: 20px; }
-        .header-bar { margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 15px; }
-        .header-title { margin: 0; font-size: 45px; color: var(--primary); text-align: center; }
+        .header-bar { 
+            display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 15px;
+            margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 15px; 
+        }
+        /* 表頭標題放大至 45 級並置中 */
+        .header-title {
+            margin: 0; font-size: 45px; color: var(--primary); 
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+            width: 100%; text-align: center; flex-wrap: wrap;
+        }
         
         /* 標籤切換列 */
         .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
@@ -73,6 +81,21 @@
             content: '✔'; color: white; position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%); font-size: 14px; font-weight: bold;
         }
+
+        /* 多選 Tag 標籤容器樣式 */
+        .multi-tag-container {
+            display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px;
+            min-height: 36px; border: 1px solid #cbd5e1; border-radius: 6px;
+            background: white; align-items: center; cursor: pointer;
+        }
+        .multi-tag-item {
+            padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .tag-remove-btn {
+            cursor: pointer; font-weight: bold; opacity: 0.6; transition: opacity 0.2s;
+        }
+        .tag-remove-btn:hover { opacity: 1; color: var(--danger); }
     </style>
 </head>
 <body>
@@ -90,14 +113,14 @@
     </div>
 
     <!-- 共用控制列：過濾器與排序 -->
-    <div id="shared-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+    <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
         
-        <!-- 左側：專案過濾器 (所有視圖都可見) -->
-        <div id="filter-container-wrapper" style="position: relative;">
+        <!-- 左側：專案過濾器 (從資產頁隱藏，僅列表與貼文可見) -->
+        <div id="filter-container-wrapper" style="position: relative; display: none; margin-right: auto;">
             <button class="btn-secondary" onclick="toggleFilterPanel(event)" id="filter-btn-text" style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: bold; color: var(--primary); padding: 10px 20px; cursor: pointer; transition: all 0.2s;">
                 🏷️ 專案過濾 (載入中...) <span style="font-size:10px; color:var(--text-muted);">▼</span>
             </button>
-            <div class="custom-dropdown-panel" id="opt-filter-panel" style="position: absolute; top: 100%; left: 0; width: 300px; padding: 15px; margin-top: 8px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 3100; display: none;">
+            <div class="custom-dropdown-panel" id="opt-filter-panel" style="position: absolute; top: 100%; left: 0; width: 300px; padding: 15px; margin-top: 8px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 3100; display: none;" onclick="event.stopPropagation()">
                 <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px; font-weight:bold; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">☑️ 勾選要顯示的專案 (系統將自動記憶)</div>
                 <div id="filter-checkboxes" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto; padding-right: 5px;"></div>
             </div>
@@ -169,8 +192,8 @@
         <div class="form-group">
             <label>所屬專案</label>
             <div class="custom-dropdown-btn" onclick="toggleDropdown('opt-project', event)"><span id="disp-opt-project">閒置</span><span style="font-size:12px; color:var(--text-muted);">▼</span></div>
-            <div class="custom-dropdown-panel" id="opt-project-panel">
-                <div class="dropdown-search-row"><input type="text" id="opt-project-input" placeholder="新增或搜尋專案..." onclick="event.stopPropagation()"><button class="btn-primary" onclick="addOption('project', event)">➕</button></div>
+            <div class="custom-dropdown-panel" id="opt-project-panel" onclick="event.stopPropagation()">
+                <div class="dropdown-search-row"><input type="text" id="opt-project-input" placeholder="新增或搜尋專案..."><button class="btn-primary" onclick="addOption('project', event)">➕</button></div>
                 <div class="dropdown-list" id="opt-project-list"></div>
             </div>
         </div>
@@ -182,41 +205,50 @@
     </div>
 </div>
 
-<!-- ================= Modal: 巡檢紀錄表單 ================= -->
+<!-- ================= Modal: 巡檢紀錄表單 (支援多選地點/工項) ================= -->
 <div id="record-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeRecordModal()">
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header"><span id="record-modal-title">📝 紀錄狀態</span><button class="btn-close" onclick="closeRecordModal()">×</button></div>
         <div style="font-size:13px; color:var(--primary); font-weight:bold; margin-bottom:15px;" id="record-target-name"></div>
+        
         <div class="form-group">
-            <label>地點</label>
-            <div class="custom-dropdown-btn" onclick="toggleDropdown('opt-location', event)"><span id="disp-opt-location">選擇地點...</span><span style="font-size:12px; color:var(--text-muted);">▼</span></div>
-            <div class="custom-dropdown-panel" id="opt-location-panel">
-                <div class="dropdown-search-row"><input type="text" id="opt-location-input" placeholder="新增地點..." onclick="event.stopPropagation()"><button class="btn-primary" onclick="addOption('location', event)">➕</button></div>
+            <label>地點 (可多選)</label>
+            <div class="multi-tag-container" onclick="toggleDropdown('opt-location', event)">
+                <div id="multi-tags-location" style="flex:1; display:flex; flex-wrap:wrap; gap:5px;"><span style="color:var(--text-muted); font-size:14px;">選擇地點...</span></div>
+                <span style="font-size:12px; color:var(--text-muted);">▼</span>
+            </div>
+            <div class="custom-dropdown-panel" id="opt-location-panel" onclick="event.stopPropagation()">
+                <div class="dropdown-search-row"><input type="text" id="opt-location-input" placeholder="新增地點..."><button class="btn-primary" onclick="addOption('location', event)">➕</button></div>
                 <div class="dropdown-list" id="opt-location-list"></div>
             </div>
         </div>
+
         <div class="form-group" style="display:flex; gap:10px;">
             <div style="flex:1;"><label>電量 (%)</label><input type="number" id="rec-battery" placeholder="100" min="0" max="100"></div>
             <div style="flex:1;">
                 <label>容量</label>
                 <div class="custom-dropdown-btn" onclick="toggleDropdown('opt-capacity', event)"><span id="disp-opt-capacity">64GB</span><span style="font-size:12px; color:var(--text-muted);">▼</span></div>
-                <div class="custom-dropdown-panel" id="opt-capacity-panel">
-                    <div class="dropdown-search-row"><input type="text" id="opt-capacity-input" placeholder="新增容量..." onclick="event.stopPropagation()"><button class="btn-primary" onclick="addOption('capacity', event)">➕</button></div>
+                <div class="custom-dropdown-panel" id="opt-capacity-panel" onclick="event.stopPropagation()">
+                    <div class="dropdown-search-row"><input type="text" id="opt-capacity-input" placeholder="新增容量..."><button class="btn-primary" onclick="addOption('capacity', event)">➕</button></div>
                     <div class="dropdown-list" id="opt-capacity-list"></div>
                 </div>
             </div>
         </div>
-        <div class="form-group" style="display:flex; gap:10px;">
-            <div style="flex:1;"><label>電源狀態</label><select id="rec-power"><option value="開">🟢 開機</option><option value="關">🔴 關機</option></select></div>
-            <div style="flex:1;">
-                <label>工項</label>
-                <div class="custom-dropdown-btn" onclick="toggleDropdown('opt-task', event)"><span id="disp-opt-task">換電池</span><span style="font-size:12px; color:var(--text-muted);">▼</span></div>
-                <div class="custom-dropdown-panel" id="opt-task-panel">
-                    <div class="dropdown-search-row"><input type="text" id="opt-task-input" placeholder="新增工項..." onclick="event.stopPropagation()"><button class="btn-primary" onclick="addOption('task', event)">➕</button></div>
-                    <div class="dropdown-list" id="opt-task-list"></div>
-                </div>
+
+        <div class="form-group">
+            <label>工項 (可多選)</label>
+            <div class="multi-tag-container" onclick="toggleDropdown('opt-task', event)">
+                <div id="multi-tags-task" style="flex:1; display:flex; flex-wrap:wrap; gap:5px;"><span style="color:var(--text-muted); font-size:14px;">選擇工項...</span></div>
+                <span style="font-size:12px; color:var(--text-muted);">▼</span>
+            </div>
+            <div class="custom-dropdown-panel" id="opt-task-panel" onclick="event.stopPropagation()">
+                <div class="dropdown-search-row"><input type="text" id="opt-task-input" placeholder="新增工項..."><button class="btn-primary" onclick="addOption('task', event)">➕</button></div>
+                <div class="dropdown-list" id="opt-task-list"></div>
             </div>
         </div>
+
+        <div class="form-group"><label>電源狀態</label><select id="rec-power"><option value="開">🟢 開機</option><option value="關">🔴 關機</option></select></div>
+        
         <div class="form-group"><label>備註 (上限 100 字)</label><textarea id="rec-remarks" rows="3" maxlength="100" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; resize:vertical; font-family:inherit;"></textarea></div>
         <div class="modal-footer"><button class="btn-secondary" onclick="closeRecordModal()">取消</button><button class="btn-primary" onclick="saveRecord()">發佈紀錄</button></div>
     </div>
@@ -236,6 +268,9 @@
     let currentRecordCamId = null;
     let currentUserProfile = {};
     
+    // 多選標籤狀態管理
+    let currentSelectedTags = { location: [], task: [] };
+
     // 過濾器狀態 (自動讀取 LocalStorage)
     let activeFilters = JSON.parse(localStorage.getItem('timelapse_project_filter')) || null;
 
@@ -410,7 +445,6 @@
                     headers.forEach((h, i) => { if(h) rowData[h.trim()] = row[i]; });
                     
                     const camName = rowData['編號'] ? String(rowData['編號']).trim() : '';
-                    // 終極防呆：名字是空的，或是讀成 undefined 字串，絕對拋棄！
                     if (!camName || camName.toLowerCase() === 'undefined') continue;
                     
                     const brand = rowData['品牌'] || 'N/A';
@@ -463,6 +497,8 @@
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById(`view-${tab}`).classList.add('active');
         
+        // 依據標籤頁決定上方 Toolbar 內容顯示
+        document.getElementById('filter-container-wrapper').style.display = (tab === 'list' || tab === 'feed') ? 'block' : 'none';
         document.getElementById('asset-sort-wrapper').style.display = (tab === 'assets') ? 'flex' : 'none';
         
         renderCurrentView();
@@ -475,13 +511,10 @@
         else if (currentTab === 'feed') renderFeed();
     };
 
-    // 1. 資產方塊視圖 (加入過濾器)
+    // 1. 資產方塊視圖 (不參與專案過濾，顯示全部相機)
     window.renderAssets = () => {
         const grid = document.getElementById('assets-grid'); grid.innerHTML = '';
-        
-        let filteredCams = cameras.filter(c => activeFilters.includes(c.project || '閒置'));
-
-        if (filteredCams.length === 0) return grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8; padding:30px;">在此過濾條件下沒有相機</div>';
+        if (cameras.length === 0) return grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8; padding:30px;">尚無縮時相機</div>';
         
         const sortBy = document.getElementById('asset-sort-select').value;
         const sortFn = (a, b) => {
@@ -494,7 +527,7 @@
 
         const activeCams = [];
         const archivedCams = [];
-        filteredCams.forEach(c => {
+        cameras.forEach(c => {
             if (c.project === '無法使用') archivedCams.push(c);
             else activeCams.push(c);
         });
@@ -532,7 +565,14 @@
         }
     };
 
-    // 2. 列表 (加入左側打勾方塊與刪除，並套用過濾)
+    // 格式化多標籤顯示
+    function formatMultiTags(val, bgColor, textColor) {
+        if (!val || (Array.isArray(val) && val.length === 0)) return '-';
+        const arr = Array.isArray(val) ? val : [val]; // 相容舊字串格式
+        return arr.map(v => `<span style="background:${bgColor}; color:${textColor}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; margin-right:4px; margin-bottom:4px; display:inline-block;">${v}</span>`).join('');
+    }
+
+    // 2. 列表 (加入過濾)
     function renderList() {
         const tbody = document.getElementById('list-tbody'); tbody.innerHTML = '';
         document.getElementById('cb-select-all').checked = false;
@@ -560,9 +600,9 @@
                 <td style="text-align:center;"><button class="btn-danger" style="padding:6px 12px; font-size:12px; border-radius:6px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);" onclick="window.deleteCameraAsset('${cam.id}', event)" title="刪除機台與紀錄">🗑️ 刪除</button></td>
                 <td><span class="badge tag">${cam.project || '閒置'}</span></td>
                 <td><b style="color:${isArchived ? '#991b1b' : 'var(--primary)'}; font-size:16px;">📸 縮時 ${cam.item || '?'}</b></td>
-                <td>${latest.location || '-'}</td>
+                <td>${formatMultiTags(latest.location, '#e0e7ff', '#4f46e5')}</td>
                 <td>${pBadge}</td>
-                <td>${latest.task ? `<span style="background:#fef08a; color:#854d0e; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold;">${latest.task}</span>` : '-'}</td>
+                <td>${formatMultiTags(latest.task, '#fef08a', '#854d0e')}</td>
                 <td style="font-size:12px;">${latest.createdAt ? new Date(latest.createdAt).toLocaleString('zh-TW', {hour12:false}) : '-'}</td>
                 <td style="font-family:monospace; font-weight:bold; font-size:16px; color:var(--text-main);">${latest.battery ? latest.battery+'%' : '-'}</td>
                 <td style="font-size:12px;">${latest.capacity || '-'}</td>
@@ -572,7 +612,7 @@
         });
     }
 
-    // 3. 貼文動態牆 (加入過濾與放大刪除按鈕)
+    // 3. 貼文動態牆 (加入過濾)
     function renderFeed() {
         const board = document.getElementById('feed-board'); board.innerHTML = '';
         
@@ -605,8 +645,8 @@
                         </div>
                         <div class="feed-content">
                             <p style="font-weight:bold; color:var(--primary); margin:0 0 5px 0;">📸 縮時 ${rec.cameraName}</p>
-                            <p style="margin:0 0 5px 0;">📍 ${rec.location} | 🔋 ${rec.battery}% | 💾 ${rec.capacity}</p>
-                            <p style="margin:0 0 5px 0;">狀態：${rec.power === '開'?'🟢開機':'🔴關機'} | 🔧 ${rec.task}</p>
+                            <p style="margin:0 0 5px 0;">📍 ${formatMultiTags(rec.location, '#e0e7ff', '#4f46e5')} | 🔋 ${rec.battery}% | 💾 ${rec.capacity}</p>
+                            <p style="margin:0 0 5px 0;">狀態：${rec.power === '開'?'🟢開機':'🔴關機'} | 🔧 ${formatMultiTags(rec.task, '#fef08a', '#854d0e')}</p>
                             ${rec.remarks ? `<div style="background:#f8fafc; padding:8px; border-radius:6px; margin-top:8px; font-size:12px; border:1px solid #e2e8f0; color:var(--text-main);">${rec.remarks}</div>` : ''}
                         </div>
                         <div class="feed-footer">
@@ -634,7 +674,6 @@
         document.querySelectorAll('.cb-cam-row').forEach(cb => cb.checked = el.checked);
     };
 
-    // 刪除整台相機(以及它所有的紀錄)
     window.deleteCameraAsset = async (camId, e) => {
         if(e) e.stopPropagation();
         if(!confirm('確定刪除此相機物件？\n(包含其所有巡檢紀錄，24小時內可復原)')) return;
@@ -668,7 +707,6 @@
         deletedRecordsQueue.push({ type: 'camera_batch', data: batchData });
         await Promise.all(ops);
         
-        // 秒數動態疊加 (起跳 15 秒，每多一件多 5 秒，上限 60 秒)
         const addedTime = 15 + ((camIds.length - 1) * 5);
         if (restoreTimeLeft <= 0) restoreTimeLeft = addedTime;
         else restoreTimeLeft = Math.min(restoreTimeLeft + addedTime, 60);
@@ -677,7 +715,6 @@
         showRestoreToast();
     }
 
-    // 刪除動態牆的單一「貼文」
     window.deleteSingleRecord = async (recId, e) => {
         if(e) e.stopPropagation();
         if(!confirm('確定刪除此貼文？\n(24 小時內可以復原)')) return;
@@ -773,6 +810,30 @@
             }
         }
     };
+
+    // ✨ 多選 Tag 渲染邏輯
+    window.renderMultiSelectTags = (key) => {
+        const container = document.getElementById(`multi-tags-${key}`);
+        if(!container) return;
+        
+        if (currentSelectedTags[key].length === 0) {
+            container.innerHTML = `<span style="color:var(--text-muted); font-size:14px;">選擇${key==='location'?'地點':'工項'}...</span>`;
+        } else {
+            const bg = key === 'location' ? '#e0e7ff' : '#fef08a';
+            const color = key === 'location' ? '#4f46e5' : '#854d0e';
+            container.innerHTML = currentSelectedTags[key].map(v =>
+                `<span class="multi-tag-item" style="background:${bg}; color:${color};">
+                    ${v} <span class="tag-remove-btn" onclick="event.stopPropagation(); removeMultiSelectTag('${key}', '${v}')">×</span>
+                </span>`
+            ).join('');
+        }
+    };
+
+    window.removeMultiSelectTag = (key, val) => {
+        currentSelectedTags[key] = currentSelectedTags[key].filter(v => v !== val);
+        renderMultiSelectTags(key);
+    };
+
     function renderOptionsList(key) {
         if(key === 'filter') return; 
         const inputVal = document.getElementById(`opt-${key}-input`).value.toLowerCase();
@@ -781,19 +842,51 @@
         arr.filter(v => v.toLowerCase().includes(inputVal)).forEach(val => {
             const d = document.createElement('div'); d.className = 'dropdown-item';
             d.innerHTML = `<span style="flex:1;">${val}</span><button class="dropdown-item-delete" onclick="event.stopPropagation(); window.delOption('${key}', '${val}')">×</button>`;
-            d.querySelector('span').onclick = () => { document.getElementById(`disp-opt-${key}`).innerText = val; document.getElementById(`opt-${key}-panel`).classList.remove('active'); };
+            
+            // ✨ 點擊下拉選項時的判斷：如果是多選項目 (地點/工項)，將其加入陣列並保持選單開啟
+            d.querySelector('span').onclick = (e) => { 
+                if (key === 'location' || key === 'task') {
+                    e.stopPropagation(); // 阻止下拉選單關閉
+                    if (!currentSelectedTags[key].includes(val)) {
+                        currentSelectedTags[key].push(val);
+                        renderMultiSelectTags(key);
+                    }
+                } else {
+                    document.getElementById(`disp-opt-${key}`).innerText = val; 
+                    document.getElementById(`opt-${key}-panel`).classList.remove('active'); 
+                }
+            };
             listDiv.appendChild(d);
         });
     }
+
     window.addOption = async (key, e) => {
         if(e) e.stopPropagation(); const val = document.getElementById(`opt-${key}-input`).value.trim();
         if(!val) return; if(!options[key]) options[key] = []; if(options[key].includes(val)) return alert('選項已存在');
+        
         options[key].push(val); await setDoc(doc(db, "settings", "timelapse_options"), options);
-        document.getElementById(`disp-opt-${key}`).innerText = val; document.getElementById(`opt-${key}-panel`).classList.remove('active');
+        
+        // 如果是多選欄位，新增後自動加入選定名單
+        if (key === 'location' || key === 'task') {
+            if (!currentSelectedTags[key].includes(val)) currentSelectedTags[key].push(val);
+            renderMultiSelectTags(key);
+            document.getElementById(`opt-${key}-input`).value = '';
+            renderOptionsList(key);
+        } else {
+            document.getElementById(`disp-opt-${key}`).innerText = val; 
+            document.getElementById(`opt-${key}-panel`).classList.remove('active');
+        }
     };
+
     window.delOption = async (key, val) => {
         if(!confirm(`刪除選項 ${val}？`)) return;
         options[key] = options[key].filter(v => v !== val); await setDoc(doc(db, "settings", "timelapse_options"), options);
+        
+        // 如果被刪除的選項正在選取清單中，將其移除
+        if (key === 'location' || key === 'task') {
+            currentSelectedTags[key] = currentSelectedTags[key].filter(v => v !== val);
+            renderMultiSelectTags(key);
+        }
         renderOptionsList(key);
     };
 
@@ -844,26 +937,36 @@
 
         currentRecordCamId = cam.id;
         document.getElementById('record-target-name').innerText = `目標：📸 縮時 ${cam.item} (${cam.project || '閒置'})`;
-        document.getElementById('disp-opt-location').innerText = '選擇地點...';
+        
+        // 初始化多選標籤狀態
+        currentSelectedTags.location = [];
+        currentSelectedTags.task = [];
+        renderMultiSelectTags('location');
+        renderMultiSelectTags('task');
+
         document.getElementById('rec-battery').value = '';
         document.getElementById('disp-opt-capacity').innerText = '64GB';
         document.getElementById('rec-power').value = '開';
-        document.getElementById('disp-opt-task').innerText = '換電池';
         document.getElementById('rec-remarks').value = '';
         ['location', 'capacity', 'task'].forEach(k => { const inp = document.getElementById(`opt-${k}-input`); if(inp) inp.value = ''; });
         document.getElementById('record-modal-overlay').classList.add('active');
     };
     window.closeRecordModal = () => document.getElementById('record-modal-overlay').classList.remove('active');
     window.saveRecord = async () => {
-        const loc = document.getElementById('disp-opt-location').innerText;
-        if(loc === '選擇地點...') return alert('請選擇或新增地點！');
+        // 取出多選陣列
+        const loc = currentSelectedTags.location;
+        const task = currentSelectedTags.task;
+        
+        if(loc.length === 0) return alert('請選擇或新增至少一個地點！');
+        
         const cam = cameras.find(c => c.id === currentRecordCamId);
         const data = {
             cameraId: cam.id, cameraName: cam.item, project: cam.project || '閒置',
-            location: loc, battery: document.getElementById('rec-battery').value,
+            location: loc, // 存入陣列 Array
+            battery: document.getElementById('rec-battery').value,
             capacity: document.getElementById('disp-opt-capacity').innerText,
             power: document.getElementById('rec-power').value,
-            task: document.getElementById('disp-opt-task').innerText,
+            task: task, // 存入陣列 Array
             remarks: document.getElementById('rec-remarks').value,
             createdAt: new Date().toISOString(), likes: [],
             creatorName: currentUserProfile.name, creatorEmail: currentUserProfile.email, creatorAvatar: currentUserProfile.avatar

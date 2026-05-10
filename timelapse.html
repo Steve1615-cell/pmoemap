@@ -13,7 +13,7 @@
         .header-title { margin: 0; font-size: 45px; color: var(--primary); text-align: center; }
         
         /* 標籤切換列 */
-        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
         .tab-btn { padding: 10px 30px; background: white; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
         .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
@@ -28,6 +28,11 @@
         .badge.power-off { background: #fee2e2; color: #e11d48; }
         .badge.tag { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
 
+        /* 封存與停用樣式 */
+        .archived-row td { background-color: #fee2e2 !important; color: #991b1b !important; }
+        .archived-card { background-color: #fee2e2 !important; border: 1px solid #fca5a5 !important; }
+        .archived-card .feed-content, .archived-card .feed-meta, .archived-card .feed-content p { color: #991b1b !important; }
+
         /* 看板/專案動態牆 (Feed) */
         .board-container { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; align-items: flex-start; }
         .board-col { flex: 0 0 320px; background: #f1f5f9; border-radius: 12px; padding: 15px; max-height: 80vh; overflow-y: auto; }
@@ -37,10 +42,22 @@
         .feed-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
         .feed-meta { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
         .feed-content { font-size: 13px; line-height: 1.6; color: var(--text-main); }
-        .feed-footer { display: flex; justify-content: flex-end; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; }
+        .feed-footer { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; }
         .btn-like { background: none; border: none; font-size: 14px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; gap: 5px; transition: transform 0.1s; }
         .btn-like.liked { color: #e11d48; }
         .btn-like:active { transform: scale(1.2); }
+
+        /* 復原紀錄 Toast 動畫 */
+        #restore-toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: var(--text-main); color: white; padding: 12px 24px; border-radius: 30px;
+            z-index: 9999; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex; align-items: center; gap: 15px;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        #restore-toast.minimizing {
+            top: calc(100vh - 80px); left: calc(100vw - 40px); transform: scale(0.1); opacity: 0; pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -57,20 +74,40 @@
         <button id="tab-btn-feed" class="tab-btn" onclick="switchTab('feed')">紀錄</button>
     </div>
 
+    <!-- 資產頁專屬：排序選單 -->
+    <div id="asset-filter-container" style="display: flex; justify-content: flex-end; margin-bottom: 15px; gap: 10px;">
+        <div style="background: white; padding: 5px 15px; border-radius: 8px; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: 8px;">
+            <label style="font-size: 13px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
+            <select id="asset-sort-select" onchange="window.renderAssets()" style="border: none; outline: none; font-size: 14px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
+                <option value="name">🔢 依序號</option>
+                <option value="status">🚦 依狀態</option>
+                <option value="project">🏷️ 依使用專案</option>
+                <option value="sn">🔤 依資產編號</option>
+            </select>
+        </div>
+    </div>
+
     <div id="loading-msg" style="text-align: center; color: var(--text-muted); padding: 50px; font-size: 18px;">
         ⏳ 資料讀取與驗證中...
     </div>
 
     <!-- 視圖區塊 -->
     <div id="view-assets" class="view active"><div class="grid-nav" id="assets-grid"></div></div>
-    <div id="view-list" class="view"><div class="table-container"><table class="notion-table"><thead><tr><th>@ 專案</th><th>Aa 機台名稱</th><th>📍 地點</th><th>🔌 電源</th><th>🔧 工項</th><th>🕒 檢查時間</th><th>🔋 (%)</th><th>💾 容量</th><th>👥 建立人</th></tr></thead><tbody id="list-tbody"></tbody></table></div></div>
+    <div id="view-list" class="view"><div class="table-container"><table class="notion-table"><thead><tr><th>@ 專案</th><th>Aa 機台名稱</th><th>📍 地點</th><th>🔌 電源</th><th>🔧 工項</th><th>🕒 檢查時間</th><th>🔋 (%)</th><th>💾 容量</th><th>👥 建立人</th><th>🗑️ 操作</th></tr></thead><tbody id="list-tbody"></tbody></table></div></div>
     <div id="view-feed" class="view"><div class="board-container" id="feed-board"></div></div>
 </div>
 
-<!-- ✨ 修正：多功能懸浮按鈕選單與隱藏的檔案上傳器 -->
+<!-- 復原紀錄的動態頂部 Toast -->
+<div id="restore-toast" style="display:none;">
+    <span id="restore-toast-text"></span>
+    <button class="btn-primary" onclick="restoreLastRecord()" style="background:var(--warning); color:white; padding:6px 15px;">↩️ 復原</button>
+</div>
+
+<!-- 多功能懸浮按鈕選單與隱藏的檔案上傳器 -->
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px;">
     <div class="fab-menu" id="fab-menu">
-        <button class="fab-item" onclick="document.getElementById('excel-upload').click()">📥 從 Excel 匯入</button>
+        <button class="fab-item" id="fab-restore-item" style="display:none; color:var(--warning);" onclick="restoreLastRecord()">♻️ 復原紀錄</button>
+        <button class="fab-item" onclick="document.getElementById('excel-upload').click()">📥 從 Excel 匯入覆蓋</button>
         <button class="fab-item" onclick="openCameraModal()">➕ 新增相機資產</button>
     </div>
     <button class="fab-btn" onclick="toggleFabMenu(event)">＋</button>
@@ -150,6 +187,11 @@
     let currentEditCamId = null;
     let currentRecordCamId = null;
     let currentUserProfile = {};
+    
+    // 復原紀錄佇列與計時器
+    let deletedRecordsQueue = [];
+    let restoreTimerInt = null;
+    let restoreTimeLeft = 0;
 
     const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
 
@@ -223,23 +265,21 @@
         });
     }
 
-    // ======== ✨ 新增：FAB 菜單控制 ========
+    // ======== FAB 菜單控制 ========
     window.toggleFabMenu = (e) => {
         if(e) e.stopPropagation();
         document.getElementById('fab-container').classList.toggle('active');
         document.getElementById('fab-menu').classList.toggle('active');
     };
 
-    // ======== ✨ 新增：Excel 智慧匯入解析 ========
+    // ======== 智慧匯入解析 (預設覆蓋更新) ========
     window.handleExcelUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         
-        // 重置檔案選取器，允許重複上傳同一個檔
         e.target.value = '';
-        
         const loader = document.getElementById('loading-msg');
-        loader.innerHTML = '⏳ 正在為您解析 Excel 資料...';
+        loader.innerHTML = '⏳ 正在為您解析並覆蓋 Excel 資料...';
         loader.style.display = 'block';
         loader.style.color = 'var(--text-main)';
         
@@ -250,27 +290,24 @@
                 const workbook = XLSX.read(data, { type: 'binary' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                // 將工作表轉換為陣列結構 (header: 1 代表將每一列讀作陣列)
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
-                // 智慧尋找表頭 (略過第一行的「縮時攝影機管理表」大標題)
                 let headerRowIndex = json.findIndex(row => row.includes('編號') || row.includes('品牌'));
-                if (headerRowIndex === -1) headerRowIndex = 0; // 若找不到則使用第一行當保底
+                if (headerRowIndex === -1) headerRowIndex = 0; 
                 
                 const headers = json[headerRowIndex];
                 const rows = json.slice(headerRowIndex + 1);
                 
-                let importedCount = 0;
+                let updatedCount = 0;
+                let addedCount = 0;
                 const ops = [];
 
                 for (const row of rows) {
                     if (!row || row.length === 0) continue;
                     
-                    // 將陣列轉為以表頭為 Key 的物件
                     const rowData = {};
                     headers.forEach((h, i) => { if(h) rowData[h.trim()] = row[i]; });
                     
-                    // 防呆：忽略完全沒有編號與品牌資料的空白行
                     if (!rowData['編號'] && !rowData['品牌']) continue;
                     
                     const camName = rowData['編號'] ? String(rowData['編號']) : '';
@@ -280,33 +317,27 @@
                     let project = rowData['現使用專案'] || '閒置';
                     const purchaseDate = rowData['移入(PMO)日期'] || '';
                     
-                    // 防重複機制：檢查系統中是否已存在同編號 (機台名稱) 的相機
-                    const exists = cameras.find(c => String(c.item) === String(camName));
-                    if (exists) continue; 
-                    
-                    // 組合要存入資料庫的物件
                     const dataToSave = {
-                        type: 'public', 
-                        category: '縮時相機', 
-                        assetType: 'fixed', 
-                        office_id: 'TIMELAPSE_GLOBAL',
-                        item: camName, 
-                        project: project, 
-                        brand: brand, 
-                        model: model, 
-                        sn: String(sn), 
-                        purchase_date: String(purchaseDate)
+                        type: 'public', category: '縮時相機', assetType: 'fixed', office_id: 'TIMELAPSE_GLOBAL',
+                        item: camName, project: project, brand: brand, model: model, 
+                        sn: String(sn), purchase_date: String(purchaseDate)
                     };
                     
-                    ops.push(addDoc(collection(db, "assets"), dataToSave));
-                    importedCount++;
+                    const exists = cameras.find(c => String(c.item) === String(camName));
+                    if (exists) {
+                        ops.push(updateDoc(doc(db, "assets", exists.id), dataToSave));
+                        updatedCount++;
+                    } else {
+                        ops.push(addDoc(collection(db, "assets"), dataToSave));
+                        addedCount++;
+                    }
                 }
                 
                 if (ops.length > 0) {
                     await Promise.all(ops);
-                    alert(`🎉 成功匯入 ${importedCount} 筆相機資產！`);
+                    alert(`🎉 匯入完成！\n新增了 ${addedCount} 筆\n覆蓋更新了 ${updatedCount} 筆`);
                 } else {
-                    alert('沒有匯入任何資料。可能是 Excel 中沒有符合格式的資料，或是系統內已經有相同編號的相機了。');
+                    alert('沒有匯入任何資料。請確認 Excel 格式是否正確。');
                 }
                 
             } catch(err) {
@@ -318,7 +349,6 @@
         };
         reader.readAsBinaryString(file);
         
-        // 自動關閉 FAB 選單
         document.getElementById('fab-container').classList.remove('active');
         document.getElementById('fab-menu').classList.remove('active');
     };
@@ -330,66 +360,105 @@
         document.getElementById(`tab-btn-${tab}`).classList.add('active');
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById(`view-${tab}`).classList.add('active');
+        
+        document.getElementById('asset-filter-container').style.display = (tab === 'assets') ? 'flex' : 'none';
+        
         renderCurrentView();
     };
 
-    function renderCurrentView() {
-        if (currentTab === 'assets') renderAssets();
+    window.renderCurrentView = () => {
+        if (currentTab === 'assets') window.renderAssets();
         else if (currentTab === 'list') renderList();
         else if (currentTab === 'feed') renderFeed();
-    }
+    };
 
-    // 1. 資產方塊視圖
-    function renderAssets() {
+    // 1. 資產方塊視圖 (加入排序與封存區域)
+    window.renderAssets = () => {
         const grid = document.getElementById('assets-grid'); grid.innerHTML = '';
         if (cameras.length === 0) return grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8; padding:30px;">尚無縮時相機</div>';
-        cameras.sort((a,b) => (a.project||'').localeCompare(b.project||'')).forEach(cam => {
-            const card = document.createElement('div'); card.className = 'nav-card';
+        
+        const sortBy = document.getElementById('asset-sort-select').value;
+        const sortFn = (a, b) => {
+            if (sortBy === 'name') return (a.item || '').localeCompare(b.item || '', undefined, {numeric: true});
+            if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
+            if (sortBy === 'project') return (a.project || '').localeCompare(b.project || '');
+            if (sortBy === 'sn') return (a.sn || '').localeCompare(b.sn || '');
+            return 0;
+        };
+
+        const activeCams = [];
+        const archivedCams = [];
+        cameras.forEach(c => {
+            if (c.project === '無法使用') archivedCams.push(c);
+            else activeCams.push(c);
+        });
+
+        activeCams.sort(sortFn);
+        archivedCams.sort(sortFn);
+
+        const renderCard = (cam, isArchived) => {
+            const card = document.createElement('div'); 
+            card.className = isArchived ? 'nav-card no-hover' : 'nav-card';
+            if (isArchived) {
+                card.style.backgroundColor = '#f1f5f9';
+                card.style.opacity = '0.7';
+                card.style.border = '1px solid #cbd5e1';
+                card.title = '該縮時已停用，無法新增紀錄';
+            }
             card.innerHTML = `
                 <div style="position:absolute; top:12px; left:15px;" class="badge tag">${cam.project || '閒置'}</div>
                 <button class="card-edit-btn" onclick="event.stopPropagation(); window.openCameraModal('${cam.id}')">✏️</button>
-                <h2 style="margin-top:30px; font-size:24px;">📸 縮時 ${cam.item || '未命名'}</h2>
+                <h2 style="margin-top:30px; font-size:24px; color:${isArchived ? '#64748b' : 'var(--text-main)'};">📸 縮時 ${cam.item || '未命名'}</h2>
                 <div class="detail-info" style="opacity:1; max-height:none; text-align:center; margin-top:10px;">
                     <div>品牌：${cam.brand || 'N/A'} | 型號：${cam.model || 'N/A'}</div>
                     <div style="font-family:monospace; color:var(--danger); font-weight:bold;">SN: ${cam.sn || 'N/A'}</div>
                 </div>
             `;
-            // 點擊卡片其他區域開啟紀錄表單
             card.onclick = () => window.openRecordModal(cam.id);
             grid.appendChild(card);
-        });
-    }
+        };
 
-    // 2. Notion 風格表格列表
+        activeCams.forEach(cam => renderCard(cam, false));
+
+        if (archivedCams.length > 0) {
+            grid.innerHTML += `<div style="grid-column: 1/-1; margin-top: 30px;"><h3 style="border-bottom: 2px dashed #94a3b8; padding-bottom: 10px; color: #64748b;">🗄️ 封存區域 (已停用)</h3></div>`;
+            archivedCams.forEach(cam => renderCard(cam, true));
+        }
+    };
+
+    // 2. Notion 風格表格列表 (加入無法使用紅色標記與刪除按鈕)
     function renderList() {
         const tbody = document.getElementById('list-tbody'); tbody.innerHTML = '';
         const sortedCams = [...cameras].sort((a,b) => (a.project||'').localeCompare(b.project||''));
         sortedCams.forEach(cam => {
-            // 找出該相機最新的紀錄
             const camRecords = records.filter(r => r.cameraId === cam.id).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
             const latest = camRecords[0] || {};
             const pBadge = latest.power === '開' ? '<span class="badge power-on">開</span>' : latest.power === '關' ? '<span class="badge power-off">關</span>' : '-';
             
+            const isArchived = cam.project === '無法使用';
             const tr = document.createElement('tr');
+            tr.className = isArchived ? 'archived-row' : '';
+            if (isArchived) tr.title = "該縮時已停用";
+            
             tr.innerHTML = `
                 <td><span class="badge tag">${cam.project || '閒置'}</span></td>
-                <td><b style="color:var(--primary);">📸 縮時 ${cam.item || '?'}</b></td>
+                <td><b style="color:${isArchived ? '#991b1b' : 'var(--primary)'};">📸 縮時 ${cam.item || '?'}</b></td>
                 <td>${latest.location || '-'}</td>
                 <td>${pBadge}</td>
                 <td>${latest.task ? `<span style="background:#fef08a; color:#854d0e; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold;">${latest.task}</span>` : '-'}</td>
                 <td style="font-size:12px;">${latest.createdAt ? new Date(latest.createdAt).toLocaleString('zh-TW', {hour12:false}) : '-'}</td>
                 <td style="font-family:monospace; font-weight:bold;">${latest.battery ? latest.battery+'%' : '-'}</td>
-                <td style="font-size:12px; color:var(--text-muted);">${latest.capacity || '-'}</td>
+                <td style="font-size:12px;">${latest.capacity || '-'}</td>
                 <td>${latest.creatorName ? `<div style="display:flex; align-items:center; gap:5px;"><img src="${latest.creatorAvatar}" style="width:20px; border-radius:50%;">${latest.creatorName}</div>` : '-'}</td>
+                <td style="text-align:center;">${latest.id ? `<button class="btn-danger" style="padding:4px 8px; font-size:12px; border-radius:4px;" onclick="window.deleteRecord('${latest.id}', event)">🗑️</button>` : '-'}</td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    // 3. 看板專案動態牆 (Feed)
+    // 3. 看板專案動態牆 (加入無法使用紅色標記與刪除按鈕)
     function renderFeed() {
         const board = document.getElementById('feed-board'); board.innerHTML = '';
-        // 抓出有被使用的專案 (最多四欄)
         const activeProjects = [...new Set(cameras.map(c => c.project || '閒置'))].slice(0, 4);
         
         activeProjects.forEach(proj => {
@@ -400,10 +469,12 @@
             if(projRecords.length === 0) col.innerHTML += `<div style="text-align:center; color:#94a3b8; font-size:13px; margin-top:20px;">尚無紀錄</div>`;
             
             projRecords.forEach(rec => {
+                const isArchived = cameras.find(c => c.id === rec.cameraId)?.project === '無法使用';
                 const liked = rec.likes && rec.likes.includes(currentUserProfile.email);
                 const likeCount = rec.likes ? rec.likes.length : 0;
+                
                 col.innerHTML += `
-                    <div class="feed-card">
+                    <div class="feed-card ${isArchived ? 'archived-card' : ''}" ${isArchived ? 'title="該縮時已停用"' : ''}>
                         <div class="feed-header">
                             <img src="${rec.creatorAvatar}" class="feed-avatar">
                             <div class="feed-meta"><b>${rec.creatorName}</b><br>${new Date(rec.createdAt).toLocaleString('zh-TW', {hour12:false})}</div>
@@ -412,12 +483,13 @@
                             <p style="font-weight:bold; color:var(--primary); margin:0 0 5px 0;">📸 縮時 ${rec.cameraName}</p>
                             <p style="margin:0 0 5px 0;">📍 ${rec.location} | 🔋 ${rec.battery}% | 💾 ${rec.capacity}</p>
                             <p style="margin:0 0 5px 0;">狀態：${rec.power === '開'?'🟢開機':'🔴關機'} | 🔧 ${rec.task}</p>
-                            ${rec.remarks ? `<div style="background:#f8fafc; padding:8px; border-radius:6px; margin-top:8px; font-size:12px; border:1px solid #e2e8f0;">${rec.remarks}</div>` : ''}
+                            ${rec.remarks ? `<div style="background:#f8fafc; padding:8px; border-radius:6px; margin-top:8px; font-size:12px; border:1px solid #e2e8f0; color:var(--text-main);">${rec.remarks}</div>` : ''}
                         </div>
                         <div class="feed-footer">
                             <button class="btn-like ${liked ? 'liked' : ''}" onclick="window.toggleLike('${rec.id}')">
                                 ${liked ? '❤️' : '🤍'} ${likeCount}
                             </button>
+                            <button class="btn-edit" style="color:var(--danger); border-color:transparent; padding:2px 6px;" onclick="window.deleteRecord('${rec.id}', event)">🗑️ 刪除</button>
                         </div>
                     </div>`;
             });
@@ -431,6 +503,88 @@
         if(newLikes.includes(currentUserProfile.email)) newLikes = newLikes.filter(e => e !== currentUserProfile.email);
         else newLikes.push(currentUserProfile.email);
         await setDoc(doc(db, "timelapse_records", recordId), { likes: newLikes }, { merge: true });
+    };
+
+    // ======== 刪除紀錄與 24 小時安全復原機制 ========
+    window.deleteRecord = async (recId, e) => {
+        if(e) e.stopPropagation();
+        if(!confirm('確定刪除此紀錄？\n(24 小時內可以復原)')) return;
+        
+        const rec = records.find(r => r.id === recId);
+        if(!rec) return;
+
+        // 複製一份去掉 ID 的純資料放入待復原佇列
+        const dataCopy = { ...rec };
+        delete dataCopy.id;
+        deletedRecordsQueue.push({ id: recId, data: dataCopy });
+
+        // 從資料庫移除
+        await deleteDoc(doc(db, "timelapse_records", recId));
+
+        // 計算 Toast 動態停留時間
+        if (restoreTimeLeft <= 0) restoreTimeLeft = 15;
+        else restoreTimeLeft = Math.min(restoreTimeLeft + 5, 60);
+
+        showRestoreToast();
+    };
+
+    function showRestoreToast() {
+        const toast = document.getElementById('restore-toast');
+        const fabItem = document.getElementById('fab-restore-item');
+
+        toast.style.display = 'flex';
+        toast.classList.remove('minimizing');
+        fabItem.style.display = 'none'; 
+
+        updateRestoreToastText();
+
+        clearInterval(restoreTimerInt);
+        restoreTimerInt = setInterval(() => {
+            restoreTimeLeft--;
+            updateRestoreToastText();
+
+            if (restoreTimeLeft <= 0) {
+                clearInterval(restoreTimerInt);
+                // 秒數歸零，啟動縮小飛入 FAB 按鈕的動畫
+                toast.classList.add('minimizing');
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                    if (deletedRecordsQueue.length > 0) {
+                        fabItem.style.display = 'block';
+                        fabItem.innerText = `♻️ 復原紀錄 (${deletedRecordsQueue.length})`;
+                    }
+                }, 500);
+            }
+        }, 1000);
+    }
+
+    function updateRestoreToastText() {
+        const toastText = document.getElementById('restore-toast-text');
+        if(toastText) toastText.innerText = `已刪除 ${deletedRecordsQueue.length} 筆紀錄 ( ${restoreTimeLeft}s 後收合 )`;
+    }
+
+    window.restoreLastRecord = async () => {
+        if (deletedRecordsQueue.length === 0) return;
+        
+        // 彈出最近刪除的一筆紀錄
+        const rec = deletedRecordsQueue.pop(); 
+        
+        // 原封不動寫回 Firestore (使用 setDoc 恢復原本的 ID)
+        await setDoc(doc(db, "timelapse_records", rec.id), rec.data);
+
+        if (deletedRecordsQueue.length > 0) {
+            updateRestoreToastText();
+            const fabItem = document.getElementById('fab-restore-item');
+            if (fabItem && fabItem.style.display === 'block') {
+                fabItem.innerText = `♻️ 復原紀錄 (${deletedRecordsQueue.length})`;
+            }
+        } else {
+            // 所有紀錄皆已復原，關閉計時器與提示
+            clearInterval(restoreTimerInt);
+            restoreTimeLeft = 0;
+            document.getElementById('restore-toast').style.display = 'none';
+            document.getElementById('fab-restore-item').style.display = 'none';
+        }
     };
 
     // ======== 通用自訂下拉選單控制 ========
@@ -509,9 +663,15 @@
         await deleteDoc(doc(db, "assets", currentEditCamId)); closeCameraModal();
     };
 
-    // ======== 模態框：發布紀錄 ========
+    // ======== 模態框：發布紀錄 (新增防呆檢查) ========
     window.openRecordModal = (camId) => {
         const cam = cameras.find(c => c.id === camId); if(!cam) return;
+        
+        if (cam.project === '無法使用') {
+            alert('⛔ 該縮時已停用，禁止新增紀錄！');
+            return;
+        }
+
         currentRecordCamId = cam.id;
         document.getElementById('record-target-name').innerText = `目標：📸 縮時 ${cam.item} (${cam.project || '閒置'})`;
         document.getElementById('disp-opt-location').innerText = '選擇地點...';

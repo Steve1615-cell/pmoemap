@@ -3,7 +3,7 @@ import { collection, doc, updateDoc, setDoc, addDoc, deleteDoc } from "https://w
 import { auth, db } from './firebase-config.js';
 import { state } from './state.js';
 import { safeWrite, backupToRecycleBin } from './db.js';
-import { customAlert, closeSidebar, closeFabMenu, updateDetailContent, showOffices, initView, goHome, goUpLevel, renderCategoryDropdown, renderRoomTypeDropdown, renderOwnerDropdown } from './ui.js';
+import { customAlert, closeSidebar, closeFabMenu, updateDetailContent, showOffices, initView, goHome, goUpLevel } from './ui.js';
 import { approveRequest, rejectRequest, promptStrictAction } from './auth.js';
 
 // ✨ 新增補回：管理員專屬功能提示

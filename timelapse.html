@@ -53,8 +53,8 @@
     
     <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
         <div id="filter-container-wrapper" style="position: relative; display: none; margin-right: auto;">
-            <button class="btn-secondary" onclick="window.toggleFilterPanel(event)" id="filter-btn-text" style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; font-weight: bold; color: var(--primary);">🏷️ 專案過濾 (載入中...) ▼</button>
-            <div class="custom-dropdown-panel" id="opt-filter-panel" style="position: absolute; top: 100%; left: 0; width: 300px; padding: 15px; z-index: 3100; display: none;" onclick="event.stopPropagation()">
+            <button class="btn-secondary" onclick="window.toggleFilterPanel(event)" id="filter-btn-text" style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer;">🏷️ 專案過濾 (載入中...) ▼</button>
+            <div class="custom-dropdown-panel" id="opt-filter-panel" style="position: absolute; top: 100%; left: 0; width: 300px; padding: 15px; z-index: 3100;" onclick="event.stopPropagation()">
                 <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px; font-weight:bold; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">☑️ 勾選顯示的專案</div>
                 <div id="filter-checkboxes" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;"></div>
             </div>
@@ -84,7 +84,7 @@
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px;">
     <div class="fab-menu" id="fab-menu">
         <button class="fab-item" id="fab-restore-item" style="display:none; color:var(--warning);" onclick="window.restoreLastRecord()">♻️ 復原紀錄</button>
-        <button class="fab-item" onclick="$('excel-upload').click()">📥 從 Excel 匯入覆蓋</button>
+        <button class="fab-item" onclick="document.getElementById('excel-upload').click()">📥 從 Excel 匯入覆蓋</button>
         <button class="fab-item" onclick="window.openCameraModal()">➕ 新增相機資產</button>
     </div>
     <button class="fab-btn" onclick="window.toggleFabMenu(event)">＋</button>
@@ -121,7 +121,6 @@
     import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { onAuthStateChanged, signInWithPopup, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // 縮寫神器
     const $ = id => document.getElementById(id);
     const $$ = sel => document.querySelectorAll(sel);
 
@@ -137,7 +136,7 @@
 
     if (isRealEnvironment) {
         import('./js/firebase-config.js').then(m => { db = m.db; auth = m.auth; provider = m.provider; initializeApp(); }).catch(e => showError('載入設定檔失敗：' + e.message));
-    } else { showError('⚠️ 線上預覽模式無法跨檔案載入，請於本機 VS Code (Live Server) 中測試。'); }
+    } else { showError('⚠️ 線上預覽模式無法跨檔案載入，請於本機 VS Code 中測試。'); }
 
     function showError(msg) { if($('loading-msg')) { $('loading-msg').innerHTML = msg; $('loading-msg').style.color = 'var(--danger)'; } }
 
@@ -253,8 +252,17 @@
         ac.sort(sf); ar.sort(sf);
 
         const rCard = (cam, isA) => {
-            const c = document.createElement('div'); c.className = isA ? 'nav-card no-hover' : 'nav-card';
-            if (isA) { c.style.opacity = '0.6'; c.style.background = '#f8fafc'; c.title = '該縮時已停用'; } else { c.onclick = () => window.openRecordModal(cam.id); c.title = '點擊新增紀錄'; }
+            const c = document.createElement('div'); 
+            c.className = isA ? 'nav-card no-hover archived-card' : 'nav-card';
+            
+            if (isA) { 
+                c.setAttribute('title', '該縮時已停用，無法新增紀錄'); 
+            } else { 
+                c.onclick = () => window.openRecordModal(cam.id); 
+                c.setAttribute('title', '點擊新增紀錄'); 
+                c.style.cursor = 'pointer';
+            }
+            
             c.innerHTML = `<div style="position:absolute; top:12px; left:15px;" class="badge tag">${cam.project || '閒置'}</div><button class="card-edit-btn" onclick="event.stopPropagation(); window.openCameraModal('${cam.id}')">✏️</button><h2 style="margin-top:30px; font-size:24px; color:${isA ? '#64748b' : 'var(--text-main)'};">📸 縮時 ${cam.item || '未命名'}</h2><div class="detail-info" style="opacity:1; max-height:none; text-align:center; margin-top:10px;"><div>品牌：${cam.brand || 'N/A'} | 型號：${cam.model || 'N/A'}</div><div style="font-family:monospace; color:var(--danger); font-weight:bold;">SN: ${cam.sn || 'N/A'}</div></div>`;
             grid.appendChild(c);
         };

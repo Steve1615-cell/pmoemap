@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>縮時相機管理 | PMO電子圖資系統</title>
     <link rel="stylesheet" href="style.css">
+    <!-- ✨ 引入強大的 SheetJS 函式庫，讓我們能在前端直接解析 Excel 檔案 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { padding-top: 20px; }
         .header-bar { margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 15px; }
@@ -65,10 +67,15 @@
     <div id="view-feed" class="view"><div class="board-container" id="feed-board"></div></div>
 </div>
 
-<!-- 懸浮新增按鈕 -->
-<div class="fab-container active" style="bottom: 30px; right: 30px;">
-    <button class="fab-btn" onclick="openCameraModal()">＋</button>
+<!-- ✨ 修正：多功能懸浮按鈕選單與隱藏的檔案上傳器 -->
+<div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px;">
+    <div class="fab-menu" id="fab-menu">
+        <button class="fab-item" onclick="document.getElementById('excel-upload').click()">📥 從 Excel 匯入</button>
+        <button class="fab-item" onclick="openCameraModal()">➕ 新增相機資產</button>
+    </div>
+    <button class="fab-btn" onclick="toggleFabMenu(event)">＋</button>
 </div>
+<input type="file" id="excel-upload" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleExcelUpload(event)">
 
 <!-- ================= Modal: 相機資產編輯 ================= -->
 <div id="camera-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeCameraModal()">
@@ -144,7 +151,6 @@
     let currentRecordCamId = null;
     let currentUserProfile = {};
 
-    // 偵測是否為實際的開發或發布環境 (過濾掉 Canvas 的 Blob/Iframe 預覽環境以防 TypeError)
     const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
 
     if (isRealEnvironment) {
@@ -171,7 +177,6 @@
     }
 
     function initializeApp() {
-        // ======== 初始化與驗證 ========
         onAuthStateChanged(auth, (user) => {
             if (!user) {
                 document.getElementById('loading-msg').innerHTML = `⛔ 尚未登入<br><br><button id="btn-login" class="btn-primary" style="padding:10px 20px; font-size:16px; border-radius:30px; margin-top:10px;">Google 登入</button>`;
@@ -200,27 +205,123 @@
         });
     }
 
-    // ======== 抓取資料 ========
     function fetchData() {
-        // 選單選項設定檔
         onSnapshot(doc(db, "settings", "timelapse_options"), (s) => {
             if (s.exists()) options = { ...options, ...s.data() };
             else setDoc(doc(db, "settings", "timelapse_options"), options);
         });
 
-        // 縮時相機資產 (與主系統資產連動，以 category 區分)
         onSnapshot(collection(db, "assets"), (s) => {
             cameras = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.category === '縮時相機');
             document.getElementById('tab-btn-assets').innerText = `資產 (${cameras.length})`;
             renderCurrentView();
         });
 
-        // 巡檢紀錄
         onSnapshot(collection(db, "timelapse_records"), (s) => {
             records = s.docs.map(d => ({ id: d.id, ...d.data() }));
             renderCurrentView();
         });
     }
+
+    // ======== ✨ 新增：FAB 菜單控制 ========
+    window.toggleFabMenu = (e) => {
+        if(e) e.stopPropagation();
+        document.getElementById('fab-container').classList.toggle('active');
+        document.getElementById('fab-menu').classList.toggle('active');
+    };
+
+    // ======== ✨ 新增：Excel 智慧匯入解析 ========
+    window.handleExcelUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // 重置檔案選取器，允許重複上傳同一個檔
+        e.target.value = '';
+        
+        const loader = document.getElementById('loading-msg');
+        loader.innerHTML = '⏳ 正在為您解析 Excel 資料...';
+        loader.style.display = 'block';
+        loader.style.color = 'var(--text-main)';
+        
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const data = evt.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                // 將工作表轉換為陣列結構 (header: 1 代表將每一列讀作陣列)
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                // 智慧尋找表頭 (略過第一行的「縮時攝影機管理表」大標題)
+                let headerRowIndex = json.findIndex(row => row.includes('編號') || row.includes('品牌'));
+                if (headerRowIndex === -1) headerRowIndex = 0; // 若找不到則使用第一行當保底
+                
+                const headers = json[headerRowIndex];
+                const rows = json.slice(headerRowIndex + 1);
+                
+                let importedCount = 0;
+                const ops = [];
+
+                for (const row of rows) {
+                    if (!row || row.length === 0) continue;
+                    
+                    // 將陣列轉為以表頭為 Key 的物件
+                    const rowData = {};
+                    headers.forEach((h, i) => { if(h) rowData[h.trim()] = row[i]; });
+                    
+                    // 防呆：忽略完全沒有編號與品牌資料的空白行
+                    if (!rowData['編號'] && !rowData['品牌']) continue;
+                    
+                    const camName = rowData['編號'] ? String(rowData['編號']) : '';
+                    const brand = rowData['品牌'] || 'N/A';
+                    const model = rowData['型號'] || 'N/A';
+                    const sn = rowData['資產編號'] || 'N/A';
+                    let project = rowData['現使用專案'] || '閒置';
+                    const purchaseDate = rowData['移入(PMO)日期'] || '';
+                    
+                    // 防重複機制：檢查系統中是否已存在同編號 (機台名稱) 的相機
+                    const exists = cameras.find(c => String(c.item) === String(camName));
+                    if (exists) continue; 
+                    
+                    // 組合要存入資料庫的物件
+                    const dataToSave = {
+                        type: 'public', 
+                        category: '縮時相機', 
+                        assetType: 'fixed', 
+                        office_id: 'TIMELAPSE_GLOBAL',
+                        item: camName, 
+                        project: project, 
+                        brand: brand, 
+                        model: model, 
+                        sn: String(sn), 
+                        purchase_date: String(purchaseDate)
+                    };
+                    
+                    ops.push(addDoc(collection(db, "assets"), dataToSave));
+                    importedCount++;
+                }
+                
+                if (ops.length > 0) {
+                    await Promise.all(ops);
+                    alert(`🎉 成功匯入 ${importedCount} 筆相機資產！`);
+                } else {
+                    alert('沒有匯入任何資料。可能是 Excel 中沒有符合格式的資料，或是系統內已經有相同編號的相機了。');
+                }
+                
+            } catch(err) {
+                console.error(err);
+                alert('匯入失敗：' + err.message);
+            } finally {
+                loader.style.display = 'none';
+            }
+        };
+        reader.readAsBinaryString(file);
+        
+        // 自動關閉 FAB 選單
+        document.getElementById('fab-container').classList.remove('active');
+        document.getElementById('fab-menu').classList.remove('active');
+    };
 
     // ======== 視圖渲染切換 ========
     window.switchTab = (tab) => {
@@ -441,9 +542,20 @@
         closeRecordModal();
     };
 
-    // 關閉所有下拉選單
-    window.addEventListener('click', () => { document.querySelectorAll('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.querySelectorAll('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active')); }});
+    // 關閉所有下拉選單與懸浮按鈕
+    window.addEventListener('click', () => { 
+        document.querySelectorAll('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
+        document.getElementById('fab-container').classList.remove('active');
+        document.getElementById('fab-menu').classList.remove('active');
+    });
+    window.addEventListener('keydown', (e) => { 
+        if (e.key === 'Escape') { 
+            document.querySelectorAll('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active')); 
+            document.getElementById('fab-container').classList.remove('active');
+            document.getElementById('fab-menu').classList.remove('active');
+        }
+    });
     document.querySelectorAll('.custom-dropdown-panel input').forEach(inp => inp.addEventListener('input', (e) => { const k = e.target.id.replace('opt-', '').replace('-input', ''); renderOptionsList(k); }));
 </script>
 </body>

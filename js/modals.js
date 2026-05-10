@@ -3,8 +3,28 @@ import { collection, doc, updateDoc, setDoc, addDoc, deleteDoc } from "https://w
 import { auth, db } from './firebase-config.js';
 import { state } from './state.js';
 import { safeWrite, backupToRecycleBin } from './db.js';
-import { customAlert, closeSidebar, closeFabMenu, updateDetailContent, showOffices, initView, goHome, goUpLevel } from './ui.js';
+import { customAlert, closeSidebar, closeFabMenu, updateDetailContent, showOffices, initView, goHome, goUpLevel, renderCategoryDropdown, renderRoomTypeDropdown, renderOwnerDropdown } from './ui.js';
 import { approveRequest, rejectRequest, promptStrictAction } from './auth.js';
+
+// ✨ 新增補回：管理員專屬功能提示
+export function openAdminWelcomeModal(e) {
+    if(e) e.stopPropagation();
+    closeSidebar(); 
+    const d = document.getElementById('avatar-dropdown'); if(d) d.style.display = 'none';
+    const list = document.getElementById('admin-features-list');
+    if (list) {
+        list.innerHTML = `
+            <ul style="margin: 0; padding-left: 20px; text-align: left; line-height: 1.8;">
+                <li>審核新使用者的進入系統申請</li>
+                <li>管理全域白名單與權限升降級</li>
+                <li>強制移除或跨區轉移被佔用的資產/人員</li>
+                <li>擁有跨區、跨樓層的最高編輯操作權限</li>
+            </ul>
+        `;
+    }
+    document.getElementById('admin-welcome-modal-overlay').classList.add('active');
+}
+export function closeAdminWelcomeModal() { document.getElementById('admin-welcome-modal-overlay').classList.remove('active'); }
 
 export function openApprovalModal() { closeSidebar(); document.getElementById('avatar-dropdown').style.display = 'none'; renderApprovalList(); document.getElementById('approval-modal-overlay').classList.add('active'); }
 export function closeApprovalModal() { document.getElementById('approval-modal-overlay').classList.remove('active'); }
@@ -101,7 +121,36 @@ export function renderTitleRankList() {
 }
 export function promptSaveTitleRanks() { const t = document.getElementById('title-rank-scope').options[document.getElementById('title-rank-scope').selectedIndex].text; state.pendingDeleteAction = { type: 'titleRanks' }; document.getElementById('confirm-modal-title').innerText = '⚠️ 套用設定確認'; document.getElementById('confirm-msg').innerText = `確定將此排序套用至\n「${t}」？`; document.getElementById('confirm-modal-overlay').classList.add('active'); }
 
-export function openUpdateLogModal() { closeSidebar(); document.getElementById('update-log-modal-overlay').classList.add('active'); }
+// ✨ 修正：版本日誌動態渲染，保留最新兩次紀錄
+export function openUpdateLogModal() { 
+    closeSidebar(); 
+    const d = document.getElementById('avatar-dropdown'); if(d) d.style.display = 'none';
+    const logContent = document.getElementById('update-log-content');
+    if (logContent) {
+        logContent.innerHTML = `
+            <div style="margin-bottom: 20px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px;">
+                <h3 style="margin: 0 0 10px 0; color: var(--primary);">v1.7.0 (最新版本)</h3>
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-main); line-height: 1.6;">
+                    <li>【系統】架構轉型為多頁面應用 (MPA)，大幅提升效能。</li>
+                    <li>【系統】新增全域 Esc 鍵關閉彈窗與下拉選單的防呆機制。</li>
+                    <li>【新增】庫房實裝「消耗品」與「固定資產」雙軌制與獨立儀表板。</li>
+                    <li>【新增】側邊欄附屬網頁獨立化，新增新分頁開啟圖示。</li>
+                    <li>【優化】解除跨樓層同名辦公室限制，僅阻擋同樓層同名。</li>
+                    <li>【優化】修復管理員權限交接與專屬功能提示顯示問題。</li>
+                </ul>
+            </div>
+            <div>
+                <h3 style="margin: 0 0 10px 0; color: var(--text-muted);">v1.6.9</h3>
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+                    <li>【系統】全面實裝 ES6 模組化，將近 3000 行代碼拆分為多個獨立檔案。</li>
+                    <li>【新增】新增「資源回收桶」功能，保留最近 1000 筆刪除紀錄。</li>
+                    <li>【優化】重構權限驗證邏輯，提升白名單與管理員身分切換的安全性。</li>
+                </ul>
+            </div>
+        `;
+    }
+    document.getElementById('update-log-modal-overlay').classList.add('active'); 
+}
 export function closeUpdateLogModal() { document.getElementById('update-log-modal-overlay').classList.remove('active'); }
 
 export function openRecycleBinModal() { closeSidebar(); window.renderRecycleBinList(); document.getElementById('recycle-bin-modal-overlay').classList.add('active'); }
@@ -145,14 +194,18 @@ export function openAddOfficeModal() {
     closeFabMenu(); state.isOfficeEditMode = false; state.currentEditOfficeId = null; document.getElementById('office-modal-title').innerText = '➕ 新增房間/辦公室'; document.getElementById('office-floor-group').style.display = 'block'; document.getElementById('office-floor').value = state.currentFloor; document.getElementById('office-name').value = ''; document.getElementById('office-pwd').value = ''; document.getElementById('btn-delete-office').style.display = 'none'; document.getElementById('room-type-dropdown-btn').style.pointerEvents = 'auto'; document.getElementById('room-type-dropdown-btn').style.background = 'white'; document.getElementById('room-type-lock-hint').style.display = 'none'; document.getElementById('room-type-dropdown-arrow').style.display = 'inline'; window.selectRoomType('辦公室'); document.getElementById('office-modal-overlay').classList.add('active');
 }
 export function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
+
+// ✨ 修正：僅檢查同樓層是否有同名房間
 export async function saveOfficeData() {
     const n = document.getElementById('office-name').value.trim(), p = document.getElementById('office-pwd').value || 'N/A'; if (!n) return customAlert('辦公室名稱不能為空！', true); const btn = document.getElementById('btn-save-office'); btn.disabled = true; btn.innerText = '儲存中...';
     try {
         if (state.isOfficeEditMode) {
-            if (state.globalOffices.find(o => o.name === n && o.id !== state.currentEditOfficeId)) return (customAlert('名稱存在', true), btn.disabled = false, btn.innerText = '儲存'); 
+            const currentOffice = state.globalOffices.find(o => o.id === state.currentEditOfficeId);
+            const targetFloor = currentOffice ? currentOffice.floor : state.currentFloor;
+            if (state.globalOffices.find(o => o.name === n && o.floor === targetFloor && o.id !== state.currentEditOfficeId)) return (customAlert(`「${targetFloor}」已存在同名房間！`, true), btn.disabled = false, btn.innerText = '儲存'); 
             await safeWrite(updateDoc(doc(db, 'offices', state.currentEditOfficeId), { name: n, pwd: p })); closeOfficeModal(); customAlert(`房間資訊已更新！`);
         } else {
-            if (state.globalOffices.find(o => o.name === n)) return (customAlert('名稱存在', true), btn.disabled = false, btn.innerText = '儲存'); 
+            if (state.globalOffices.find(o => o.name === n && o.floor === state.currentFloor)) return (customAlert(`「${state.currentFloor}」已存在同名房間！`, true), btn.disabled = false, btn.innerText = '儲存'); 
             await safeWrite(setDoc(doc(collection(db, 'offices')), { name: n, floor: state.currentFloor, pwd: p, roomType: state.currentRoomType })); closeOfficeModal(); customAlert(`成功新增房間：${n}`);
         }
     } catch(err) { customAlert("錯誤", true); } finally { btn.disabled = false; btn.innerText = '儲存'; }
@@ -483,6 +536,7 @@ export async function importLegacyRequests() {
 }
 
 // 掛載至 window
+window.openAdminWelcomeModal = openAdminWelcomeModal; window.closeAdminWelcomeModal = closeAdminWelcomeModal;
 window.openApprovalModal = openApprovalModal; window.closeApprovalModal = closeApprovalModal; window.renderApprovalList = renderApprovalList;
 window.openNicknameModal = openNicknameModal; window.closeNicknameModal = closeNicknameModal; window.saveNickname = saveNickname;
 window.openShareModal = openShareModal; window.closeShareModal = closeShareModal; window.copyShareLink = copyShareLink; window.inviteUser = inviteUser;

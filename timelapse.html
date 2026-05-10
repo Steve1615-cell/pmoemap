@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>縮時相機管理 | PMO電子圖資系統</title>
     <link rel="stylesheet" href="style.css">
-    <!-- ✨ 引入強大的 SheetJS 函式庫，讓我們能在前端直接解析 Excel 檔案 -->
+    <!-- ✨ 引入強大的 SheetJS 函式庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { padding-top: 20px; }
@@ -19,7 +19,7 @@
 
         /* Notion 風格資料表 */
         .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .notion-table { width: 100%; border-collapse: collapse; min-width: 900px; text-align: left; font-size: 14px; }
+        .notion-table { width: 100%; border-collapse: collapse; min-width: 1000px; text-align: left; font-size: 14px; }
         .notion-table th { background: #f8fafc; color: var(--text-muted); font-weight: bold; padding: 12px 15px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
         .notion-table td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; color: var(--text-main); }
         .notion-table tr:hover { background: #f8fafc; }
@@ -42,7 +42,7 @@
         .feed-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
         .feed-meta { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
         .feed-content { font-size: 13px; line-height: 1.6; color: var(--text-main); }
-        .feed-footer { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; }
+        .feed-footer { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; align-items: center; }
         .btn-like { background: none; border: none; font-size: 14px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; gap: 5px; transition: transform 0.1s; }
         .btn-like.liked { color: #e11d48; }
         .btn-like:active { transform: scale(1.2); }
@@ -58,6 +58,21 @@
         #restore-toast.minimizing {
             top: calc(100vh - 80px); left: calc(100vw - 40px); transform: scale(0.1); opacity: 0; pointer-events: none;
         }
+
+        /* ✨ 特製：白色打勾方格 */
+        .batch-checkbox {
+            appearance: none; -webkit-appearance: none;
+            width: 22px; height: 22px; background-color: white;
+            border: 2px solid #cbd5e1; border-radius: 6px; cursor: pointer;
+            position: relative; display: inline-block; vertical-align: middle;
+            transition: all 0.2s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .batch-checkbox:hover { border-color: var(--primary); }
+        .batch-checkbox:checked { background-color: var(--primary); border-color: var(--primary); }
+        .batch-checkbox:checked::after {
+            content: '✔'; color: white; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); font-size: 14px; font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -71,14 +86,27 @@
     <div class="tabs">
         <button id="tab-btn-assets" class="tab-btn active" onclick="switchTab('assets')">資產 (0)</button>
         <button id="tab-btn-list" class="tab-btn" onclick="switchTab('list')">列表</button>
-        <button id="tab-btn-feed" class="tab-btn" onclick="switchTab('feed')">紀錄</button>
+        <button id="tab-btn-feed" class="tab-btn" onclick="switchTab('feed')">貼文</button>
     </div>
 
-    <!-- 資產頁專屬：排序選單 -->
-    <div id="asset-filter-container" style="display: flex; justify-content: flex-end; margin-bottom: 15px; gap: 10px;">
-        <div style="background: white; padding: 5px 15px; border-radius: 8px; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: 8px;">
-            <label style="font-size: 13px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
-            <select id="asset-sort-select" onchange="window.renderAssets()" style="border: none; outline: none; font-size: 14px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
+    <!-- 共用控制列：過濾器與排序 -->
+    <div id="shared-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        
+        <!-- 左側：專案過濾器 (所有視圖都可見) -->
+        <div id="filter-container-wrapper" style="position: relative;">
+            <button class="btn-secondary" onclick="toggleFilterPanel(event)" id="filter-btn-text" style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: bold; color: var(--primary); padding: 10px 20px; cursor: pointer; transition: all 0.2s;">
+                🏷️ 專案過濾 (載入中...) <span style="font-size:10px; color:var(--text-muted);">▼</span>
+            </button>
+            <div class="custom-dropdown-panel" id="opt-filter-panel" style="position: absolute; top: 100%; left: 0; width: 300px; padding: 15px; margin-top: 8px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 3100; display: none;">
+                <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px; font-weight:bold; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">☑️ 勾選要顯示的專案 (系統將自動記憶)</div>
+                <div id="filter-checkboxes" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto; padding-right: 5px;"></div>
+            </div>
+        </div>
+
+        <!-- 右側：排序選單 (僅資產頁可見) -->
+        <div id="asset-sort-wrapper" style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 14px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
+            <select id="asset-sort-select" onchange="window.renderAssets()" style="border: none; outline: none; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
                 <option value="name">🔢 依序號</option>
                 <option value="status">🚦 依狀態</option>
                 <option value="project">🏷️ 依使用專案</option>
@@ -93,7 +121,27 @@
 
     <!-- 視圖區塊 -->
     <div id="view-assets" class="view active"><div class="grid-nav" id="assets-grid"></div></div>
-    <div id="view-list" class="view"><div class="table-container"><table class="notion-table"><thead><tr><th>@ 專案</th><th>Aa 機台名稱</th><th>📍 地點</th><th>🔌 電源</th><th>🔧 工項</th><th>🕒 檢查時間</th><th>🔋 (%)</th><th>💾 容量</th><th>👥 建立人</th><th>🗑️ 操作</th></tr></thead><tbody id="list-tbody"></tbody></table></div></div>
+    
+    <div id="view-list" class="view">
+        <!-- 列表頁專屬：批次刪除按鈕與提示 -->
+        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 15px; background: #fef2f2; padding: 10px 20px; border-radius: 8px; border: 1px dashed #fca5a5;">
+            <button class="btn-danger" onclick="batchDeleteCams()" style="padding: 10px 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);">🗑️ 批次刪除勾選紀錄</button>
+            <span style="font-size: 13px; color: #991b1b; font-weight: bold;">※ 勾選下方列表最左側的白色方格，可一次清理多筆不要的空白機台或紀錄。</span>
+        </div>
+        <div class="table-container">
+            <table class="notion-table">
+                <thead>
+                    <tr>
+                        <th style="text-align:center; width: 40px;"><input type="checkbox" id="cb-select-all" class="batch-checkbox" onchange="toggleAllCams(this)" title="全選/取消全選"></th>
+                        <th style="width: 60px; text-align:center;">🗑️ 刪除</th>
+                        <th>@ 專案</th><th>Aa 機台名稱</th><th>📍 地點</th><th>🔌 電源</th><th>🔧 工項</th><th>🕒 檢查時間</th><th>🔋 (%)</th><th>💾 容量</th><th>👥 建立人</th>
+                    </tr>
+                </thead>
+                <tbody id="list-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+    
     <div id="view-feed" class="view"><div class="board-container" id="feed-board"></div></div>
 </div>
 
@@ -130,7 +178,7 @@
         <div class="form-group" style="display:flex; gap:10px;"><div style="flex:1;"><label>品牌</label><input type="text" id="cam-brand" placeholder="例如：Brinno"></div><div style="flex:1;"><label>型號</label><input type="text" id="cam-model" placeholder="例如：TLC2000"></div></div>
         <div class="form-group"><label>資產編號 (SN)</label><input type="text" id="cam-sn" placeholder="N/A"></div>
         <div class="form-group"><label>購入日</label><input type="date" id="cam-date"></div>
-        <div class="modal-footer" style="justify-content: space-between;"><button id="btn-delete-camera" class="btn-danger" style="display:none;" onclick="deleteCamera()">🗑️ 刪除</button><div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeCameraModal()">取消</button><button class="btn-primary" onclick="saveCamera()">儲存</button></div></div>
+        <div class="modal-footer" style="justify-content: space-between;"><button id="btn-delete-camera" class="btn-danger" style="display:none;" onclick="deleteCameraAsset(currentEditCamId)">🗑️ 刪除</button><div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeCameraModal()">取消</button><button class="btn-primary" onclick="saveCamera()">儲存</button></div></div>
     </div>
 </div>
 
@@ -188,6 +236,9 @@
     let currentRecordCamId = null;
     let currentUserProfile = {};
     
+    // 過濾器狀態 (自動讀取 LocalStorage)
+    let activeFilters = JSON.parse(localStorage.getItem('timelapse_project_filter')) || null;
+
     // 復原紀錄佇列與計時器
     let deletedRecordsQueue = [];
     let restoreTimerInt = null;
@@ -251,11 +302,13 @@
         onSnapshot(doc(db, "settings", "timelapse_options"), (s) => {
             if (s.exists()) options = { ...options, ...s.data() };
             else setDoc(doc(db, "settings", "timelapse_options"), options);
+            renderFilterUI();
         });
 
         onSnapshot(collection(db, "assets"), (s) => {
-            cameras = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.category === '縮時相機');
-            document.getElementById('tab-btn-assets').innerText = `資產 (${cameras.length})`;
+            // 過濾並確保抓下來的相機具備基本名稱，防呆過濾掉異常產生的空白機台
+            cameras = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.category === '縮時相機' && a.item && a.item.trim() !== '');
+            renderFilterUI();
             renderCurrentView();
         });
 
@@ -265,6 +318,54 @@
         });
     }
 
+    // ======== ✨ 多選專案過濾器邏輯 ========
+    function renderFilterUI() {
+        let allProjects = new Set(options.project || []);
+        cameras.forEach(c => allProjects.add(c.project || '閒置'));
+        allProjects = Array.from(allProjects).sort();
+
+        // 初次載入若無記憶，預設全選
+        if (!activeFilters) {
+            activeFilters = [...allProjects];
+            localStorage.setItem('timelapse_project_filter', JSON.stringify(activeFilters));
+        }
+
+        const container = document.getElementById('filter-checkboxes');
+        container.innerHTML = '';
+        allProjects.forEach(proj => {
+            const checked = activeFilters.includes(proj) ? 'checked' : '';
+            container.innerHTML += `
+                <label style="display:flex; align-items:center; gap:10px; padding:8px 12px; cursor:pointer; border-radius:8px; background:#f8fafc; border:1px solid #e2e8f0; transition:all 0.2s;">
+                    <input type="checkbox" class="global-filter-cb batch-checkbox" style="width:16px; height:16px;" value="${proj}" ${checked} onchange="updateFilters()">
+                    <span style="font-weight:bold; color:var(--text-main); font-size:14px;">${proj}</span>
+                </label>
+            `;
+        });
+        updateFilterDisplay();
+    }
+
+    window.updateFilters = () => {
+        const cbs = document.querySelectorAll('.global-filter-cb');
+        activeFilters = Array.from(cbs).filter(cb => cb.checked).map(cb => cb.value);
+        localStorage.setItem('timelapse_project_filter', JSON.stringify(activeFilters));
+        updateFilterDisplay();
+        renderCurrentView(); 
+    };
+
+    function updateFilterDisplay() {
+        const disp = document.getElementById('filter-btn-text');
+        if (!disp) return;
+        if (activeFilters.length === 0) disp.innerHTML = '🏷️ 專案過濾 (全隱藏) <span style="font-size:10px; color:var(--text-muted);">▼</span>';
+        else if (activeFilters.length <= 2) disp.innerHTML = `🏷️ 過濾: ${activeFilters.join(', ')} <span style="font-size:10px; color:var(--text-muted);">▼</span>`;
+        else disp.innerHTML = `🏷️ 過濾專案 (顯示 ${activeFilters.length} 項) <span style="font-size:10px; color:var(--text-muted);">▼</span>`;
+    }
+
+    window.toggleFilterPanel = (e) => {
+        if(e) e.stopPropagation();
+        document.querySelectorAll('.custom-dropdown-panel').forEach(p => { if(p.id !== 'opt-filter-panel') p.classList.remove('active'); });
+        document.getElementById('opt-filter-panel').classList.toggle('active');
+    };
+
     // ======== FAB 菜單控制 ========
     window.toggleFabMenu = (e) => {
         if(e) e.stopPropagation();
@@ -272,7 +373,7 @@
         document.getElementById('fab-menu').classList.toggle('active');
     };
 
-    // ======== 智慧匯入解析 (預設覆蓋更新) ========
+    // ======== 智慧匯入解析 (預設覆蓋更新，強化阻擋空白行) ========
     window.handleExcelUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -308,9 +409,10 @@
                     const rowData = {};
                     headers.forEach((h, i) => { if(h) rowData[h.trim()] = row[i]; });
                     
-                    if (!rowData['編號'] && !rowData['品牌']) continue;
+                    const camName = rowData['編號'] ? String(rowData['編號']).trim() : '';
+                    // 終極防呆：名字是空的，或是讀成 undefined 字串，絕對拋棄！
+                    if (!camName || camName.toLowerCase() === 'undefined') continue;
                     
-                    const camName = rowData['編號'] ? String(rowData['編號']) : '';
                     const brand = rowData['品牌'] || 'N/A';
                     const model = rowData['型號'] || 'N/A';
                     const sn = rowData['資產編號'] || 'N/A';
@@ -361,21 +463,25 @@
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById(`view-${tab}`).classList.add('active');
         
-        document.getElementById('asset-filter-container').style.display = (tab === 'assets') ? 'flex' : 'none';
+        document.getElementById('asset-sort-wrapper').style.display = (tab === 'assets') ? 'flex' : 'none';
         
         renderCurrentView();
     };
 
     window.renderCurrentView = () => {
+        document.getElementById('tab-btn-assets').innerText = `資產 (${cameras.length})`;
         if (currentTab === 'assets') window.renderAssets();
         else if (currentTab === 'list') renderList();
         else if (currentTab === 'feed') renderFeed();
     };
 
-    // 1. 資產方塊視圖 (加入排序與封存區域)
+    // 1. 資產方塊視圖 (加入過濾器)
     window.renderAssets = () => {
         const grid = document.getElementById('assets-grid'); grid.innerHTML = '';
-        if (cameras.length === 0) return grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8; padding:30px;">尚無縮時相機</div>';
+        
+        let filteredCams = cameras.filter(c => activeFilters.includes(c.project || '閒置'));
+
+        if (filteredCams.length === 0) return grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8; padding:30px;">在此過濾條件下沒有相機</div>';
         
         const sortBy = document.getElementById('asset-sort-select').value;
         const sortFn = (a, b) => {
@@ -388,7 +494,7 @@
 
         const activeCams = [];
         const archivedCams = [];
-        cameras.forEach(c => {
+        filteredCams.forEach(c => {
             if (c.project === '無法使用') archivedCams.push(c);
             else activeCams.push(c);
         });
@@ -426,10 +532,19 @@
         }
     };
 
-    // 2. Notion 風格表格列表 (加入無法使用紅色標記與刪除按鈕)
+    // 2. 列表 (加入左側打勾方塊與刪除，並套用過濾)
     function renderList() {
         const tbody = document.getElementById('list-tbody'); tbody.innerHTML = '';
-        const sortedCams = [...cameras].sort((a,b) => (a.project||'').localeCompare(b.project||''));
+        document.getElementById('cb-select-all').checked = false;
+
+        const filteredCams = cameras.filter(c => activeFilters.includes(c.project || '閒置'));
+        const sortedCams = [...filteredCams].sort((a,b) => (a.project||'').localeCompare(b.project||''));
+
+        if(sortedCams.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#94a3b8; padding:30px;">在此過濾條件下沒有機台紀錄可顯示</td></tr>';
+            return;
+        }
+
         sortedCams.forEach(cam => {
             const camRecords = records.filter(r => r.cameraId === cam.id).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
             const latest = camRecords[0] || {};
@@ -441,26 +556,35 @@
             if (isArchived) tr.title = "該縮時已停用";
             
             tr.innerHTML = `
+                <td style="text-align:center;"><input type="checkbox" class="cb-cam-row batch-checkbox" value="${cam.id}"></td>
+                <td style="text-align:center;"><button class="btn-danger" style="padding:6px 12px; font-size:12px; border-radius:6px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);" onclick="window.deleteCameraAsset('${cam.id}', event)" title="刪除機台與紀錄">🗑️ 刪除</button></td>
                 <td><span class="badge tag">${cam.project || '閒置'}</span></td>
-                <td><b style="color:${isArchived ? '#991b1b' : 'var(--primary)'};">📸 縮時 ${cam.item || '?'}</b></td>
+                <td><b style="color:${isArchived ? '#991b1b' : 'var(--primary)'}; font-size:16px;">📸 縮時 ${cam.item || '?'}</b></td>
                 <td>${latest.location || '-'}</td>
                 <td>${pBadge}</td>
                 <td>${latest.task ? `<span style="background:#fef08a; color:#854d0e; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold;">${latest.task}</span>` : '-'}</td>
                 <td style="font-size:12px;">${latest.createdAt ? new Date(latest.createdAt).toLocaleString('zh-TW', {hour12:false}) : '-'}</td>
-                <td style="font-family:monospace; font-weight:bold;">${latest.battery ? latest.battery+'%' : '-'}</td>
+                <td style="font-family:monospace; font-weight:bold; font-size:16px; color:var(--text-main);">${latest.battery ? latest.battery+'%' : '-'}</td>
                 <td style="font-size:12px;">${latest.capacity || '-'}</td>
-                <td>${latest.creatorName ? `<div style="display:flex; align-items:center; gap:5px;"><img src="${latest.creatorAvatar}" style="width:20px; border-radius:50%;">${latest.creatorName}</div>` : '-'}</td>
-                <td style="text-align:center;">${latest.id ? `<button class="btn-danger" style="padding:4px 8px; font-size:12px; border-radius:4px;" onclick="window.deleteRecord('${latest.id}', event)">🗑️</button>` : '-'}</td>
+                <td>${latest.creatorName ? `<div style="display:flex; align-items:center; gap:5px;"><img src="${latest.creatorAvatar}" style="width:24px; border-radius:50%;">${latest.creatorName}</div>` : '-'}</td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    // 3. 看板專案動態牆 (加入無法使用紅色標記與刪除按鈕)
+    // 3. 貼文動態牆 (加入過濾與放大刪除按鈕)
     function renderFeed() {
         const board = document.getElementById('feed-board'); board.innerHTML = '';
-        const activeProjects = [...new Set(cameras.map(c => c.project || '閒置'))].slice(0, 4);
         
+        const activeProjects = [...new Set(cameras.map(c => c.project || '閒置'))]
+            .filter(p => activeFilters.includes(p))
+            .slice(0, 4);
+        
+        if(activeProjects.length === 0) {
+            board.innerHTML = '<div style="width:100%; text-align:center; color:#94a3b8; padding:30px;">在此過濾條件下無專案貼文</div>';
+            return;
+        }
+
         activeProjects.forEach(proj => {
             const col = document.createElement('div'); col.className = 'board-col';
             col.innerHTML = `<div class="board-col-header"><span>🏷️ ${proj}</span><span style="font-size:12px; font-weight:normal; background:white; padding:2px 8px; border-radius:12px;">專案動態</span></div>`;
@@ -489,7 +613,7 @@
                             <button class="btn-like ${liked ? 'liked' : ''}" onclick="window.toggleLike('${rec.id}')">
                                 ${liked ? '❤️' : '🤍'} ${likeCount}
                             </button>
-                            <button class="btn-edit" style="color:var(--danger); border-color:transparent; padding:2px 6px;" onclick="window.deleteRecord('${rec.id}', event)">🗑️ 刪除</button>
+                            <button class="btn-danger" style="padding:6px 12px; font-size:13px; border-radius:6px;" onclick="window.deleteSingleRecord('${rec.id}', event)">🗑️ 刪除貼文</button>
                         </div>
                     </div>`;
             });
@@ -505,26 +629,68 @@
         await setDoc(doc(db, "timelapse_records", recordId), { likes: newLikes }, { merge: true });
     };
 
-    // ======== 刪除紀錄與 24 小時安全復原機制 ========
-    window.deleteRecord = async (recId, e) => {
+    // ======== ✨ 批次刪除與 24 小時動態安全復原機制 ========
+    window.toggleAllCams = (el) => {
+        document.querySelectorAll('.cb-cam-row').forEach(cb => cb.checked = el.checked);
+    };
+
+    // 刪除整台相機(以及它所有的紀錄)
+    window.deleteCameraAsset = async (camId, e) => {
         if(e) e.stopPropagation();
-        if(!confirm('確定刪除此紀錄？\n(24 小時內可以復原)')) return;
+        if(!confirm('確定刪除此相機物件？\n(包含其所有巡檢紀錄，24小時內可復原)')) return;
+        await processCameraDeletion([camId]);
+    };
+
+    window.batchDeleteCams = async () => {
+        const selected = Array.from(document.querySelectorAll('.cb-cam-row:checked')).map(cb => cb.value);
+        if (selected.length === 0) return alert('請先勾選要刪除的相機物件！');
+        if(!confirm(`確定批次刪除這 ${selected.length} 個相機物件？\n(包含其所有巡檢紀錄，24小時內可復原)`)) return;
+        await processCameraDeletion(selected);
+    };
+
+    async function processCameraDeletion(camIds) {
+        const batchData = [];
+        const ops = [];
+
+        camIds.forEach(camId => {
+            const cam = cameras.find(c => c.id === camId);
+            if (cam) {
+                const camData = { ...cam }; delete camData.id;
+                const camRecs = records.filter(r => r.cameraId === camId).map(r => {
+                    const d = { ...r }; delete d.id; return { id: r.id, data: d };
+                });
+                batchData.push({ camId, camData, camRecs });
+                ops.push(deleteDoc(doc(db, "assets", camId)));
+                camRecs.forEach(r => ops.push(deleteDoc(doc(db, "timelapse_records", r.id))));
+            }
+        });
+
+        deletedRecordsQueue.push({ type: 'camera_batch', data: batchData });
+        await Promise.all(ops);
+        
+        // 秒數動態疊加 (起跳 15 秒，每多一件多 5 秒，上限 60 秒)
+        const addedTime = 15 + ((camIds.length - 1) * 5);
+        if (restoreTimeLeft <= 0) restoreTimeLeft = addedTime;
+        else restoreTimeLeft = Math.min(restoreTimeLeft + addedTime, 60);
+        restoreTimeLeft = Math.min(restoreTimeLeft, 60); 
+
+        showRestoreToast();
+    }
+
+    // 刪除動態牆的單一「貼文」
+    window.deleteSingleRecord = async (recId, e) => {
+        if(e) e.stopPropagation();
+        if(!confirm('確定刪除此貼文？\n(24 小時內可以復原)')) return;
         
         const rec = records.find(r => r.id === recId);
         if(!rec) return;
 
-        // 複製一份去掉 ID 的純資料放入待復原佇列
-        const dataCopy = { ...rec };
-        delete dataCopy.id;
-        deletedRecordsQueue.push({ id: recId, data: dataCopy });
-
-        // 從資料庫移除
+        const dataCopy = { ...rec }; delete dataCopy.id;
+        deletedRecordsQueue.push({ type: 'single_record', id: recId, data: dataCopy });
         await deleteDoc(doc(db, "timelapse_records", recId));
 
-        // 計算 Toast 動態停留時間
         if (restoreTimeLeft <= 0) restoreTimeLeft = 15;
         else restoreTimeLeft = Math.min(restoreTimeLeft + 5, 60);
-
         showRestoreToast();
     };
 
@@ -545,7 +711,6 @@
 
             if (restoreTimeLeft <= 0) {
                 clearInterval(restoreTimerInt);
-                // 秒數歸零，啟動縮小飛入 FAB 按鈕的動畫
                 toast.classList.add('minimizing');
                 setTimeout(() => {
                     toast.style.display = 'none';
@@ -560,17 +725,24 @@
 
     function updateRestoreToastText() {
         const toastText = document.getElementById('restore-toast-text');
-        if(toastText) toastText.innerText = `已刪除 ${deletedRecordsQueue.length} 筆紀錄 ( ${restoreTimeLeft}s 後收合 )`;
+        if(toastText) toastText.innerText = `已刪除物件待命中 ( ${restoreTimeLeft}s 後自動隱藏 )`;
     }
 
     window.restoreLastRecord = async () => {
         if (deletedRecordsQueue.length === 0) return;
-        
-        // 彈出最近刪除的一筆紀錄
-        const rec = deletedRecordsQueue.pop(); 
-        
-        // 原封不動寫回 Firestore (使用 setDoc 恢復原本的 ID)
-        await setDoc(doc(db, "timelapse_records", rec.id), rec.data);
+        const item = deletedRecordsQueue.pop(); 
+        const ops = [];
+
+        if (item.type === 'camera_batch') {
+            item.data.forEach(b => {
+                ops.push(setDoc(doc(db, "assets", b.camId), b.camData));
+                b.camRecs.forEach(r => ops.push(setDoc(doc(db, "timelapse_records", r.id), r.data)));
+            });
+        } else if (item.type === 'single_record') {
+            ops.push(setDoc(doc(db, "timelapse_records", item.id), item.data));
+        }
+
+        await Promise.all(ops);
 
         if (deletedRecordsQueue.length > 0) {
             updateRestoreToastText();
@@ -579,7 +751,6 @@
                 fabItem.innerText = `♻️ 復原紀錄 (${deletedRecordsQueue.length})`;
             }
         } else {
-            // 所有紀錄皆已復原，關閉計時器與提示
             clearInterval(restoreTimerInt);
             restoreTimeLeft = 0;
             document.getElementById('restore-toast').style.display = 'none';
@@ -595,12 +766,15 @@
         const p = document.getElementById(`${target}-panel`); p.classList.toggle('active');
         if(p.classList.contains('active')) {
             currentDropdownTarget = target;
-            const k = target.replace('opt-', ''); 
-            renderOptionsList(k); 
-            document.getElementById(`${target}-input`).focus();
+            if(target !== 'opt-filter') {
+                const k = target.replace('opt-', ''); 
+                renderOptionsList(k); 
+                document.getElementById(`${target}-input`).focus();
+            }
         }
     };
     function renderOptionsList(key) {
+        if(key === 'filter') return; 
         const inputVal = document.getElementById(`opt-${key}-input`).value.toLowerCase();
         const listDiv = document.getElementById(`opt-${key}-list`); listDiv.innerHTML = '';
         const arr = options[key] || [];
@@ -623,7 +797,7 @@
         renderOptionsList(key);
     };
 
-    // ======== 模態框：相機資產 ========
+    // ======== 模態框：相機資產編輯/新增 ========
     window.openCameraModal = (id = null) => {
         currentEditCamId = id;
         document.getElementById('opt-project-input').value = '';
@@ -658,12 +832,8 @@
         else await addDoc(collection(db, "assets"), data);
         closeCameraModal();
     };
-    window.deleteCamera = async () => {
-        if(!confirm('確定刪除此相機？對應的歷史紀錄將保留。')) return;
-        await deleteDoc(doc(db, "assets", currentEditCamId)); closeCameraModal();
-    };
 
-    // ======== 模態框：發布紀錄 (新增防呆檢查) ========
+    // ======== 模態框：發布紀錄 ========
     window.openRecordModal = (camId) => {
         const cam = cameras.find(c => c.id === camId); if(!cam) return;
         
@@ -680,7 +850,7 @@
         document.getElementById('rec-power').value = '開';
         document.getElementById('disp-opt-task').innerText = '換電池';
         document.getElementById('rec-remarks').value = '';
-        ['location', 'capacity', 'task'].forEach(k => document.getElementById(`opt-${k}-input`).value = '');
+        ['location', 'capacity', 'task'].forEach(k => { const inp = document.getElementById(`opt-${k}-input`); if(inp) inp.value = ''; });
         document.getElementById('record-modal-overlay').classList.add('active');
     };
     window.closeRecordModal = () => document.getElementById('record-modal-overlay').classList.remove('active');
@@ -716,7 +886,12 @@
             document.getElementById('fab-menu').classList.remove('active');
         }
     });
-    document.querySelectorAll('.custom-dropdown-panel input').forEach(inp => inp.addEventListener('input', (e) => { const k = e.target.id.replace('opt-', '').replace('-input', ''); renderOptionsList(k); }));
+    document.querySelectorAll('.custom-dropdown-panel input').forEach(inp => {
+        inp.addEventListener('input', (e) => { 
+            if(e.target.id === 'opt-filter-input') return;
+            const k = e.target.id.replace('opt-', '').replace('-input', ''); renderOptionsList(k); 
+        });
+    });
 </script>
 </body>
 </html>

@@ -131,10 +131,10 @@
 </div>
 
 <script type="module">
-    import { db, auth, provider } from './js/firebase-config.js';
     import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { onAuthStateChanged, signInWithPopup, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+    let db, auth, provider;
     let cameras = [];
     let records = [];
     let options = { project: ['閒置'], location: [], capacity: ['64GB', '128GB'], task: ['換電池', '換位置', '收SD卡'] };
@@ -144,18 +144,61 @@
     let currentRecordCamId = null;
     let currentUserProfile = {};
 
-    // ======== 初始化與驗證 ========
-    onAuthStateChanged(auth, (user) => {
-        if (!user) {
-            document.getElementById('loading-msg').innerHTML = `⛔ 尚未登入<br><br><button id="btn-login" class="btn-primary">Google 登入</button>`;
-            document.getElementById('btn-login').onclick = async () => {
-                try { await signInWithPopup(auth, provider); } catch (e) { if(window.location.hostname.includes('127.0.0.1')) await signInAnonymously(auth); else alert(e.message); }
-            }; return;
+    // 偵測是否為實際的開發或發布環境 (過濾掉 Canvas 的 Blob/Iframe 預覽環境以防 TypeError)
+    const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
+
+    if (isRealEnvironment) {
+        import('./js/firebase-config.js')
+            .then(module => {
+                db = module.db;
+                auth = module.auth;
+                provider = module.provider;
+                initializeApp();
+            })
+            .catch(err => {
+                showError('載入設定檔失敗：' + err.message);
+            });
+    } else {
+        showError('⚠️ 線上預覽模式無法跨檔案載入，請於本機 VS Code (Live Server) 中測試與檢視。');
+    }
+
+    function showError(msg) {
+        const loadingMsg = document.getElementById('loading-msg');
+        if (loadingMsg) {
+            loadingMsg.innerHTML = msg;
+            loadingMsg.style.color = 'var(--danger)';
         }
-        document.getElementById('loading-msg').style.display = 'none';
-        currentUserProfile = { name: user.displayName || '訪客', email: user.email || 'anonymous', avatar: user.photoURL || 'https://via.placeholder.com/32' };
-        fetchData();
-    });
+    }
+
+    function initializeApp() {
+        // ======== 初始化與驗證 ========
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                document.getElementById('loading-msg').innerHTML = `⛔ 尚未登入<br><br><button id="btn-login" class="btn-primary" style="padding:10px 20px; font-size:16px; border-radius:30px; margin-top:10px;">Google 登入</button>`;
+                document.getElementById('loading-msg').style.color = 'var(--danger)';
+                document.getElementById('btn-login').onclick = async () => {
+                    try { 
+                        await signInWithPopup(auth, provider); 
+                    } catch (e) { 
+                        if (e.code === 'auth/unauthorized-domain') {
+                            if (window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) {
+                                alert('本地端無法使用 Google 登入，為您啟用訪客預覽模式！');
+                                await signInAnonymously(auth);
+                            } else {
+                                alert('登入失敗：網址未獲 Firebase 授權！');
+                            }
+                        } else if (e.code !== 'auth/popup-closed-by-user') {
+                            alert("登入失敗：" + e.message); 
+                        }
+                    }
+                }; 
+                return;
+            }
+            document.getElementById('loading-msg').style.display = 'none';
+            currentUserProfile = { name: user.displayName || '訪客', email: user.email || 'anonymous', avatar: user.photoURL || 'https://via.placeholder.com/32' };
+            fetchData();
+        });
+    }
 
     // ======== 抓取資料 ========
     function fetchData() {

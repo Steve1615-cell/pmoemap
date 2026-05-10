@@ -5,43 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>縮時相機管理 | PMO電子圖資系統</title>
     <link rel="stylesheet" href="style.css">
-    <!-- ✨ 引入強大的 SheetJS 函式庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { padding-top: 20px; }
-        .header-bar { 
-            display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 15px;
-            margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 15px; 
-        }
-        /* 表頭標題放大至 45 級並置中 */
-        .header-title {
-            margin: 0; font-size: 45px; color: var(--primary); 
-            display: flex; justify-content: center; align-items: center; gap: 10px;
-            width: 100%; text-align: center; flex-wrap: wrap;
-        }
-        
-        /* 標籤切換列 */
+        .header-bar { display: flex; justify-content: center; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 15px; }
+        .header-title { margin: 0; font-size: 45px; color: var(--primary); text-align: center; }
         .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { padding: 10px 30px; background: white; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
+        .tab-btn { padding: 10px 30px; background: white; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; color: var(--text-muted); }
         .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-
-        /* Notion 風格資料表 */
         .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .notion-table { width: 100%; border-collapse: collapse; min-width: 1000px; text-align: left; font-size: 14px; }
         .notion-table th { background: #f8fafc; color: var(--text-muted); font-weight: bold; padding: 12px 15px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
         .notion-table td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; color: var(--text-main); }
         .notion-table tr:hover { background: #f8fafc; }
         .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block; white-space: nowrap; }
-        .badge.power-on { background: #d1fae5; color: #059669; }
-        .badge.power-off { background: #fee2e2; color: #e11d48; }
-        .badge.tag { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
-
-        /* 封存與停用樣式 */
-        .archived-row td { background-color: #fee2e2 !important; color: #991b1b !important; }
-        .archived-card { background-color: #fee2e2 !important; border: 1px solid #fca5a5 !important; }
-        .archived-card .feed-content, .archived-card .feed-meta, .archived-card .feed-content p { color: #991b1b !important; }
-
-        /* 看板/專案動態牆 (Feed) */
+        .archived-row td, .archived-card { background-color: #f8fafc !important; color: #94a3b8 !important; opacity: 0.7; }
+        .archived-card { border: 1px solid #cbd5e1 !important; cursor: not-allowed !important; transform: none !important; }
         .board-container { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; align-items: flex-start; }
         .board-col { flex: 0 0 320px; background: #f1f5f9; border-radius: 12px; padding: 15px; max-height: 80vh; overflow-y: auto; }
         .board-col-header { font-size: 18px; font-weight: bold; color: var(--text-main); border-bottom: 2px solid #cbd5e1; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -51,206 +30,90 @@
         .feed-meta { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
         .feed-content { font-size: 13px; line-height: 1.6; color: var(--text-main); }
         .feed-footer { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; align-items: center; }
-        .btn-like { background: none; border: none; font-size: 14px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; gap: 5px; transition: transform 0.1s; }
-        .btn-like.liked { color: #e11d48; }
-        .btn-like:active { transform: scale(1.2); }
-
-        /* 復原紀錄 Toast 動畫 */
-        #restore-toast {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: var(--text-main); color: white; padding: 12px 24px; border-radius: 30px;
-            z-index: 9999; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            display: flex; align-items: center; gap: 15px;
-            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-        }
-        #restore-toast.minimizing {
-            top: calc(100vh - 80px); left: calc(100vw - 40px); transform: scale(0.1); opacity: 0; pointer-events: none;
-        }
-
-        /* ✨ 特製：白色打勾方格 */
-        .batch-checkbox {
-            appearance: none; -webkit-appearance: none;
-            width: 22px; height: 22px; background-color: white;
-            border: 2px solid #cbd5e1; border-radius: 6px; cursor: pointer;
-            position: relative; display: inline-block; vertical-align: middle;
-            transition: all 0.2s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .batch-checkbox:hover { border-color: var(--primary); }
-        .batch-checkbox:checked { background-color: var(--primary); border-color: var(--primary); }
-        .batch-checkbox:checked::after {
-            content: '✔'; color: white; position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); font-size: 14px; font-weight: bold;
-        }
-
-        /* 多選 Tag 標籤容器樣式 */
-        .multi-tag-container {
-            display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px;
-            min-height: 36px; border: 1px solid #cbd5e1; border-radius: 6px;
-            background: white; align-items: center; cursor: pointer;
-        }
-        .multi-tag-item {
-            padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;
-            display: inline-flex; align-items: center; gap: 6px;
-        }
-        .tag-remove-btn {
-            cursor: pointer; font-weight: bold; opacity: 0.6; transition: opacity 0.2s;
-        }
-        .tag-remove-btn:hover { opacity: 1; color: var(--danger); }
+        .btn-like { background: none; border: none; font-size: 14px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; gap: 5px; transition: 0.1s; }
+        .btn-like.liked { color: #e11d48; } .btn-like:active { transform: scale(1.2); }
+        #restore-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--text-main); color: white; padding: 12px 24px; border-radius: 30px; z-index: 9999; font-weight: bold; display: flex; align-items: center; gap: 15px; transition: all 0.5s; }
+        #restore-toast.minimizing { top: calc(100vh - 80px); left: calc(100vw - 40px); transform: scale(0.1); opacity: 0; pointer-events: none; }
+        .batch-checkbox { width: 22px; height: 22px; background: white; border: 2px solid #cbd5e1; border-radius: 6px; cursor: pointer; position: relative; appearance: none; transition: 0.2s; vertical-align: middle; }
+        .batch-checkbox:checked { background: var(--primary); border-color: var(--primary); }
+        .batch-checkbox:checked::after { content: '✔'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: bold; }
+        .multi-tag-container { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px; min-height: 36px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; align-items: center; cursor: pointer; }
+        .multi-tag-item { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; }
+        .tag-remove-btn { cursor: pointer; font-weight: bold; opacity: 0.6; } .tag-remove-btn:hover { opacity: 1; color: var(--danger); }
     </style>
 </head>
 <body>
-
 <div class="app-container">
-    <div class="header-bar">
-        <h1 class="header-title">📷 縮時相機管理</h1>
-    </div>
-
-    <!-- 標籤切換列 -->
+    <div class="header-bar"><h1 class="header-title">📷 縮時相機管理</h1></div>
     <div class="tabs">
-        <button id="tab-btn-assets" class="tab-btn active" onclick="switchTab('assets')">資產 (0)</button>
-        <button id="tab-btn-list" class="tab-btn" onclick="switchTab('list')">列表</button>
-        <button id="tab-btn-feed" class="tab-btn" onclick="switchTab('feed')">貼文</button>
+        <button id="tab-btn-assets" class="tab-btn active" onclick="window.switchTab('assets')">資產 (0)</button>
+        <button id="tab-btn-list" class="tab-btn" onclick="window.switchTab('list')">列表</button>
+        <button id="tab-btn-feed" class="tab-btn" onclick="window.switchTab('feed')">貼文</button>
     </div>
-
-    <!-- 共用控制列：過濾器與排序 -->
+    
     <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-        
-        <!-- 左側：專案過濾器 (從資產頁隱藏，僅列表與貼文可見) -->
         <div id="filter-container-wrapper" style="position: relative; display: none; margin-right: auto;">
-            <button class="btn-secondary" onclick="toggleFilterPanel(event)" id="filter-btn-text" style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: bold; color: var(--primary); padding: 10px 20px; cursor: pointer; transition: all 0.2s;">
-                🏷️ 專案過濾 (載入中...) <span style="font-size:10px; color:var(--text-muted);">▼</span>
-            </button>
-            <div class="custom-dropdown-panel" id="opt-filter-panel" style="position: absolute; top: 100%; left: 0; width: 300px; padding: 15px; margin-top: 8px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 3100; display: none;" onclick="event.stopPropagation()">
-                <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px; font-weight:bold; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">☑️ 勾選要顯示的專案 (系統將自動記憶)</div>
-                <div id="filter-checkboxes" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto; padding-right: 5px;"></div>
+            <button class="btn-secondary" onclick="window.toggleFilterPanel(event)" id="filter-btn-text" style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; font-weight: bold; color: var(--primary);">🏷️ 專案過濾 (載入中...) ▼</button>
+            <div class="custom-dropdown-panel" id="opt-filter-panel" style="position: absolute; top: 100%; left: 0; width: 300px; padding: 15px; z-index: 3100; display: none;" onclick="event.stopPropagation()">
+                <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px; font-weight:bold; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">☑️ 勾選顯示的專案</div>
+                <div id="filter-checkboxes" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;"></div>
             </div>
         </div>
-
-        <!-- 右側：排序選單 (僅資產頁可見) -->
         <div id="asset-sort-wrapper" style="display: flex; align-items: center; gap: 8px;">
             <label style="font-size: 14px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
             <select id="asset-sort-select" onchange="window.renderAssets()" style="border: none; outline: none; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
-                <option value="name">🔢 依序號</option>
-                <option value="status">🚦 依狀態</option>
-                <option value="project">🏷️ 依使用專案</option>
-                <option value="sn">🔤 依資產編號</option>
+                <option value="name">🔢 依序號</option><option value="status">🚦 依狀態</option><option value="project">🏷️ 依使用專案</option><option value="sn">🔤 依資產編號</option>
             </select>
         </div>
     </div>
 
-    <div id="loading-msg" style="text-align: center; color: var(--text-muted); padding: 50px; font-size: 18px;">
-        ⏳ 資料讀取與驗證中...
-    </div>
+    <div id="loading-msg" style="text-align: center; color: var(--text-muted); padding: 50px; font-size: 18px;">⏳ 資料讀取與驗證中...</div>
 
-    <!-- 視圖區塊 -->
     <div id="view-assets" class="view active"><div class="grid-nav" id="assets-grid"></div></div>
-    
     <div id="view-list" class="view">
-        <!-- 列表頁專屬：批次刪除按鈕與提示 -->
         <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 15px; background: #fef2f2; padding: 10px 20px; border-radius: 8px; border: 1px dashed #fca5a5;">
-            <button class="btn-danger" onclick="batchDeleteCams()" style="padding: 10px 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);">🗑️ 批次刪除勾選紀錄</button>
+            <button class="btn-danger" onclick="window.batchDeleteCams()">🗑️ 批次刪除勾選紀錄</button>
             <span style="font-size: 13px; color: #991b1b; font-weight: bold;">※ 勾選下方列表最左側的白色方格，可一次清理多筆不要的空白機台或紀錄。</span>
         </div>
-        <div class="table-container">
-            <table class="notion-table">
-                <thead>
-                    <tr>
-                        <th style="text-align:center; width: 40px;"><input type="checkbox" id="cb-select-all" class="batch-checkbox" onchange="toggleAllCams(this)" title="全選/取消全選"></th>
-                        <th style="width: 60px; text-align:center;">🗑️ 刪除</th>
-                        <th>@ 專案</th><th>Aa 機台名稱</th><th>📍 地點</th><th>🔌 電源</th><th>🔧 工項</th><th>🕒 檢查時間</th><th>🔋 (%)</th><th>💾 容量</th><th>👥 建立人</th>
-                    </tr>
-                </thead>
-                <tbody id="list-tbody"></tbody>
-            </table>
-        </div>
+        <div class="table-container"><table class="notion-table"><thead><tr><th style="width: 40px;"><input type="checkbox" id="cb-select-all" class="batch-checkbox" onchange="window.toggleAllCams(this)"></th><th style="width: 60px;">🗑️ 刪除</th><th>@ 專案</th><th>Aa 機台名稱</th><th>📍 地點</th><th>🔌 電源</th><th>🔧 工項</th><th>🕒 檢查時間</th><th>🔋 (%)</th><th>💾 容量</th><th>👥 建立人</th></tr></thead><tbody id="list-tbody"></tbody></table></div>
     </div>
-    
     <div id="view-feed" class="view"><div class="board-container" id="feed-board"></div></div>
 </div>
 
-<!-- 復原紀錄的動態頂部 Toast -->
-<div id="restore-toast" style="display:none;">
-    <span id="restore-toast-text"></span>
-    <button class="btn-primary" onclick="restoreLastRecord()" style="background:var(--warning); color:white; padding:6px 15px;">↩️ 復原</button>
-</div>
-
-<!-- 多功能懸浮按鈕選單與隱藏的檔案上傳器 -->
+<div id="restore-toast" style="display:none;"><span id="restore-toast-text"></span><button class="btn-primary" onclick="window.restoreLastRecord()" style="background:var(--warning);">↩️ 復原</button></div>
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px;">
     <div class="fab-menu" id="fab-menu">
-        <button class="fab-item" id="fab-restore-item" style="display:none; color:var(--warning);" onclick="restoreLastRecord()">♻️ 復原紀錄</button>
-        <button class="fab-item" onclick="document.getElementById('excel-upload').click()">📥 從 Excel 匯入覆蓋</button>
-        <button class="fab-item" onclick="openCameraModal()">➕ 新增相機資產</button>
+        <button class="fab-item" id="fab-restore-item" style="display:none; color:var(--warning);" onclick="window.restoreLastRecord()">♻️ 復原紀錄</button>
+        <button class="fab-item" onclick="$('excel-upload').click()">📥 從 Excel 匯入覆蓋</button>
+        <button class="fab-item" onclick="window.openCameraModal()">➕ 新增相機資產</button>
     </div>
-    <button class="fab-btn" onclick="toggleFabMenu(event)">＋</button>
+    <button class="fab-btn" onclick="window.toggleFabMenu(event)">＋</button>
 </div>
-<input type="file" id="excel-upload" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleExcelUpload(event)">
+<input type="file" id="excel-upload" accept=".xlsx, .xls, .csv" style="display:none;" onchange="window.handleExcelUpload(event)">
 
-<!-- ================= Modal: 相機資產編輯 ================= -->
-<div id="camera-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeCameraModal()">
+<!-- Modal: 相機資產編輯 -->
+<div id="camera-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeCameraModal()">
     <div class="modal-content" style="overflow: visible;">
-        <div class="modal-header"><span id="camera-modal-title">📦 新增相機資產</span><button class="btn-close" onclick="closeCameraModal()">×</button></div>
-        <div class="form-group">
-            <label>所屬專案</label>
-            <div class="custom-dropdown-btn" onclick="toggleDropdown('opt-project', event)"><span id="disp-opt-project">閒置</span><span style="font-size:12px; color:var(--text-muted);">▼</span></div>
-            <div class="custom-dropdown-panel" id="opt-project-panel" onclick="event.stopPropagation()">
-                <div class="dropdown-search-row"><input type="text" id="opt-project-input" placeholder="新增或搜尋專案..."><button class="btn-primary" onclick="addOption('project', event)">➕</button></div>
-                <div class="dropdown-list" id="opt-project-list"></div>
-            </div>
-        </div>
+        <div class="modal-header"><span id="camera-modal-title">📦 新增相機資產</span><button class="btn-close" onclick="window.closeCameraModal()">×</button></div>
+        <div class="form-group"><label>所屬專案</label><div class="custom-dropdown-btn" onclick="window.toggleDropdown('opt-project', event)"><span id="disp-opt-project">閒置</span><span>▼</span></div><div class="custom-dropdown-panel" id="opt-project-panel" onclick="event.stopPropagation()"><div class="dropdown-search-row"><input type="text" id="opt-project-input" placeholder="新增或搜尋專案..."><button class="btn-primary" onclick="window.addOption('project', event)">➕</button></div><div class="dropdown-list" id="opt-project-list"></div></div></div>
         <div class="form-group"><label>機台名稱 (數字編號)</label><input type="text" id="cam-name" placeholder="例如：14"></div>
-        <div class="form-group" style="display:flex; gap:10px;"><div style="flex:1;"><label>品牌</label><input type="text" id="cam-brand" placeholder="例如：Brinno"></div><div style="flex:1;"><label>型號</label><input type="text" id="cam-model" placeholder="例如：TLC2000"></div></div>
-        <div class="form-group"><label>資產編號 (SN)</label><input type="text" id="cam-sn" placeholder="N/A"></div>
-        <div class="form-group"><label>購入日</label><input type="date" id="cam-date"></div>
-        <div class="modal-footer" style="justify-content: space-between;"><button id="btn-delete-camera" class="btn-danger" style="display:none;" onclick="deleteCameraAsset(currentEditCamId)">🗑️ 刪除</button><div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="closeCameraModal()">取消</button><button class="btn-primary" onclick="saveCamera()">儲存</button></div></div>
+        <div class="form-group" style="display:flex; gap:10px;"><div style="flex:1;"><label>品牌</label><input type="text" id="cam-brand" placeholder="Brinno"></div><div style="flex:1;"><label>型號</label><input type="text" id="cam-model" placeholder="TLC2000"></div></div>
+        <div class="form-group"><label>資產編號 (SN)</label><input type="text" id="cam-sn" placeholder="N/A"></div><div class="form-group"><label>購入日</label><input type="date" id="cam-date"></div>
+        <div class="modal-footer" style="justify-content: space-between;"><button id="btn-delete-camera" class="btn-danger" style="display:none;" onclick="window.deleteCameraAsset(currentEditCamId)">🗑️ 刪除</button><div style="display:flex; gap:10px;"><button class="btn-secondary" onclick="window.closeCameraModal()">取消</button><button class="btn-primary" onclick="window.saveCamera()">儲存</button></div></div>
     </div>
 </div>
 
-<!-- ================= Modal: 巡檢紀錄表單 (支援多選地點/工項) ================= -->
-<div id="record-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeRecordModal()">
+<!-- Modal: 巡檢紀錄表單 -->
+<div id="record-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeRecordModal()">
     <div class="modal-content" style="overflow: visible;">
-        <div class="modal-header"><span id="record-modal-title">📝 紀錄狀態</span><button class="btn-close" onclick="closeRecordModal()">×</button></div>
+        <div class="modal-header"><span id="record-modal-title">📝 紀錄狀態</span><button class="btn-close" onclick="window.closeRecordModal()">×</button></div>
         <div style="font-size:13px; color:var(--primary); font-weight:bold; margin-bottom:15px;" id="record-target-name"></div>
-        
-        <div class="form-group">
-            <label>地點 (可多選)</label>
-            <div class="multi-tag-container" onclick="toggleDropdown('opt-location', event)">
-                <div id="multi-tags-location" style="flex:1; display:flex; flex-wrap:wrap; gap:5px;"><span style="color:var(--text-muted); font-size:14px;">選擇地點...</span></div>
-                <span style="font-size:12px; color:var(--text-muted);">▼</span>
-            </div>
-            <div class="custom-dropdown-panel" id="opt-location-panel" onclick="event.stopPropagation()">
-                <div class="dropdown-search-row"><input type="text" id="opt-location-input" placeholder="新增地點..."><button class="btn-primary" onclick="addOption('location', event)">➕</button></div>
-                <div class="dropdown-list" id="opt-location-list"></div>
-            </div>
-        </div>
-
-        <div class="form-group" style="display:flex; gap:10px;">
-            <div style="flex:1;"><label>電量 (%)</label><input type="number" id="rec-battery" placeholder="100" min="0" max="100"></div>
-            <div style="flex:1;">
-                <label>容量</label>
-                <div class="custom-dropdown-btn" onclick="toggleDropdown('opt-capacity', event)"><span id="disp-opt-capacity">64GB</span><span style="font-size:12px; color:var(--text-muted);">▼</span></div>
-                <div class="custom-dropdown-panel" id="opt-capacity-panel" onclick="event.stopPropagation()">
-                    <div class="dropdown-search-row"><input type="text" id="opt-capacity-input" placeholder="新增容量..."><button class="btn-primary" onclick="addOption('capacity', event)">➕</button></div>
-                    <div class="dropdown-list" id="opt-capacity-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>工項 (可多選)</label>
-            <div class="multi-tag-container" onclick="toggleDropdown('opt-task', event)">
-                <div id="multi-tags-task" style="flex:1; display:flex; flex-wrap:wrap; gap:5px;"><span style="color:var(--text-muted); font-size:14px;">選擇工項...</span></div>
-                <span style="font-size:12px; color:var(--text-muted);">▼</span>
-            </div>
-            <div class="custom-dropdown-panel" id="opt-task-panel" onclick="event.stopPropagation()">
-                <div class="dropdown-search-row"><input type="text" id="opt-task-input" placeholder="新增工項..."><button class="btn-primary" onclick="addOption('task', event)">➕</button></div>
-                <div class="dropdown-list" id="opt-task-list"></div>
-            </div>
-        </div>
-
+        <div class="form-group"><label>地點 (可多選)</label><div class="multi-tag-container" onclick="window.toggleDropdown('opt-location', event)"><div id="multi-tags-location" style="flex:1; display:flex; flex-wrap:wrap; gap:5px;"></div><span>▼</span></div><div class="custom-dropdown-panel" id="opt-location-panel" onclick="event.stopPropagation()"><div class="dropdown-search-row"><input type="text" id="opt-location-input" placeholder="新增地點..."><button class="btn-primary" onclick="window.addOption('location', event)">➕</button></div><div class="dropdown-list" id="opt-location-list"></div></div></div>
+        <div class="form-group" style="display:flex; gap:10px;"><div style="flex:1;"><label>電量 (%)</label><input type="number" id="rec-battery" placeholder="100" min="0" max="100"></div><div style="flex:1;"><label>容量</label><div class="custom-dropdown-btn" onclick="window.toggleDropdown('opt-capacity', event)"><span id="disp-opt-capacity">64GB</span><span>▼</span></div><div class="custom-dropdown-panel" id="opt-capacity-panel" onclick="event.stopPropagation()"><div class="dropdown-search-row"><input type="text" id="opt-capacity-input" placeholder="新增容量..."><button class="btn-primary" onclick="window.addOption('capacity', event)">➕</button></div><div class="dropdown-list" id="opt-capacity-list"></div></div></div></div>
+        <div class="form-group"><label>工項 (可多選)</label><div class="multi-tag-container" onclick="window.toggleDropdown('opt-task', event)"><div id="multi-tags-task" style="flex:1; display:flex; flex-wrap:wrap; gap:5px;"></div><span>▼</span></div><div class="custom-dropdown-panel" id="opt-task-panel" onclick="event.stopPropagation()"><div class="dropdown-search-row"><input type="text" id="opt-task-input" placeholder="新增工項..."><button class="btn-primary" onclick="window.addOption('task', event)">➕</button></div><div class="dropdown-list" id="opt-task-list"></div></div></div>
         <div class="form-group"><label>電源狀態</label><select id="rec-power"><option value="開">🟢 開機</option><option value="關">🔴 關機</option></select></div>
-        
         <div class="form-group"><label>備註 (上限 100 字)</label><textarea id="rec-remarks" rows="3" maxlength="100" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; resize:vertical; font-family:inherit;"></textarea></div>
-        <div class="modal-footer"><button class="btn-secondary" onclick="closeRecordModal()">取消</button><button class="btn-primary" onclick="saveRecord()">發佈紀錄</button></div>
+        <div class="modal-footer"><button class="btn-secondary" onclick="window.closeRecordModal()">取消</button><button class="btn-primary" onclick="window.saveRecord()">發佈紀錄</button></div>
     </div>
 </div>
 
@@ -258,76 +121,42 @@
     import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { onAuthStateChanged, signInWithPopup, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    let db, auth, provider;
-    let cameras = [];
-    let records = [];
-    let options = { project: ['閒置'], location: [], capacity: ['64GB', '128GB'], task: ['換電池', '換位置', '收SD卡'] };
-    
-    let currentTab = 'assets';
-    let currentEditCamId = null;
-    let currentRecordCamId = null;
-    let currentUserProfile = {};
-    
-    // 多選標籤狀態管理
+    // 縮寫神器
+    const $ = id => document.getElementById(id);
+    const $$ = sel => document.querySelectorAll(sel);
+
+    let db, auth, provider, cameras = [], records = [];
+    let options = { project: ['閒置', '無法使用'], location: [], capacity: ['64GB', '128GB'], task: ['換電池', '換位置', '收SD卡'] };
+    let currentTab = 'assets', currentEditCamId = null, currentRecordCamId = null, currentUserProfile = {};
     let currentSelectedTags = { location: [], task: [] };
-
-    // 過濾器狀態 (自動讀取 LocalStorage)
-    let activeFilters = JSON.parse(localStorage.getItem('timelapse_project_filter')) || null;
-
-    // 復原紀錄佇列與計時器
-    let deletedRecordsQueue = [];
-    let restoreTimerInt = null;
-    let restoreTimeLeft = 0;
+    let activeFilters = JSON.parse(localStorage.getItem('timelapse_project_filter'));
+    if (!Array.isArray(activeFilters)) activeFilters = null;
+    let deletedRecordsQueue = [], restoreTimerInt = null, restoreTimeLeft = 0;
 
     const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
 
     if (isRealEnvironment) {
-        import('./js/firebase-config.js')
-            .then(module => {
-                db = module.db;
-                auth = module.auth;
-                provider = module.provider;
-                initializeApp();
-            })
-            .catch(err => {
-                showError('載入設定檔失敗：' + err.message);
-            });
-    } else {
-        showError('⚠️ 線上預覽模式無法跨檔案載入，請於本機 VS Code (Live Server) 中測試與檢視。');
-    }
+        import('./js/firebase-config.js').then(m => { db = m.db; auth = m.auth; provider = m.provider; initializeApp(); }).catch(e => showError('載入設定檔失敗：' + e.message));
+    } else { showError('⚠️ 線上預覽模式無法跨檔案載入，請於本機 VS Code (Live Server) 中測試。'); }
 
-    function showError(msg) {
-        const loadingMsg = document.getElementById('loading-msg');
-        if (loadingMsg) {
-            loadingMsg.innerHTML = msg;
-            loadingMsg.style.color = 'var(--danger)';
-        }
-    }
+    function showError(msg) { if($('loading-msg')) { $('loading-msg').innerHTML = msg; $('loading-msg').style.color = 'var(--danger)'; } }
 
     function initializeApp() {
         onAuthStateChanged(auth, (user) => {
             if (!user) {
-                document.getElementById('loading-msg').innerHTML = `⛔ 尚未登入<br><br><button id="btn-login" class="btn-primary" style="padding:10px 20px; font-size:16px; border-radius:30px; margin-top:10px;">Google 登入</button>`;
-                document.getElementById('loading-msg').style.color = 'var(--danger)';
-                document.getElementById('btn-login').onclick = async () => {
-                    try { 
-                        await signInWithPopup(auth, provider); 
-                    } catch (e) { 
+                $('loading-msg').innerHTML = `⛔ 尚未登入<br><br><button id="btn-login" class="btn-primary" style="padding:10px 20px; font-size:16px; border-radius:30px; margin-top:10px;">Google 登入</button>`;
+                $('loading-msg').style.color = 'var(--danger)';
+                $('btn-login').onclick = async () => {
+                    try { await signInWithPopup(auth, provider); } 
+                    catch (e) { 
                         if (e.code === 'auth/unauthorized-domain') {
-                            if (window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) {
-                                alert('本地端無法使用 Google 登入，為您啟用訪客預覽模式！');
-                                await signInAnonymously(auth);
-                            } else {
-                                alert('登入失敗：網址未獲 Firebase 授權！');
-                            }
-                        } else if (e.code !== 'auth/popup-closed-by-user') {
-                            alert("登入失敗：" + e.message); 
-                        }
+                            if (window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) { alert('啟用訪客預覽模式！'); await signInAnonymously(auth); } 
+                            else alert('登入失敗：網址未獲 Firebase 授權！');
+                        } else if (e.code !== 'auth/popup-closed-by-user') alert("登入失敗：" + e.message); 
                     }
-                }; 
-                return;
+                }; return;
             }
-            document.getElementById('loading-msg').style.display = 'none';
+            $('loading-msg').style.display = 'none';
             currentUserProfile = { name: user.displayName || '訪客', email: user.email || 'anonymous', avatar: user.photoURL || 'https://via.placeholder.com/32' };
             fetchData();
         });
@@ -335,666 +164,227 @@
 
     function fetchData() {
         onSnapshot(doc(db, "settings", "timelapse_options"), (s) => {
-            if (s.exists()) options = { ...options, ...s.data() };
-            else setDoc(doc(db, "settings", "timelapse_options"), options);
+            if (s.exists()) options = { ...options, ...s.data() }; else setDoc(doc(db, "settings", "timelapse_options"), options);
             renderFilterUI();
         });
-
         onSnapshot(collection(db, "assets"), (s) => {
-            // 過濾並確保抓下來的相機具備基本名稱，防呆過濾掉異常產生的空白機台
             cameras = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.category === '縮時相機' && a.item && a.item.trim() !== '');
-            renderFilterUI();
-            renderCurrentView();
+            renderFilterUI(); window.renderCurrentView();
         });
-
         onSnapshot(collection(db, "timelapse_records"), (s) => {
-            records = s.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderCurrentView();
+            records = s.docs.map(d => ({ id: d.id, ...d.data() })); window.renderCurrentView();
         });
     }
 
-    // ======== ✨ 多選專案過濾器邏輯 ========
     function renderFilterUI() {
-        let allProjects = new Set(options.project || []);
-        cameras.forEach(c => allProjects.add(c.project || '閒置'));
-        allProjects = Array.from(allProjects).sort();
-
-        // 初次載入若無記憶，預設全選
-        if (!activeFilters) {
-            activeFilters = [...allProjects];
-            localStorage.setItem('timelapse_project_filter', JSON.stringify(activeFilters));
-        }
-
-        const container = document.getElementById('filter-checkboxes');
-        container.innerHTML = '';
-        allProjects.forEach(proj => {
-            const checked = activeFilters.includes(proj) ? 'checked' : '';
-            container.innerHTML += `
-                <label style="display:flex; align-items:center; gap:10px; padding:8px 12px; cursor:pointer; border-radius:8px; background:#f8fafc; border:1px solid #e2e8f0; transition:all 0.2s;">
-                    <input type="checkbox" class="global-filter-cb batch-checkbox" style="width:16px; height:16px;" value="${proj}" ${checked} onchange="updateFilters()">
-                    <span style="font-weight:bold; color:var(--text-main); font-size:14px;">${proj}</span>
-                </label>
-            `;
+        let allProjs = new Set(options.project || []); cameras.forEach(c => allProjs.add(c.project || '閒置')); allProjs = Array.from(allProjs).sort();
+        if (!activeFilters) { activeFilters = [...allProjs]; localStorage.setItem('timelapse_project_filter', JSON.stringify(activeFilters)); }
+        const ctn = $('filter-checkboxes'); ctn.innerHTML = '';
+        allProjs.forEach(p => {
+            const chk = activeFilters.includes(p) ? 'checked' : '';
+            ctn.innerHTML += `<label style="display:flex; align-items:center; gap:10px; padding:8px 12px; cursor:pointer; border-radius:8px; background:#f8fafc; border:1px solid #e2e8f0;"><input type="checkbox" class="global-filter-cb batch-checkbox" value="${p}" ${chk} onchange="window.updateFilters()"><span style="font-weight:bold; font-size:14px;">${p}</span></label>`;
         });
         updateFilterDisplay();
     }
 
     window.updateFilters = () => {
-        const cbs = document.querySelectorAll('.global-filter-cb');
-        activeFilters = Array.from(cbs).filter(cb => cb.checked).map(cb => cb.value);
-        localStorage.setItem('timelapse_project_filter', JSON.stringify(activeFilters));
-        updateFilterDisplay();
-        renderCurrentView(); 
+        activeFilters = Array.from($$('.global-filter-cb')).filter(cb => cb.checked).map(cb => cb.value);
+        localStorage.setItem('timelapse_project_filter', JSON.stringify(activeFilters)); updateFilterDisplay(); window.renderCurrentView(); 
     };
 
     function updateFilterDisplay() {
-        const disp = document.getElementById('filter-btn-text');
-        if (!disp) return;
-        if (activeFilters.length === 0) disp.innerHTML = '🏷️ 專案過濾 (全隱藏) <span style="font-size:10px; color:var(--text-muted);">▼</span>';
-        else if (activeFilters.length <= 2) disp.innerHTML = `🏷️ 過濾: ${activeFilters.join(', ')} <span style="font-size:10px; color:var(--text-muted);">▼</span>`;
-        else disp.innerHTML = `🏷️ 過濾專案 (顯示 ${activeFilters.length} 項) <span style="font-size:10px; color:var(--text-muted);">▼</span>`;
+        const d = $('filter-btn-text'); if (!d) return;
+        if (activeFilters.length === 0) d.innerHTML = '🏷️ 專案過濾 (全隱藏) ▼';
+        else if (activeFilters.length <= 2) d.innerHTML = `🏷️ 過濾: ${activeFilters.join(', ')} ▼`;
+        else d.innerHTML = `🏷️ 過濾專案 (顯示 ${activeFilters.length} 項) ▼`;
     }
 
     window.toggleFilterPanel = (e) => {
-        if(e) e.stopPropagation();
-        document.querySelectorAll('.custom-dropdown-panel').forEach(p => { if(p.id !== 'opt-filter-panel') p.classList.remove('active'); });
-        document.getElementById('opt-filter-panel').classList.toggle('active');
+        if(e) e.stopPropagation(); $$('.custom-dropdown-panel').forEach(p => { if(p.id !== 'opt-filter-panel') p.classList.remove('active'); });
+        $('opt-filter-panel').classList.toggle('active');
     };
 
-    // ======== FAB 菜單控制 ========
-    window.toggleFabMenu = (e) => {
-        if(e) e.stopPropagation();
-        document.getElementById('fab-container').classList.toggle('active');
-        document.getElementById('fab-menu').classList.toggle('active');
-    };
+    window.toggleFabMenu = (e) => { if(e) e.stopPropagation(); $('fab-container').classList.toggle('active'); $('fab-menu').classList.toggle('active'); };
 
-    // ======== 智慧匯入解析 (預設覆蓋更新，強化阻擋空白行) ========
     window.handleExcelUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        e.target.value = '';
-        const loader = document.getElementById('loading-msg');
-        loader.innerHTML = '⏳ 正在為您解析並覆蓋 Excel 資料...';
-        loader.style.display = 'block';
-        loader.style.color = 'var(--text-main)';
-        
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
+        const f = e.target.files[0]; if (!f) return; e.target.value = '';
+        const ld = $('loading-msg'); ld.innerHTML = '⏳ 正在為您解析並覆蓋 Excel 資料...'; ld.style.display = 'block';
+        const r = new FileReader();
+        r.onload = async (evt) => {
             try {
-                const data = evt.target.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
-                let headerRowIndex = json.findIndex(row => row.includes('編號') || row.includes('品牌'));
-                if (headerRowIndex === -1) headerRowIndex = 0; 
-                
-                const headers = json[headerRowIndex];
-                const rows = json.slice(headerRowIndex + 1);
-                
-                let updatedCount = 0;
-                let addedCount = 0;
-                const ops = [];
+                const j = XLSX.utils.sheet_to_json(XLSX.read(evt.target.result, { type: 'binary' }).Sheets[XLSX.read(evt.target.result, { type: 'binary' }).SheetNames[0]], { header: 1 });
+                let hi = j.findIndex(row => row.includes('編號') || row.includes('品牌')); if (hi === -1) hi = 0; 
+                const h = j[hi], rows = j.slice(hi + 1), ops = []; let uc = 0, ac = 0;
 
                 for (const row of rows) {
                     if (!row || row.length === 0) continue;
-                    
-                    const rowData = {};
-                    headers.forEach((h, i) => { if(h) rowData[h.trim()] = row[i]; });
-                    
-                    const camName = rowData['編號'] ? String(rowData['編號']).trim() : '';
-                    if (!camName || camName.toLowerCase() === 'undefined') continue;
-                    
-                    const brand = rowData['品牌'] || 'N/A';
-                    const model = rowData['型號'] || 'N/A';
-                    const sn = rowData['資產編號'] || 'N/A';
-                    let project = rowData['現使用專案'] || '閒置';
-                    const purchaseDate = rowData['移入(PMO)日期'] || '';
-                    
-                    const dataToSave = {
-                        type: 'public', category: '縮時相機', assetType: 'fixed', office_id: 'TIMELAPSE_GLOBAL',
-                        item: camName, project: project, brand: brand, model: model, 
-                        sn: String(sn), purchase_date: String(purchaseDate)
-                    };
-                    
-                    const exists = cameras.find(c => String(c.item) === String(camName));
-                    if (exists) {
-                        ops.push(updateDoc(doc(db, "assets", exists.id), dataToSave));
-                        updatedCount++;
-                    } else {
-                        ops.push(addDoc(collection(db, "assets"), dataToSave));
-                        addedCount++;
-                    }
+                    const rd = {}; h.forEach((hk, i) => { if(hk) rd[hk.trim()] = row[i]; });
+                    const cn = rd['編號'] ? String(rd['編號']).trim() : ''; if (!cn || cn.toLowerCase() === 'undefined') continue;
+                    const dt = { type: 'public', category: '縮時相機', assetType: 'fixed', office_id: 'TIMELAPSE_GLOBAL', item: cn, project: rd['現使用專案'] || '閒置', brand: rd['品牌'] || 'N/A', model: rd['型號'] || 'N/A', sn: String(rd['資產編號'] || 'N/A'), purchase_date: String(rd['移入(PMO)日期'] || '') };
+                    const ex = cameras.find(c => String(c.item) === String(cn));
+                    if (ex) { ops.push(updateDoc(doc(db, "assets", ex.id), dt)); uc++; } else { ops.push(addDoc(collection(db, "assets"), dt)); ac++; }
                 }
-                
-                if (ops.length > 0) {
-                    await Promise.all(ops);
-                    alert(`🎉 匯入完成！\n新增了 ${addedCount} 筆\n覆蓋更新了 ${updatedCount} 筆`);
-                } else {
-                    alert('沒有匯入任何資料。請確認 Excel 格式是否正確。');
-                }
-                
-            } catch(err) {
-                console.error(err);
-                alert('匯入失敗：' + err.message);
-            } finally {
-                loader.style.display = 'none';
-            }
-        };
-        reader.readAsBinaryString(file);
-        
-        document.getElementById('fab-container').classList.remove('active');
-        document.getElementById('fab-menu').classList.remove('active');
+                if (ops.length > 0) { await Promise.all(ops); alert(`🎉 匯入完成！\n新增 ${ac} 筆，覆蓋 ${uc} 筆`); } else alert('沒有匯入任何資料。');
+            } catch(err) { alert('匯入失敗：' + err.message); } finally { ld.style.display = 'none'; }
+        }; r.readAsBinaryString(f);
+        $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active');
     };
 
-    // ======== 視圖渲染切換 ========
     window.switchTab = (tab) => {
-        currentTab = tab;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`tab-btn-${tab}`).classList.add('active');
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.getElementById(`view-${tab}`).classList.add('active');
-        
-        // 依據標籤頁決定上方 Toolbar 內容顯示
-        document.getElementById('filter-container-wrapper').style.display = (tab === 'list' || tab === 'feed') ? 'block' : 'none';
-        document.getElementById('asset-sort-wrapper').style.display = (tab === 'assets') ? 'flex' : 'none';
-        
-        renderCurrentView();
+        currentTab = tab; $$('.tab-btn').forEach(b => b.classList.remove('active')); $(`tab-btn-${tab}`).classList.add('active');
+        $$('.view').forEach(v => v.classList.remove('active')); $(`view-${tab}`).classList.add('active');
+        $('filter-container-wrapper').style.display = (tab === 'list' || tab === 'feed') ? 'block' : 'none';
+        $('asset-sort-wrapper').style.display = (tab === 'assets') ? 'flex' : 'none';
+        window.renderCurrentView();
     };
 
     window.renderCurrentView = () => {
-        document.getElementById('tab-btn-assets').innerText = `資產 (${cameras.length})`;
-        if (currentTab === 'assets') window.renderAssets();
-        else if (currentTab === 'list') renderList();
-        else if (currentTab === 'feed') renderFeed();
+        $('tab-btn-assets').innerText = `資產 (${cameras.length})`;
+        if (currentTab === 'assets') window.renderAssets(); else if (currentTab === 'list') window.renderList(); else if (currentTab === 'feed') window.renderFeed();
     };
 
-    // 1. 資產方塊視圖 (不參與專案過濾，顯示全部相機)
     window.renderAssets = () => {
-        const grid = document.getElementById('assets-grid'); grid.innerHTML = '';
+        const grid = $('assets-grid'); grid.innerHTML = '';
         if (cameras.length === 0) return grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8; padding:30px;">尚無縮時相機</div>';
         
-        const sortBy = document.getElementById('asset-sort-select').value;
-        const sortFn = (a, b) => {
-            if (sortBy === 'name') return (a.item || '').localeCompare(b.item || '', undefined, {numeric: true});
-            if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
-            if (sortBy === 'project') return (a.project || '').localeCompare(b.project || '');
-            if (sortBy === 'sn') return (a.sn || '').localeCompare(b.sn || '');
-            return 0;
+        const sb = $('asset-sort-select').value;
+        const sf = (a, b) => { if (sb === 'name') return (a.item||'').localeCompare(b.item||'', undefined, {numeric: true}); if (sb === 'status') return (a.status||'').localeCompare(b.status||''); if (sb === 'project') return (a.project||'').localeCompare(b.project||''); return (a.sn||'').localeCompare(b.sn||''); };
+        const ac = [], ar = []; cameras.forEach(c => c.project === '無法使用' ? ar.push(c) : ac.push(c));
+        ac.sort(sf); ar.sort(sf);
+
+        const rCard = (cam, isA) => {
+            const c = document.createElement('div'); c.className = isA ? 'nav-card no-hover' : 'nav-card';
+            if (isA) { c.style.opacity = '0.6'; c.style.background = '#f8fafc'; c.title = '該縮時已停用'; } else { c.onclick = () => window.openRecordModal(cam.id); c.title = '點擊新增紀錄'; }
+            c.innerHTML = `<div style="position:absolute; top:12px; left:15px;" class="badge tag">${cam.project || '閒置'}</div><button class="card-edit-btn" onclick="event.stopPropagation(); window.openCameraModal('${cam.id}')">✏️</button><h2 style="margin-top:30px; font-size:24px; color:${isA ? '#64748b' : 'var(--text-main)'};">📸 縮時 ${cam.item || '未命名'}</h2><div class="detail-info" style="opacity:1; max-height:none; text-align:center; margin-top:10px;"><div>品牌：${cam.brand || 'N/A'} | 型號：${cam.model || 'N/A'}</div><div style="font-family:monospace; color:var(--danger); font-weight:bold;">SN: ${cam.sn || 'N/A'}</div></div>`;
+            grid.appendChild(c);
         };
-
-        const activeCams = [];
-        const archivedCams = [];
-        cameras.forEach(c => {
-            if (c.project === '無法使用') archivedCams.push(c);
-            else activeCams.push(c);
-        });
-
-        activeCams.sort(sortFn);
-        archivedCams.sort(sortFn);
-
-        const renderCard = (cam, isArchived) => {
-            const card = document.createElement('div'); 
-            card.className = isArchived ? 'nav-card no-hover' : 'nav-card';
-            if (isArchived) {
-                card.style.backgroundColor = '#f1f5f9';
-                card.style.opacity = '0.7';
-                card.style.border = '1px solid #cbd5e1';
-                card.title = '該縮時已停用，無法新增紀錄';
-            }
-            card.innerHTML = `
-                <div style="position:absolute; top:12px; left:15px;" class="badge tag">${cam.project || '閒置'}</div>
-                <button class="card-edit-btn" onclick="event.stopPropagation(); window.openCameraModal('${cam.id}')">✏️</button>
-                <h2 style="margin-top:30px; font-size:24px; color:${isArchived ? '#64748b' : 'var(--text-main)'};">📸 縮時 ${cam.item || '未命名'}</h2>
-                <div class="detail-info" style="opacity:1; max-height:none; text-align:center; margin-top:10px;">
-                    <div>品牌：${cam.brand || 'N/A'} | 型號：${cam.model || 'N/A'}</div>
-                    <div style="font-family:monospace; color:var(--danger); font-weight:bold;">SN: ${cam.sn || 'N/A'}</div>
-                </div>
-            `;
-            card.onclick = () => window.openRecordModal(cam.id);
-            grid.appendChild(card);
-        };
-
-        activeCams.forEach(cam => renderCard(cam, false));
-
-        if (archivedCams.length > 0) {
-            grid.innerHTML += `<div style="grid-column: 1/-1; margin-top: 30px;"><h3 style="border-bottom: 2px dashed #94a3b8; padding-bottom: 10px; color: #64748b;">🗄️ 封存區域 (已停用)</h3></div>`;
-            archivedCams.forEach(cam => renderCard(cam, true));
-        }
+        ac.forEach(c => rCard(c, false));
+        if (ar.length > 0) { grid.innerHTML += `<div style="grid-column: 1/-1; margin-top: 30px;"><h3 style="border-bottom: 2px dashed #94a3b8; padding-bottom: 10px; color: #64748b;">🗄️ 封存區域 (已停用)</h3></div>`; ar.forEach(c => rCard(c, true)); }
     };
 
-    // 格式化多標籤顯示
-    function formatMultiTags(val, bgColor, textColor) {
-        if (!val || (Array.isArray(val) && val.length === 0)) return '-';
-        const arr = Array.isArray(val) ? val : [val]; // 相容舊字串格式
-        return arr.map(v => `<span style="background:${bgColor}; color:${textColor}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; margin-right:4px; margin-bottom:4px; display:inline-block;">${v}</span>`).join('');
+    const fmtTags = (val, bg, tc) => (!val || val.length === 0) ? '-' : (Array.isArray(val) ? val : [val]).map(v => `<span style="background:${bg}; color:${tc}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; margin:2px; display:inline-block;">${v}</span>`).join('');
+
+    window.renderList = () => {
+        const tb = $('list-tbody'); tb.innerHTML = ''; $('cb-select-all').checked = false;
+        const fc = cameras.filter(c => activeFilters.includes(c.project || '閒置')).sort((a,b) => (a.project||'').localeCompare(b.project||''));
+        if(fc.length === 0) return tb.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#94a3b8; padding:30px;">在此過濾條件下沒有機台</td></tr>';
+
+        fc.forEach(cam => {
+            const lt = records.filter(r => r.cameraId === cam.id).sort((a,b) => b.createdAt.localeCompare(a.createdAt))[0] || {};
+            const isA = cam.project === '無法使用'; const tr = document.createElement('tr'); tr.className = isA ? 'archived-row' : ''; if (isA) tr.title = "該縮時已停用";
+            tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-cam-row batch-checkbox" value="${cam.id}"></td><td style="text-align:center;"><button class="btn-danger" style="padding:6px 12px; font-size:12px;" onclick="window.deleteCameraAsset('${cam.id}', event)">🗑️</button></td><td><span class="badge tag">${cam.project || '閒置'}</span></td><td><b style="color:${isA ? '#991b1b' : 'var(--primary)'}; font-size:16px;">📸 縮時 ${cam.item || '?'}</b></td><td>${fmtTags(lt.location, '#e0e7ff', '#4f46e5')}</td><td>${lt.power==='開'?'<span class="badge power-on">開</span>':lt.power==='關'?'<span class="badge power-off">關</span>':'-'}</td><td>${fmtTags(lt.task, '#fef08a', '#854d0e')}</td><td style="font-size:12px;">${lt.createdAt ? new Date(lt.createdAt).toLocaleString('zh-TW', {hour12:false}) : '-'}</td><td style="font-family:monospace; font-weight:bold; font-size:16px;">${lt.battery ? lt.battery+'%' : '-'}</td><td style="font-size:12px;">${lt.capacity || '-'}</td><td>${lt.creatorName ? `<img src="${lt.creatorAvatar}" style="width:20px; border-radius:50%; vertical-align:middle;"> ${lt.creatorName}` : '-'}</td>`;
+            tb.appendChild(tr);
+        });
+    };
+
+    window.renderFeed = () => {
+        const bd = $('feed-board'); bd.innerHTML = '';
+        const ap = [...new Set(cameras.map(c => c.project || '閒置'))].filter(p => activeFilters.includes(p)).slice(0, 4);
+        if(ap.length === 0) return bd.innerHTML = '<div style="width:100%; text-align:center; color:#94a3b8; padding:30px;">在此過濾條件下無專案貼文</div>';
+
+        ap.forEach(proj => {
+            const col = document.createElement('div'); col.className = 'board-col'; col.innerHTML = `<div class="board-col-header"><span>🏷️ ${proj}</span><span style="font-size:12px; background:white; padding:2px 8px; border-radius:12px;">專案動態</span></div>`;
+            const pr = records.filter(r => r.project === proj).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+            if(pr.length === 0) col.innerHTML += `<div style="text-align:center; color:#94a3b8; font-size:13px; margin-top:20px;">尚無紀錄</div>`;
+            pr.forEach(rec => {
+                const isA = cameras.find(c => c.id === rec.cameraId)?.project === '無法使用'; const lkd = rec.likes && rec.likes.includes(currentUserProfile.email);
+                col.innerHTML += `<div class="feed-card ${isA ? 'archived-card' : ''}" ${isA ? 'title="該縮時已停用"' : ''}><div class="feed-header"><img src="${rec.creatorAvatar}" class="feed-avatar"><div class="feed-meta"><b>${rec.creatorName}</b><br>${new Date(rec.createdAt).toLocaleString('zh-TW', {hour12:false})}</div></div><div class="feed-content"><p style="font-weight:bold; margin:0 0 5px 0;">📸 縮時 ${rec.cameraName}</p><p style="margin:0 0 5px 0;">📍 ${fmtTags(rec.location, '#e0e7ff', '#4f46e5')} | 🔋 ${rec.battery}% | 💾 ${rec.capacity}</p><p style="margin:0 0 5px 0;">狀態：${rec.power==='開'?'🟢開':'🔴關'} | 🔧 ${fmtTags(rec.task, '#fef08a', '#854d0e')}</p>${rec.remarks ? `<div style="background:#f8fafc; padding:8px; border-radius:6px; margin-top:8px; font-size:12px;">${rec.remarks}</div>` : ''}</div><div class="feed-footer"><button class="btn-like ${lkd ? 'liked' : ''}" onclick="window.toggleLike('${rec.id}')">${lkd ? '❤️' : '🤍'} ${rec.likes ? rec.likes.length : 0}</button><button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteSingleRecord('${rec.id}', event)">🗑️ 刪除</button></div></div>`;
+            }); bd.appendChild(col);
+        });
+    };
+
+    window.toggleLike = async (rId) => { const r = records.find(x => x.id === rId); if(!r) return; let lk = r.likes || []; if(lk.includes(currentUserProfile.email)) lk = lk.filter(e => e !== currentUserProfile.email); else lk.push(currentUserProfile.email); await setDoc(doc(db, "timelapse_records", rId), { likes: lk }, { merge: true }); };
+
+    window.toggleAllCams = (el) => $$('.cb-cam-row').forEach(cb => cb.checked = el.checked);
+
+    window.deleteCameraAsset = async (cId, e) => { if(e) e.stopPropagation(); if(confirm('確定刪除此相機及所有紀錄？\n(24小時內可復原)')) await processDel([cId]); };
+    window.batchDeleteCams = async () => { const sel = Array.from($$('.cb-cam-row:checked')).map(cb => cb.value); if (sel.length === 0) return alert('未勾選項目！'); if(confirm(`批次刪除這 ${sel.length} 個相機？`)) await processDel(sel); };
+
+    async function processDel(ids) {
+        const bData = [], ops = [];
+        ids.forEach(cId => { const c = cameras.find(x => x.id === cId); if (c) { const cd = { ...c }; delete cd.id; const cr = records.filter(r => r.cameraId === cId).map(r => { const d = { ...r }; delete d.id; return { id: r.id, data: d }; }); bData.push({ camId: cId, camData: cd, camRecs: cr }); ops.push(deleteDoc(doc(db, "assets", cId))); cr.forEach(r => ops.push(deleteDoc(doc(db, "timelapse_records", r.id)))); } });
+        deletedRecordsQueue.push({ type: 'camera_batch', data: bData }); await Promise.all(ops);
+        restoreTimeLeft = Math.min((restoreTimeLeft <= 0 ? 0 : restoreTimeLeft) + 15 + ((ids.length - 1) * 5), 60); showRestoreToast();
     }
 
-    // 2. 列表 (加入過濾)
-    function renderList() {
-        const tbody = document.getElementById('list-tbody'); tbody.innerHTML = '';
-        document.getElementById('cb-select-all').checked = false;
-
-        const filteredCams = cameras.filter(c => activeFilters.includes(c.project || '閒置'));
-        const sortedCams = [...filteredCams].sort((a,b) => (a.project||'').localeCompare(b.project||''));
-
-        if(sortedCams.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#94a3b8; padding:30px;">在此過濾條件下沒有機台紀錄可顯示</td></tr>';
-            return;
-        }
-
-        sortedCams.forEach(cam => {
-            const camRecords = records.filter(r => r.cameraId === cam.id).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
-            const latest = camRecords[0] || {};
-            const pBadge = latest.power === '開' ? '<span class="badge power-on">開</span>' : latest.power === '關' ? '<span class="badge power-off">關</span>' : '-';
-            
-            const isArchived = cam.project === '無法使用';
-            const tr = document.createElement('tr');
-            tr.className = isArchived ? 'archived-row' : '';
-            if (isArchived) tr.title = "該縮時已停用";
-            
-            tr.innerHTML = `
-                <td style="text-align:center;"><input type="checkbox" class="cb-cam-row batch-checkbox" value="${cam.id}"></td>
-                <td style="text-align:center;"><button class="btn-danger" style="padding:6px 12px; font-size:12px; border-radius:6px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);" onclick="window.deleteCameraAsset('${cam.id}', event)" title="刪除機台與紀錄">🗑️ 刪除</button></td>
-                <td><span class="badge tag">${cam.project || '閒置'}</span></td>
-                <td><b style="color:${isArchived ? '#991b1b' : 'var(--primary)'}; font-size:16px;">📸 縮時 ${cam.item || '?'}</b></td>
-                <td>${formatMultiTags(latest.location, '#e0e7ff', '#4f46e5')}</td>
-                <td>${pBadge}</td>
-                <td>${formatMultiTags(latest.task, '#fef08a', '#854d0e')}</td>
-                <td style="font-size:12px;">${latest.createdAt ? new Date(latest.createdAt).toLocaleString('zh-TW', {hour12:false}) : '-'}</td>
-                <td style="font-family:monospace; font-weight:bold; font-size:16px; color:var(--text-main);">${latest.battery ? latest.battery+'%' : '-'}</td>
-                <td style="font-size:12px;">${latest.capacity || '-'}</td>
-                <td>${latest.creatorName ? `<div style="display:flex; align-items:center; gap:5px;"><img src="${latest.creatorAvatar}" style="width:24px; border-radius:50%;">${latest.creatorName}</div>` : '-'}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    // 3. 貼文動態牆 (加入過濾)
-    function renderFeed() {
-        const board = document.getElementById('feed-board'); board.innerHTML = '';
-        
-        const activeProjects = [...new Set(cameras.map(c => c.project || '閒置'))]
-            .filter(p => activeFilters.includes(p))
-            .slice(0, 4);
-        
-        if(activeProjects.length === 0) {
-            board.innerHTML = '<div style="width:100%; text-align:center; color:#94a3b8; padding:30px;">在此過濾條件下無專案貼文</div>';
-            return;
-        }
-
-        activeProjects.forEach(proj => {
-            const col = document.createElement('div'); col.className = 'board-col';
-            col.innerHTML = `<div class="board-col-header"><span>🏷️ ${proj}</span><span style="font-size:12px; font-weight:normal; background:white; padding:2px 8px; border-radius:12px;">專案動態</span></div>`;
-            
-            const projRecords = records.filter(r => r.project === proj).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
-            if(projRecords.length === 0) col.innerHTML += `<div style="text-align:center; color:#94a3b8; font-size:13px; margin-top:20px;">尚無紀錄</div>`;
-            
-            projRecords.forEach(rec => {
-                const isArchived = cameras.find(c => c.id === rec.cameraId)?.project === '無法使用';
-                const liked = rec.likes && rec.likes.includes(currentUserProfile.email);
-                const likeCount = rec.likes ? rec.likes.length : 0;
-                
-                col.innerHTML += `
-                    <div class="feed-card ${isArchived ? 'archived-card' : ''}" ${isArchived ? 'title="該縮時已停用"' : ''}>
-                        <div class="feed-header">
-                            <img src="${rec.creatorAvatar}" class="feed-avatar">
-                            <div class="feed-meta"><b>${rec.creatorName}</b><br>${new Date(rec.createdAt).toLocaleString('zh-TW', {hour12:false})}</div>
-                        </div>
-                        <div class="feed-content">
-                            <p style="font-weight:bold; color:var(--primary); margin:0 0 5px 0;">📸 縮時 ${rec.cameraName}</p>
-                            <p style="margin:0 0 5px 0;">📍 ${formatMultiTags(rec.location, '#e0e7ff', '#4f46e5')} | 🔋 ${rec.battery}% | 💾 ${rec.capacity}</p>
-                            <p style="margin:0 0 5px 0;">狀態：${rec.power === '開'?'🟢開機':'🔴關機'} | 🔧 ${formatMultiTags(rec.task, '#fef08a', '#854d0e')}</p>
-                            ${rec.remarks ? `<div style="background:#f8fafc; padding:8px; border-radius:6px; margin-top:8px; font-size:12px; border:1px solid #e2e8f0; color:var(--text-main);">${rec.remarks}</div>` : ''}
-                        </div>
-                        <div class="feed-footer">
-                            <button class="btn-like ${liked ? 'liked' : ''}" onclick="window.toggleLike('${rec.id}')">
-                                ${liked ? '❤️' : '🤍'} ${likeCount}
-                            </button>
-                            <button class="btn-danger" style="padding:6px 12px; font-size:13px; border-radius:6px;" onclick="window.deleteSingleRecord('${rec.id}', event)">🗑️ 刪除貼文</button>
-                        </div>
-                    </div>`;
-            });
-            board.appendChild(col);
-        });
-    }
-
-    window.toggleLike = async (recordId) => {
-        const rec = records.find(r => r.id === recordId); if(!rec) return;
-        let newLikes = rec.likes || [];
-        if(newLikes.includes(currentUserProfile.email)) newLikes = newLikes.filter(e => e !== currentUserProfile.email);
-        else newLikes.push(currentUserProfile.email);
-        await setDoc(doc(db, "timelapse_records", recordId), { likes: newLikes }, { merge: true });
-    };
-
-    // ======== ✨ 批次刪除與 24 小時動態安全復原機制 ========
-    window.toggleAllCams = (el) => {
-        document.querySelectorAll('.cb-cam-row').forEach(cb => cb.checked = el.checked);
-    };
-
-    window.deleteCameraAsset = async (camId, e) => {
-        if(e) e.stopPropagation();
-        if(!confirm('確定刪除此相機物件？\n(包含其所有巡檢紀錄，24小時內可復原)')) return;
-        await processCameraDeletion([camId]);
-    };
-
-    window.batchDeleteCams = async () => {
-        const selected = Array.from(document.querySelectorAll('.cb-cam-row:checked')).map(cb => cb.value);
-        if (selected.length === 0) return alert('請先勾選要刪除的相機物件！');
-        if(!confirm(`確定批次刪除這 ${selected.length} 個相機物件？\n(包含其所有巡檢紀錄，24小時內可復原)`)) return;
-        await processCameraDeletion(selected);
-    };
-
-    async function processCameraDeletion(camIds) {
-        const batchData = [];
-        const ops = [];
-
-        camIds.forEach(camId => {
-            const cam = cameras.find(c => c.id === camId);
-            if (cam) {
-                const camData = { ...cam }; delete camData.id;
-                const camRecs = records.filter(r => r.cameraId === camId).map(r => {
-                    const d = { ...r }; delete d.id; return { id: r.id, data: d };
-                });
-                batchData.push({ camId, camData, camRecs });
-                ops.push(deleteDoc(doc(db, "assets", camId)));
-                camRecs.forEach(r => ops.push(deleteDoc(doc(db, "timelapse_records", r.id))));
-            }
-        });
-
-        deletedRecordsQueue.push({ type: 'camera_batch', data: batchData });
-        await Promise.all(ops);
-        
-        const addedTime = 15 + ((camIds.length - 1) * 5);
-        if (restoreTimeLeft <= 0) restoreTimeLeft = addedTime;
-        else restoreTimeLeft = Math.min(restoreTimeLeft + addedTime, 60);
-        restoreTimeLeft = Math.min(restoreTimeLeft, 60); 
-
-        showRestoreToast();
-    }
-
-    window.deleteSingleRecord = async (recId, e) => {
-        if(e) e.stopPropagation();
-        if(!confirm('確定刪除此貼文？\n(24 小時內可以復原)')) return;
-        
-        const rec = records.find(r => r.id === recId);
-        if(!rec) return;
-
-        const dataCopy = { ...rec }; delete dataCopy.id;
-        deletedRecordsQueue.push({ type: 'single_record', id: recId, data: dataCopy });
-        await deleteDoc(doc(db, "timelapse_records", recId));
-
-        if (restoreTimeLeft <= 0) restoreTimeLeft = 15;
-        else restoreTimeLeft = Math.min(restoreTimeLeft + 5, 60);
-        showRestoreToast();
+    window.deleteSingleRecord = async (rId, e) => {
+        if(e) e.stopPropagation(); if(!confirm('確定刪除此貼文？')) return;
+        const r = records.find(x => x.id === rId); if(!r) return;
+        const dCopy = { ...r }; delete dCopy.id; deletedRecordsQueue.push({ type: 'single_record', id: rId, data: dCopy });
+        await deleteDoc(doc(db, "timelapse_records", rId)); restoreTimeLeft = Math.min((restoreTimeLeft <= 0 ? 0 : restoreTimeLeft) + 15, 60); showRestoreToast();
     };
 
     function showRestoreToast() {
-        const toast = document.getElementById('restore-toast');
-        const fabItem = document.getElementById('fab-restore-item');
-
-        toast.style.display = 'flex';
-        toast.classList.remove('minimizing');
-        fabItem.style.display = 'none'; 
-
-        updateRestoreToastText();
-
+        $('restore-toast').style.display = 'flex'; $('restore-toast').classList.remove('minimizing'); $('fab-restore-item').style.display = 'none'; updateRtText();
         clearInterval(restoreTimerInt);
         restoreTimerInt = setInterval(() => {
-            restoreTimeLeft--;
-            updateRestoreToastText();
-
-            if (restoreTimeLeft <= 0) {
-                clearInterval(restoreTimerInt);
-                toast.classList.add('minimizing');
-                setTimeout(() => {
-                    toast.style.display = 'none';
-                    if (deletedRecordsQueue.length > 0) {
-                        fabItem.style.display = 'block';
-                        fabItem.innerText = `♻️ 復原紀錄 (${deletedRecordsQueue.length})`;
-                    }
-                }, 500);
-            }
+            restoreTimeLeft--; updateRtText();
+            if (restoreTimeLeft <= 0) { clearInterval(restoreTimerInt); $('restore-toast').classList.add('minimizing'); setTimeout(() => { $('restore-toast').style.display = 'none'; if (deletedRecordsQueue.length > 0) { $('fab-restore-item').style.display = 'block'; $('fab-restore-item').innerText = `♻️ 復原紀錄 (${deletedRecordsQueue.length})`; } }, 500); }
         }, 1000);
     }
-
-    function updateRestoreToastText() {
-        const toastText = document.getElementById('restore-toast-text');
-        if(toastText) toastText.innerText = `已刪除物件待命中 ( ${restoreTimeLeft}s 後自動隱藏 )`;
-    }
+    function updateRtText() { if($('restore-toast-text')) $('restore-toast-text').innerText = `已刪除待命中 ( ${restoreTimeLeft}s 後隱藏 )`; }
 
     window.restoreLastRecord = async () => {
-        if (deletedRecordsQueue.length === 0) return;
-        const item = deletedRecordsQueue.pop(); 
-        const ops = [];
-
-        if (item.type === 'camera_batch') {
-            item.data.forEach(b => {
-                ops.push(setDoc(doc(db, "assets", b.camId), b.camData));
-                b.camRecs.forEach(r => ops.push(setDoc(doc(db, "timelapse_records", r.id), r.data)));
-            });
-        } else if (item.type === 'single_record') {
-            ops.push(setDoc(doc(db, "timelapse_records", item.id), item.data));
-        }
-
+        if (deletedRecordsQueue.length === 0) return; const item = deletedRecordsQueue.pop(); const ops = [];
+        if (item.type === 'camera_batch') item.data.forEach(b => { ops.push(setDoc(doc(db, "assets", b.camId), b.camData)); b.camRecs.forEach(r => ops.push(setDoc(doc(db, "timelapse_records", r.id), r.data))); });
+        else ops.push(setDoc(doc(db, "timelapse_records", item.id), item.data));
         await Promise.all(ops);
-
-        if (deletedRecordsQueue.length > 0) {
-            updateRestoreToastText();
-            const fabItem = document.getElementById('fab-restore-item');
-            if (fabItem && fabItem.style.display === 'block') {
-                fabItem.innerText = `♻️ 復原紀錄 (${deletedRecordsQueue.length})`;
-            }
-        } else {
-            clearInterval(restoreTimerInt);
-            restoreTimeLeft = 0;
-            document.getElementById('restore-toast').style.display = 'none';
-            document.getElementById('fab-restore-item').style.display = 'none';
-        }
+        if (deletedRecordsQueue.length > 0) { updateRtText(); if ($('fab-restore-item').style.display === 'block') $('fab-restore-item').innerText = `♻️ 復原紀錄 (${deletedRecordsQueue.length})`; } 
+        else { clearInterval(restoreTimerInt); restoreTimeLeft = 0; $('restore-toast').style.display = 'none'; $('fab-restore-item').style.display = 'none'; }
     };
 
-    // ======== 通用自訂下拉選單控制 ========
-    let currentDropdownTarget = '';
-    window.toggleDropdown = (target, e) => {
-        if(e) e.stopPropagation(); 
-        document.querySelectorAll('.custom-dropdown-panel').forEach(p => { if(p.id !== `${target}-panel`) p.classList.remove('active'); });
-        const p = document.getElementById(`${target}-panel`); p.classList.toggle('active');
-        if(p.classList.contains('active')) {
-            currentDropdownTarget = target;
-            if(target !== 'opt-filter') {
-                const k = target.replace('opt-', ''); 
-                renderOptionsList(k); 
-                document.getElementById(`${target}-input`).focus();
-            }
-        }
-    };
+    window.toggleDropdown = (t, e) => { if(e) e.stopPropagation(); $$('.custom-dropdown-panel').forEach(p => { if(p.id !== `${t}-panel`) p.classList.remove('active'); }); $(`${t}-panel`).classList.toggle('active'); if($(`${t}-panel`).classList.contains('active') && t !== 'opt-filter') { window.renderOptionsList(t.replace('opt-', '')); $(`${t}-input`).focus(); } };
+    window.renderMultiSelectTags = (k) => { const c = $(`multi-tags-${k}`); if(!c) return; if (currentSelectedTags[k].length === 0) c.innerHTML = `<span style="color:var(--text-muted); font-size:14px;">選擇...</span>`; else c.innerHTML = currentSelectedTags[k].map(v => `<span class="multi-tag-item" style="background:${k==='location'?'#e0e7ff':'#fef08a'}; color:${k==='location'?'#4f46e5':'#854d0e'};">${v} <span class="tag-remove-btn" onclick="event.stopPropagation(); window.removeMultiSelectTag('${k}', '${v}')">×</span></span>`).join(''); };
+    window.removeMultiSelectTag = (k, v) => { currentSelectedTags[k] = currentSelectedTags[k].filter(x => x !== v); window.renderMultiSelectTags(k); };
 
-    // ✨ 多選 Tag 渲染邏輯
-    window.renderMultiSelectTags = (key) => {
-        const container = document.getElementById(`multi-tags-${key}`);
-        if(!container) return;
-        
-        if (currentSelectedTags[key].length === 0) {
-            container.innerHTML = `<span style="color:var(--text-muted); font-size:14px;">選擇${key==='location'?'地點':'工項'}...</span>`;
-        } else {
-            const bg = key === 'location' ? '#e0e7ff' : '#fef08a';
-            const color = key === 'location' ? '#4f46e5' : '#854d0e';
-            container.innerHTML = currentSelectedTags[key].map(v =>
-                `<span class="multi-tag-item" style="background:${bg}; color:${color};">
-                    ${v} <span class="tag-remove-btn" onclick="event.stopPropagation(); removeMultiSelectTag('${key}', '${v}')">×</span>
-                </span>`
-            ).join('');
-        }
-    };
-
-    window.removeMultiSelectTag = (key, val) => {
-        currentSelectedTags[key] = currentSelectedTags[key].filter(v => v !== val);
-        renderMultiSelectTags(key);
-    };
-
-    function renderOptionsList(key) {
-        if(key === 'filter') return; 
-        const inputVal = document.getElementById(`opt-${key}-input`).value.toLowerCase();
-        const listDiv = document.getElementById(`opt-${key}-list`); listDiv.innerHTML = '';
-        const arr = options[key] || [];
-        arr.filter(v => v.toLowerCase().includes(inputVal)).forEach(val => {
-            const d = document.createElement('div'); d.className = 'dropdown-item';
-            d.innerHTML = `<span style="flex:1;">${val}</span><button class="dropdown-item-delete" onclick="event.stopPropagation(); window.delOption('${key}', '${val}')">×</button>`;
-            
-            // ✨ 點擊下拉選項時的判斷：如果是多選項目 (地點/工項)，將其加入陣列並保持選單開啟
-            d.querySelector('span').onclick = (e) => { 
-                if (key === 'location' || key === 'task') {
-                    e.stopPropagation(); // 阻止下拉選單關閉
-                    if (!currentSelectedTags[key].includes(val)) {
-                        currentSelectedTags[key].push(val);
-                        renderMultiSelectTags(key);
-                    }
-                } else {
-                    document.getElementById(`disp-opt-${key}`).innerText = val; 
-                    document.getElementById(`opt-${key}-panel`).classList.remove('active'); 
-                }
-            };
-            listDiv.appendChild(d);
+    window.renderOptionsList = (k) => {
+        if(k === 'filter') return; const iv = $(`opt-${k}-input`).value.toLowerCase(); const ld = $(`opt-${k}-list`); ld.innerHTML = '';
+        (options[k] || []).filter(v => v.toLowerCase().includes(iv)).forEach(val => {
+            const d = document.createElement('div'); d.className = 'dropdown-item'; d.innerHTML = `<span style="flex:1;">${val}</span><button class="dropdown-item-delete" onclick="event.stopPropagation(); window.delOption('${k}', '${val}')">×</button>`;
+            d.querySelector('span').onclick = (e) => { if (k === 'location' || k === 'task') { e.stopPropagation(); if (!currentSelectedTags[k].includes(val)) { currentSelectedTags[k].push(val); window.renderMultiSelectTags(k); } } else { $(`disp-opt-${k}`).innerText = val; $(`opt-${k}-panel`).classList.remove('active'); } };
+            ld.appendChild(d);
         });
     }
 
-    window.addOption = async (key, e) => {
-        if(e) e.stopPropagation(); const val = document.getElementById(`opt-${key}-input`).value.trim();
-        if(!val) return; if(!options[key]) options[key] = []; if(options[key].includes(val)) return alert('選項已存在');
-        
-        options[key].push(val); await setDoc(doc(db, "settings", "timelapse_options"), options);
-        
-        // 如果是多選欄位，新增後自動加入選定名單
-        if (key === 'location' || key === 'task') {
-            if (!currentSelectedTags[key].includes(val)) currentSelectedTags[key].push(val);
-            renderMultiSelectTags(key);
-            document.getElementById(`opt-${key}-input`).value = '';
-            renderOptionsList(key);
-        } else {
-            document.getElementById(`disp-opt-${key}`).innerText = val; 
-            document.getElementById(`opt-${key}-panel`).classList.remove('active');
-        }
+    window.addOption = async (k, e) => {
+        if(e) e.stopPropagation(); const val = $(`opt-${k}-input`).value.trim(); if(!val) return; if(!options[k]) options[k] = []; if(options[k].includes(val)) return alert('選項已存在');
+        options[k].push(val); await setDoc(doc(db, "settings", "timelapse_options"), options);
+        if (k === 'location' || k === 'task') { if (!currentSelectedTags[k].includes(val)) currentSelectedTags[k].push(val); window.renderMultiSelectTags(k); $(`opt-${k}-input`).value = ''; window.renderOptionsList(k); } else { $(`disp-opt-${k}`).innerText = val; $(`opt-${k}-panel`).classList.remove('active'); }
     };
+    window.delOption = async (k, val) => { if(!confirm(`刪除 ${val}？`)) return; options[k] = options[k].filter(v => v !== val); await setDoc(doc(db, "settings", "timelapse_options"), options); if (k === 'location' || k === 'task') { currentSelectedTags[k] = currentSelectedTags[k].filter(v => v !== val); window.renderMultiSelectTags(k); } window.renderOptionsList(k); };
 
-    window.delOption = async (key, val) => {
-        if(!confirm(`刪除選項 ${val}？`)) return;
-        options[key] = options[key].filter(v => v !== val); await setDoc(doc(db, "settings", "timelapse_options"), options);
-        
-        // 如果被刪除的選項正在選取清單中，將其移除
-        if (key === 'location' || key === 'task') {
-            currentSelectedTags[key] = currentSelectedTags[key].filter(v => v !== val);
-            renderMultiSelectTags(key);
-        }
-        renderOptionsList(key);
-    };
-
-    // ======== 模態框：相機資產編輯/新增 ========
     window.openCameraModal = (id = null) => {
-        currentEditCamId = id;
-        document.getElementById('opt-project-input').value = '';
-        if (id) {
-            document.getElementById('camera-modal-title').innerText = '📦 編輯相機資產';
-            document.getElementById('btn-delete-camera').style.display = 'inline-block';
-            const cam = cameras.find(c => c.id === id);
-            document.getElementById('disp-opt-project').innerText = cam.project || '閒置';
-            document.getElementById('cam-name').value = cam.item || '';
-            document.getElementById('cam-brand').value = cam.brand || '';
-            document.getElementById('cam-model').value = cam.model || '';
-            document.getElementById('cam-sn').value = cam.sn || '';
-            document.getElementById('cam-date').value = cam.purchase_date || '';
-        } else {
-            document.getElementById('camera-modal-title').innerText = '➕ 新增相機資產';
-            document.getElementById('btn-delete-camera').style.display = 'none';
-            document.getElementById('disp-opt-project').innerText = '閒置';
-            ['cam-name', 'cam-brand', 'cam-model', 'cam-sn', 'cam-date'].forEach(k => document.getElementById(k).value = '');
-        }
-        document.getElementById('camera-modal-overlay').classList.add('active');
+        currentEditCamId = id; $('opt-project-input').value = '';
+        if (id) { $('camera-modal-title').innerText = '📦 編輯相機'; $('btn-delete-camera').style.display = 'inline-block'; const c = cameras.find(x => x.id === id); $('disp-opt-project').innerText = c.project || '閒置'; $('cam-name').value = c.item || ''; $('cam-brand').value = c.brand || ''; $('cam-model').value = c.model || ''; $('cam-sn').value = c.sn || ''; $('cam-date').value = c.purchase_date || ''; } 
+        else { $('camera-modal-title').innerText = '➕ 新增相機'; $('btn-delete-camera').style.display = 'none'; $('disp-opt-project').innerText = '閒置'; ['cam-name', 'cam-brand', 'cam-model', 'cam-sn', 'cam-date'].forEach(k => $(k).value = ''); }
+        $('camera-modal-overlay').classList.add('active');
     };
-    window.closeCameraModal = () => document.getElementById('camera-modal-overlay').classList.remove('active');
+    window.closeCameraModal = () => $('camera-modal-overlay').classList.remove('active');
     window.saveCamera = async () => {
-        const name = document.getElementById('cam-name').value.trim(); if(!name) return alert('機台名稱為必填！');
-        const data = {
-            type: 'public', category: '縮時相機', assetType: 'fixed', office_id: 'TIMELAPSE_GLOBAL',
-            item: name, project: document.getElementById('disp-opt-project').innerText,
-            brand: document.getElementById('cam-brand').value, model: document.getElementById('cam-model').value,
-            sn: document.getElementById('cam-sn').value, purchase_date: document.getElementById('cam-date').value
-        };
-        if(currentEditCamId) await setDoc(doc(db, "assets", currentEditCamId), data, {merge:true});
-        else await addDoc(collection(db, "assets"), data);
-        closeCameraModal();
+        const n = $('cam-name').value.trim(); if(!n) return alert('機台名稱必填！');
+        const dt = { type: 'public', category: '縮時相機', assetType: 'fixed', office_id: 'TIMELAPSE_GLOBAL', item: n, project: $('disp-opt-project').innerText, brand: $('cam-brand').value, model: $('cam-model').value, sn: $('cam-sn').value, purchase_date: $('cam-date').value };
+        if(currentEditCamId) await setDoc(doc(db, "assets", currentEditCamId), dt, {merge:true}); else await addDoc(collection(db, "assets"), dt); window.closeCameraModal();
     };
 
-    // ======== 模態框：發布紀錄 ========
-    window.openRecordModal = (camId) => {
-        const cam = cameras.find(c => c.id === camId); if(!cam) return;
-        
-        if (cam.project === '無法使用') {
-            alert('⛔ 該縮時已停用，禁止新增紀錄！');
-            return;
-        }
-
-        currentRecordCamId = cam.id;
-        document.getElementById('record-target-name').innerText = `目標：📸 縮時 ${cam.item} (${cam.project || '閒置'})`;
-        
-        // 初始化多選標籤狀態
-        currentSelectedTags.location = [];
-        currentSelectedTags.task = [];
-        renderMultiSelectTags('location');
-        renderMultiSelectTags('task');
-
-        document.getElementById('rec-battery').value = '';
-        document.getElementById('disp-opt-capacity').innerText = '64GB';
-        document.getElementById('rec-power').value = '開';
-        document.getElementById('rec-remarks').value = '';
-        ['location', 'capacity', 'task'].forEach(k => { const inp = document.getElementById(`opt-${k}-input`); if(inp) inp.value = ''; });
-        document.getElementById('record-modal-overlay').classList.add('active');
+    window.openRecordModal = (id) => {
+        currentRecordCamId = id; const c = cameras.find(x => x.id === id); if(!c) return;
+        $('record-target-name').innerText = `目標：📸 縮時 ${c.item} (${c.project || '閒置'})`;
+        currentSelectedTags.location = []; currentSelectedTags.task = []; window.renderMultiSelectTags('location'); window.renderMultiSelectTags('task');
+        $('rec-battery').value = ''; $('disp-opt-capacity').innerText = '64GB'; $('rec-power').value = '開'; $('rec-remarks').value = '';
+        ['location', 'capacity', 'task'].forEach(k => { if($(`opt-${k}-input`)) $(`opt-${k}-input`).value = ''; });
+        $('record-modal-overlay').classList.add('active');
     };
-    window.closeRecordModal = () => document.getElementById('record-modal-overlay').classList.remove('active');
+    window.closeRecordModal = () => $('record-modal-overlay').classList.remove('active');
     window.saveRecord = async () => {
-        // 取出多選陣列
-        const loc = currentSelectedTags.location;
-        const task = currentSelectedTags.task;
-        
-        if(loc.length === 0) return alert('請選擇或新增至少一個地點！');
-        
-        const cam = cameras.find(c => c.id === currentRecordCamId);
-        const data = {
-            cameraId: cam.id, cameraName: cam.item, project: cam.project || '閒置',
-            location: loc, // 存入陣列 Array
-            battery: document.getElementById('rec-battery').value,
-            capacity: document.getElementById('disp-opt-capacity').innerText,
-            power: document.getElementById('rec-power').value,
-            task: task, // 存入陣列 Array
-            remarks: document.getElementById('rec-remarks').value,
-            createdAt: new Date().toISOString(), likes: [],
-            creatorName: currentUserProfile.name, creatorEmail: currentUserProfile.email, creatorAvatar: currentUserProfile.avatar
-        };
-        await addDoc(collection(db, "timelapse_records"), data);
-        closeRecordModal();
+        if(currentSelectedTags.location.length === 0) return alert('請選擇或新增至少一個地點！');
+        const c = cameras.find(x => x.id === currentRecordCamId);
+        await addDoc(collection(db, "timelapse_records"), { cameraId: c.id, cameraName: c.item, project: c.project || '閒置', location: currentSelectedTags.location, battery: $('rec-battery').value, capacity: $('disp-opt-capacity').innerText, power: $('rec-power').value, task: currentSelectedTags.task, remarks: $('rec-remarks').value, createdAt: new Date().toISOString(), likes: [], creatorName: currentUserProfile.name, creatorEmail: currentUserProfile.email, creatorAvatar: currentUserProfile.avatar });
+        window.closeRecordModal();
     };
 
-    // 關閉所有下拉選單與懸浮按鈕
-    window.addEventListener('click', () => { 
-        document.querySelectorAll('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
-        document.getElementById('fab-container').classList.remove('active');
-        document.getElementById('fab-menu').classList.remove('active');
-    });
-    window.addEventListener('keydown', (e) => { 
-        if (e.key === 'Escape') { 
-            document.querySelectorAll('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
-            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active')); 
-            document.getElementById('fab-container').classList.remove('active');
-            document.getElementById('fab-menu').classList.remove('active');
-        }
-    });
-    document.querySelectorAll('.custom-dropdown-panel input').forEach(inp => {
-        inp.addEventListener('input', (e) => { 
-            if(e.target.id === 'opt-filter-input') return;
-            const k = e.target.id.replace('opt-', '').replace('-input', ''); renderOptionsList(k); 
-        });
-    });
+    window.addEventListener('click', () => { $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); $$('.modal-overlay').forEach(m => m.classList.remove('active')); $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); } });
+    $$('.custom-dropdown-panel input').forEach(inp => { inp.addEventListener('input', (e) => { if(e.target.id === 'opt-filter-input') return; window.renderOptionsList(e.target.id.replace('opt-', '').replace('-input', '')); }); });
 </script>
 </body>
 </html>

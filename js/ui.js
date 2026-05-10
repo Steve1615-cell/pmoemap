@@ -52,25 +52,22 @@ export function initView() {
         else { b.style.display = 'inline-block'; p.style.display = state.isPinSectionVisible ? 'block' : 'none'; }
         renderPinnedItems(); 
     }
-    updateNavigationUI(); if (!history.state) history.replaceState({ level: 0 }, "");
+    updateNavigationUI(); 
     
-    // ✨ 新增：每次初始化視圖時，自動渲染全域版本號碼
+    // 防止重複塞入首頁歷史紀錄
+    if (!history.state) history.replaceState({ level: 0 }, "");
+    
     updateVersionDisplay();
 }
 
-// ✨ 新增：集中管理與渲染版本號碼
 export function updateVersionDisplay() {
-    const CURRENT_VERSION = '1.7.0'; // 統一在這裡修改未來的版本號
-    
-    // 1. 更新網頁最下方 Footer
+    const CURRENT_VERSION = '1.7.0'; 
     const vf = document.querySelector('.version-footer');
     if (vf) vf.innerHTML = `PMO電子圖資系統 v${CURRENT_VERSION} © 2026`;
     
-    // 2. 更新側邊欄最底部的顯示
     const sv = document.getElementById('sidebar-version-display');
     if (sv) sv.innerText = `系統版本 v${CURRENT_VERSION}`;
     
-    // 3. 更新右上角個人頭貼選單中的項目 (加入精緻的 Badge)
     const dropdownItems = document.querySelectorAll('.avatar-dropdown-item');
     dropdownItems.forEach(item => {
         if (item.innerText.includes('查看版本與修正')) {
@@ -146,11 +143,24 @@ export function updateNavigationUI() {
 }
 
 export function switchView(id) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(id).classList.add('active'); updateNavigationUI(); }
-export function goHome(push = true) { state.currentLevel = 0; state.currentFloor = ''; state.currentOfficeId = ''; state.currentOfficeName = ''; if (push) history.pushState({ level: 0 }, ""); initView(); switchView('view-floor'); }
-export function goUpLevel(push = true) { if (state.currentLevel === 4) goHome(push); else if (state.currentLevel === 2) showOffices(state.currentFloor, push); else if (state.currentLevel === 1) goHome(push); }
+
+// 💡 修改點：讓 goHome, goUpLevel, showOffices, showDetail 都支援 push=false 參數
+export function goHome(push = true) { 
+    state.currentLevel = 0; state.currentFloor = ''; state.currentOfficeId = ''; state.currentOfficeName = ''; 
+    if (push) history.pushState({ level: 0 }, ""); 
+    initView(); switchView('view-floor'); 
+}
+
+export function goUpLevel(push = true) { 
+    if (state.currentLevel === 4) goHome(push); 
+    else if (state.currentLevel === 2) showOffices(state.currentFloor, push); 
+    else if (state.currentLevel === 1) goHome(push); 
+}
 
 export function showOffices(floor, push = true) {
-    state.currentLevel = 1; state.currentFloor = floor; state.currentOfficeId = ''; state.currentOfficeName = ''; if (push) history.pushState({ level: 1, floor: floor }, "");
+    state.currentLevel = 1; state.currentFloor = floor; state.currentOfficeId = ''; state.currentOfficeName = ''; 
+    if (push) history.pushState({ level: 1, floor: floor }, "");
+    
     const l = document.getElementById('office-list'); l.innerHTML = '';
     state.globalOffices.filter(o => o.floor === floor).forEach(off => {
         const c = document.createElement('div'); c.className = 'nav-card'; const rt = off.roomType || '辦公室';
@@ -411,6 +421,25 @@ export async function trackLinkClick(i, url) {
     window.open(url, '_blank'); 
 }
 
+// ✨ 新增：監聽瀏覽器上一頁/下一頁事件 (popstate)
+window.addEventListener('popstate', (e) => {
+    const s = e.state;
+    // 如果沒有 state，代表可能回到了最一開始，強制導向首頁
+    if (!s) {
+        if (state.currentLevel !== 0) goHome(false);
+        return;
+    }
+    // 依據歷史紀錄的層級狀態，呼叫對應的畫面渲染函數 (且皆傳入 push=false 避免重複覆寫歷史)
+    if (s.level === 0) goHome(false);
+    else if (s.level === 1) showOffices(s.floor, false);
+    else if (s.level === 2) showDetail(s.officeId, s.officeName, false);
+    else if (s.level === 4) {
+        // 保留相容性，若尚未拆分資產總表時仍可呼叫
+        if (typeof showAssetsTotalView === 'function') showAssetsTotalView(false);
+    }
+});
+
+// ✨ 全域鍵盤事件監聽 (支援 Esc 鍵關閉一切)
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' || e.keyCode === 27) {
         const activeDropdowns = document.querySelectorAll('.custom-dropdown-panel.active');
@@ -435,6 +464,7 @@ window.customAlert = customAlert;
 window.togglePinnedSectionCollapse = togglePinnedSectionCollapse;
 window.expandPinnedSection = expandPinnedSection;
 window.initView = initView;
+window.updateVersionDisplay = updateVersionDisplay;
 window.updateMainTitle = updateMainTitle;
 window.syncHeaderLayout = syncHeaderLayout;
 window.renderSidebarTree = renderSidebarTree;
@@ -469,4 +499,3 @@ window.handlePinDragEnd = handlePinDragEnd;
 window.toggleAvatarMenu = toggleAvatarMenu;
 window.renderFriendlyLinks = renderFriendlyLinks;
 window.trackLinkClick = trackLinkClick;
-window.updateVersionDisplay = updateVersionDisplay;

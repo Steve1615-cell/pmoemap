@@ -53,6 +53,30 @@ export function initView() {
         renderPinnedItems(); 
     }
     updateNavigationUI(); if (!history.state) history.replaceState({ level: 0 }, "");
+    
+    // ✨ 新增：每次初始化視圖時，自動渲染全域版本號碼
+    updateVersionDisplay();
+}
+
+// ✨ 新增：集中管理與渲染版本號碼
+export function updateVersionDisplay() {
+    const CURRENT_VERSION = '1.7.0'; // 統一在這裡修改未來的版本號
+    
+    // 1. 更新網頁最下方 Footer
+    const vf = document.querySelector('.version-footer');
+    if (vf) vf.innerHTML = `PMO電子圖資系統 v${CURRENT_VERSION} © 2026`;
+    
+    // 2. 更新側邊欄最底部的顯示
+    const sv = document.getElementById('sidebar-version-display');
+    if (sv) sv.innerText = `系統版本 v${CURRENT_VERSION}`;
+    
+    // 3. 更新右上角個人頭貼選單中的項目 (加入精緻的 Badge)
+    const dropdownItems = document.querySelectorAll('.avatar-dropdown-item');
+    dropdownItems.forEach(item => {
+        if (item.innerText.includes('查看版本與修正')) {
+            item.innerHTML = `📄 查看版本與修正 <span style="font-size:10px; background:#e0e7ff; color:var(--primary); padding:2px 6px; border-radius:10px; margin-left:auto; font-weight:bold;">v${CURRENT_VERSION}</span>`;
+        }
+    });
 }
 
 export function updateMainTitle(text) {
@@ -387,45 +411,22 @@ export async function trackLinkClick(i, url) {
     window.open(url, '_blank'); 
 }
 
-// ✨ 新增：全域鍵盤事件監聽 (支援 Esc 鍵關閉一切)
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' || e.keyCode === 27) {
-        
-        // 1. 優先關閉自訂下拉選單 (表單內的類型、人員等)
         const activeDropdowns = document.querySelectorAll('.custom-dropdown-panel.active');
-        if (activeDropdowns.length > 0) {
-            activeDropdowns.forEach(d => d.classList.remove('active'));
-            return; // 攔截，先不往下關閉整個 Modal
-        }
+        if (activeDropdowns.length > 0) { activeDropdowns.forEach(d => d.classList.remove('active')); return; }
 
-        // 2. 關閉彈出視窗 Modal (利用觸發 overlay 的點擊事件，完美呼叫各自原本寫在 HTML 裡的 close 函數)
         const activeModals = document.querySelectorAll('.modal-overlay.active');
-        if (activeModals.length > 0) {
-            // 關閉最後一個 (最上層) 的 Modal
-            activeModals[activeModals.length - 1].click();
-            return; 
-        }
+        if (activeModals.length > 0) { activeModals[activeModals.length - 1].click(); return; }
 
-        // 3. 關閉右上角頭貼下拉選單
         const avatarDropdown = document.getElementById('avatar-dropdown');
-        if (avatarDropdown && avatarDropdown.style.display === 'flex') {
-            avatarDropdown.style.display = 'none';
-            return;
-        }
+        if (avatarDropdown && avatarDropdown.style.display === 'flex') { avatarDropdown.style.display = 'none'; return; }
 
-        // 4. 關閉左側導覽選單 (Sidebar)
         const sidebar = document.getElementById('sidebar');
-        if (sidebar && sidebar.classList.contains('active')) {
-            closeSidebar();
-            return;
-        }
+        if (sidebar && sidebar.classList.contains('active')) { closeSidebar(); return; }
 
-        // 5. 關閉右下角 FAB 浮動選單
         const fabMenu = document.getElementById('fab-menu');
-        if (fabMenu && fabMenu.classList.contains('active')) {
-            closeFabMenu();
-            return;
-        }
+        if (fabMenu && fabMenu.classList.contains('active')) { closeFabMenu(); return; }
     }
 });
 
@@ -468,3 +469,4 @@ window.handlePinDragEnd = handlePinDragEnd;
 window.toggleAvatarMenu = toggleAvatarMenu;
 window.renderFriendlyLinks = renderFriendlyLinks;
 window.trackLinkClick = trackLinkClick;
+window.updateVersionDisplay = updateVersionDisplay;

@@ -96,11 +96,14 @@ export function setupRealtimeListeners() {
         state.globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); check(); 
         if(document.getElementById('owner-panel')?.classList.contains('active') && window.renderOwnerDropdown) window.renderOwnerDropdown(); 
         if(state.currentLevel === 0 && window.renderPinnedItems) window.renderPinnedItems(); 
+        if(state.currentLevel === 2 && window.updateDetailContent) window.updateDetailContent(); 
     }, snapErrorHandler);
 
     onSnapshot(collection(db, "assets"), (s) => { 
         state.globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); check(); 
         if(state.currentLevel === 0 && window.renderPinnedItems) window.renderPinnedItems(); 
+        if(state.currentLevel === 2 && window.updateDetailContent) window.updateDetailContent(); 
+        if(state.currentLevel === 4 && window.showAssetsTotalView) window.showAssetsTotalView(false); 
     }, snapErrorHandler);
     
     onSnapshot(collection(db, "bookings"), (s) => { 

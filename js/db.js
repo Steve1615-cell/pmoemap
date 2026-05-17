@@ -40,7 +40,7 @@ export function setupRealtimeListeners() {
         check(); // 確保被拒絕時也能推進計數，避免永遠白屏
     };
 
-    // ✨ 終極防護包裝器：隔離每一個 Listener 的錯誤，避免一人生病全家癱瘓
+    // 終極防護包裝器：隔離每一個 Listener 的錯誤
     const safeSnapshot = (ref, callback) => {
         onSnapshot(ref, (s) => {
             try { callback(s); } catch (e) { console.error("資料解析發生局部錯誤:", e); }
@@ -102,7 +102,7 @@ export function setupRealtimeListeners() {
         if(window.renderSidebarTree) window.renderSidebarTree(); 
     });
 
-    // ✨ 即時渲染觸發 (人員)
+    // ✨ 即時渲染觸發 (人員) - 新增人員後會立刻更新畫面
     safeSnapshot(collection(db, "members"), (s) => { 
         state.globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); 
         if(document.getElementById('owner-panel')?.classList.contains('active') && window.renderOwnerDropdown) window.renderOwnerDropdown(); 
@@ -110,7 +110,7 @@ export function setupRealtimeListeners() {
         if(state.currentLevel === 2 && window.updateDetailContent) window.updateDetailContent(); 
     });
 
-    // ✨ 即時渲染觸發 (資產)
+    // ✨ 即時渲染觸發 (資產) - 新增資產後會立刻更新畫面
     safeSnapshot(collection(db, "assets"), (s) => { 
         state.globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); 
         if(state.currentLevel === 0 && window.renderPinnedItems) window.renderPinnedItems(); 
@@ -132,7 +132,6 @@ export function setupRealtimeListeners() {
     safeSnapshot(collection(db, "deleted_items"), (s) => {
         state.globalDeletedItems = s.docs.map(d => ({ id: d.id, ...d.data() })); 
         if (state.globalDeletedItems.length > 1000) { 
-            // 嚴格型別防護，避免 undefined 造成 localeCompare 崩潰
             const toDelete = [...state.globalDeletedItems]
                 .sort((a, b) => String(a.deletedAt || '').localeCompare(String(b.deletedAt || '')))
                 .slice(0, state.globalDeletedItems.length - 1000); 

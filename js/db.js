@@ -13,14 +13,15 @@ export async function safeWrite(promise) {
     return res; 
 }
 
-const snapErrorHandler = (err) => { console.warn("Firestore 讀取被拒絕:", err.message); };
-
 // ======== 2. 全域即時資料監聽 (Realtime Listeners) ========
 export function setupRealtimeListeners() {
     let count = 0; 
+    const TOTAL_LISTENERS = 13;
+
+    // 確認載入進度，全數完成後放行
     const check = () => { 
         count++; 
-        if (count >= 13 && !state.isInitialized) { 
+        if (count >= TOTAL_LISTENERS && !state.isInitialized) { 
             state.isInitialized = true; 
             const loader = document.getElementById('loading-overlay');
             if(loader) {
@@ -33,8 +34,22 @@ export function setupRealtimeListeners() {
         } 
     };
 
+    // 權限錯誤攔截
+    const snapErrorHandler = (err) => { 
+        console.warn("Firestore 監聽被拒絕或失敗:", err.message); 
+        check(); // 確保被拒絕時也能推進計數，避免永遠白屏
+    };
+
+    // ✨ 終極防護包裝器：隔離每一個 Listener 的錯誤，避免一人生病全家癱瘓
+    const safeSnapshot = (ref, callback) => {
+        onSnapshot(ref, (s) => {
+            try { callback(s); } catch (e) { console.error("資料解析發生局部錯誤:", e); }
+            check();
+        }, snapErrorHandler);
+    };
+
     // 存取申請與白名單
-    onSnapshot(collection(db, "access_requests"), (s) => {
+    safeSnapshot(collection(db, "access_requests"), (s) => {
         state.globalAccessRequests = s.docs.map(d => ({ id: d.id, ...d.data() })); 
         const bdg = document.getElementById('admin-badge'), mb = document.getElementById('admin-badge-menu');
         if (bdg && mb) { 
@@ -43,24 +58,21 @@ export function setupRealtimeListeners() {
             } else { bdg.style.display = 'none'; mb.innerText = '0'; } 
         }
         if (document.getElementById('approval-modal-overlay')?.classList.contains('active') && window.renderApprovalList) window.renderApprovalList(); 
-        check();
-    }, snapErrorHandler);
+    });
 
-    onSnapshot(doc(db, "settings", "admins"), (s) => { 
+    safeSnapshot(doc(db, "settings", "admins"), (s) => { 
         if(s.exists()) state.globalAdmins = s.data().emails || []; 
         else { safeWrite(setDoc(doc(db, "settings", "admins"), { emails: [state.SUPER_ADMIN] })); state.globalAdmins = [state.SUPER_ADMIN]; } 
         if(document.getElementById('whitelist-modal-overlay')?.classList.contains('active') && window.renderWhitelist) window.renderWhitelist(); 
-        check(); 
-    }, snapErrorHandler);
+    });
 
-    onSnapshot(doc(db, "settings", "whitelist"), (s) => { 
+    safeSnapshot(doc(db, "settings", "whitelist"), (s) => { 
         if(s.exists()) state.globalWhitelist = s.data().emails || []; 
         else { safeWrite(setDoc(doc(db, "settings", "whitelist"), { emails: [state.SUPER_ADMIN] })); state.globalWhitelist = [state.SUPER_ADMIN]; } 
         if(document.getElementById('whitelist-modal-overlay')?.classList.contains('active') && window.renderWhitelist) window.renderWhitelist(); 
-        check(); 
-    }, snapErrorHandler);
+    });
 
-    onSnapshot(collection(db, "users"), (s) => {
+    safeSnapshot(collection(db, "users"), (s) => {
         state.globalUsers = s.docs.map(d => ({ id: d.id, ...d.data() })); 
         if (auth.currentUser) { 
             const p = state.globalUsers.find(u => u.id === (auth.currentUser.email || '')); 
@@ -74,11 +86,10 @@ export function setupRealtimeListeners() {
             } 
         }
         if(document.getElementById('whitelist-modal-overlay')?.classList.contains('active') && window.renderWhitelist) window.renderWhitelist(); 
-        check();
-    }, snapErrorHandler);
+    });
 
     // 核心實體資料
-    onSnapshot(collection(db, "offices"), (s) => {
+    safeSnapshot(collection(db, "offices"), (s) => {
         state.globalOffices = s.docs.map(d => ({ id: d.id, ...d.data() })); 
         if (state.currentLevel === 2) { 
             const a = state.globalOffices.find(o => o.id === state.currentOfficeId); 
@@ -89,72 +100,66 @@ export function setupRealtimeListeners() {
         }
         if (state.currentLevel === 0 && window.renderPinnedItems) window.renderPinnedItems(); 
         if(window.renderSidebarTree) window.renderSidebarTree(); 
-        check();
-    }, snapErrorHandler);
+    });
 
-    // ✨ 修正：加入即時渲染觸發，新增人員後會立刻更新畫面
-    onSnapshot(collection(db, "members"), (s) => { 
+    // ✨ 即時渲染觸發 (人員)
+    safeSnapshot(collection(db, "members"), (s) => { 
         state.globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); 
-        check(); 
         if(document.getElementById('owner-panel')?.classList.contains('active') && window.renderOwnerDropdown) window.renderOwnerDropdown(); 
         if(state.currentLevel === 0 && window.renderPinnedItems) window.renderPinnedItems(); 
         if(state.currentLevel === 2 && window.updateDetailContent) window.updateDetailContent(); 
-    }, snapErrorHandler);
+    });
 
-    // ✨ 修正：加入即時渲染觸發，新增資產後會立刻更新畫面
-    onSnapshot(collection(db, "assets"), (s) => { 
+    // ✨ 即時渲染觸發 (資產)
+    safeSnapshot(collection(db, "assets"), (s) => { 
         state.globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); 
-        check(); 
         if(state.currentLevel === 0 && window.renderPinnedItems) window.renderPinnedItems(); 
         if(state.currentLevel === 2 && window.updateDetailContent) window.updateDetailContent(); 
         if(state.currentLevel === 4 && window.showAssetsTotalView) window.showAssetsTotalView(false); 
-    }, snapErrorHandler);
+    });
     
-    onSnapshot(collection(db, "bookings"), (s) => { 
+    safeSnapshot(collection(db, "bookings"), (s) => { 
         state.globalBookings = s.docs.map(d => ({ id: d.id, ...d.data() })); 
-        check(); 
         if (state.currentLevel === 2 && state.currentTab === 'booking' && window.updateDetailContent) window.updateDetailContent(); 
-    }, snapErrorHandler);
+    });
 
-    onSnapshot(collection(db, "regions"), (s) => { 
+    safeSnapshot(collection(db, "regions"), (s) => { 
         state.globalRegions = s.docs.map(d => ({ id: d.id, ...d.data() })); 
-        check(); 
         if (state.currentLevel === 0 && window.initView) window.initView(); 
-    }, snapErrorHandler);
+    });
 
     // 資源回收桶與設定
-    onSnapshot(collection(db, "deleted_items"), (s) => {
+    safeSnapshot(collection(db, "deleted_items"), (s) => {
         state.globalDeletedItems = s.docs.map(d => ({ id: d.id, ...d.data() })); 
-        check();
         if (state.globalDeletedItems.length > 1000) { 
-            const toDelete = [...state.globalDeletedItems].sort((a, b) => a.deletedAt.localeCompare(b.deletedAt)).slice(0, state.globalDeletedItems.length - 1000); 
+            // 嚴格型別防護，避免 undefined 造成 localeCompare 崩潰
+            const toDelete = [...state.globalDeletedItems]
+                .sort((a, b) => String(a.deletedAt || '').localeCompare(String(b.deletedAt || '')))
+                .slice(0, state.globalDeletedItems.length - 1000); 
             toDelete.forEach(x => safeWrite(deleteDoc(doc(db, 'deleted_items', x.id)))); 
         }
         if (document.getElementById('recycle-bin-modal-overlay')?.classList.contains('active') && window.renderRecycleBinList) window.renderRecycleBinList();
-    }, snapErrorHandler);
+    });
 
-    onSnapshot(doc(db, "settings", "categories"), (s) => { 
-        if(s.exists()) state.globalCategories = s.data().list; 
+    safeSnapshot(doc(db, "settings", "categories"), (s) => { 
+        if(s.exists()) state.globalCategories = s.data().list || ['電腦', '影印機', '冰箱', '洗衣機', '冷氣機']; 
         else { safeWrite(setDoc(doc(db, "settings", "categories"), { list: state.globalCategories })); } 
         if(document.getElementById('category-panel')?.classList.contains('active') && window.renderCategoryDropdown) window.renderCategoryDropdown(); 
-        check(); 
-    }, snapErrorHandler);
+    });
 
-    onSnapshot(doc(db, "settings", "roomTypes"), (s) => { 
-        if(s.exists()) state.globalRoomTypes = s.data().list; 
+    safeSnapshot(doc(db, "settings", "roomTypes"), (s) => { 
+        if(s.exists()) state.globalRoomTypes = s.data().list || ['辦公室', '庫房', '會議室', '機房']; 
         else { safeWrite(setDoc(doc(db, "settings", "roomTypes"), { list: state.globalRoomTypes })); } 
         if(document.getElementById('room-type-panel')?.classList.contains('active') && window.renderRoomTypeDropdown) window.renderRoomTypeDropdown(); 
-        check(); 
-    }, snapErrorHandler);
+    });
 
-    onSnapshot(doc(db, "settings", "titleRanks"), (s) => { 
+    safeSnapshot(doc(db, "settings", "titleRanks"), (s) => { 
         if(s.exists()) { 
             state.globalTitleRankSettings = s.data(); 
             if(!state.globalTitleRankSettings.global) state.globalTitleRankSettings.global = []; 
             if(!state.globalTitleRankSettings.offices) state.globalTitleRankSettings.offices = {}; 
         } else state.globalTitleRankSettings = { global: [], offices: {} }; 
-        check(); 
-    }, snapErrorHandler);
+    });
 }
 
 // ======== 3. 資源回收桶備份機制 ========

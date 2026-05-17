@@ -94,7 +94,8 @@ export function setupRealtimeListeners() {
 
     // ✨ 修正：加入即時渲染觸發，新增人員後會立刻更新畫面
     onSnapshot(collection(db, "members"), (s) => { 
-        state.globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); check(); 
+        state.globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); 
+        check(); 
         if(document.getElementById('owner-panel')?.classList.contains('active') && window.renderOwnerDropdown) window.renderOwnerDropdown(); 
         if(state.currentLevel === 0 && window.renderPinnedItems) window.renderPinnedItems(); 
         if(state.currentLevel === 2 && window.updateDetailContent) window.updateDetailContent(); 
@@ -102,25 +103,29 @@ export function setupRealtimeListeners() {
 
     // ✨ 修正：加入即時渲染觸發，新增資產後會立刻更新畫面
     onSnapshot(collection(db, "assets"), (s) => { 
-        state.globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); check(); 
+        state.globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); 
+        check(); 
         if(state.currentLevel === 0 && window.renderPinnedItems) window.renderPinnedItems(); 
         if(state.currentLevel === 2 && window.updateDetailContent) window.updateDetailContent(); 
         if(state.currentLevel === 4 && window.showAssetsTotalView) window.showAssetsTotalView(false); 
     }, snapErrorHandler);
     
     onSnapshot(collection(db, "bookings"), (s) => { 
-        state.globalBookings = s.docs.map(d => ({ id: d.id, ...d.data() })); check(); 
+        state.globalBookings = s.docs.map(d => ({ id: d.id, ...d.data() })); 
+        check(); 
         if (state.currentLevel === 2 && state.currentTab === 'booking' && window.updateDetailContent) window.updateDetailContent(); 
     }, snapErrorHandler);
 
     onSnapshot(collection(db, "regions"), (s) => { 
-        state.globalRegions = s.docs.map(d => ({ id: d.id, ...d.data() })); check(); 
+        state.globalRegions = s.docs.map(d => ({ id: d.id, ...d.data() })); 
+        check(); 
         if (state.currentLevel === 0 && window.initView) window.initView(); 
     }, snapErrorHandler);
 
     // 資源回收桶與設定
     onSnapshot(collection(db, "deleted_items"), (s) => {
-        state.globalDeletedItems = s.docs.map(d => ({ id: d.id, ...d.data() })); check();
+        state.globalDeletedItems = s.docs.map(d => ({ id: d.id, ...d.data() })); 
+        check();
         if (state.globalDeletedItems.length > 1000) { 
             const toDelete = [...state.globalDeletedItems].sort((a, b) => a.deletedAt.localeCompare(b.deletedAt)).slice(0, state.globalDeletedItems.length - 1000); 
             toDelete.forEach(x => safeWrite(deleteDoc(doc(db, 'deleted_items', x.id)))); 

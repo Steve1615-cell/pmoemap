@@ -61,7 +61,8 @@ export function initView() {
 }
 
 export function updateVersionDisplay() {
-    const CURRENT_VERSION = '1.7.0'; 
+    // ✨ 修改：升級至 1.7.5
+    const CURRENT_VERSION = '1.7.5'; 
     const vf = document.querySelector('.version-footer');
     if (vf) vf.innerHTML = `PMO電子圖資系統 v${CURRENT_VERSION} © 2026`;
     
@@ -144,7 +145,6 @@ export function updateNavigationUI() {
 
 export function switchView(id) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(id).classList.add('active'); updateNavigationUI(); }
 
-// 💡 修改點：讓 goHome, goUpLevel, showOffices, showDetail 都支援 push=false 參數
 export function goHome(push = true) { 
     state.currentLevel = 0; state.currentFloor = ''; state.currentOfficeId = ''; state.currentOfficeName = ''; 
     if (push) history.pushState({ level: 0 }, ""); 
@@ -296,6 +296,7 @@ export function updateDetailContent() {
 export function showAssetsTotalView(push = true) {
     closeSidebar(); state.currentLevel = 4; if (push) history.pushState({ level: 4 }, ""); 
     const container = document.getElementById('assets-total-container');
+    if (!container) return; // 容錯處理，避免在沒有 container 時報錯
     container.innerHTML = '';
 
     const fixedAssets = state.globalAssets.filter(a => a.assetType !== 'consumable');
@@ -421,20 +422,17 @@ export async function trackLinkClick(i, url) {
     window.open(url, '_blank'); 
 }
 
-// ✨ 新增：監聽瀏覽器上一頁/下一頁事件 (popstate)
+// ✨ 監聽瀏覽器上一頁/下一頁事件 (popstate)
 window.addEventListener('popstate', (e) => {
     const s = e.state;
-    // 如果沒有 state，代表可能回到了最一開始，強制導向首頁
     if (!s) {
         if (state.currentLevel !== 0) goHome(false);
         return;
     }
-    // 依據歷史紀錄的層級狀態，呼叫對應的畫面渲染函數 (且皆傳入 push=false 避免重複覆寫歷史)
     if (s.level === 0) goHome(false);
     else if (s.level === 1) showOffices(s.floor, false);
     else if (s.level === 2) showDetail(s.officeId, s.officeName, false);
     else if (s.level === 4) {
-        // 保留相容性，若尚未拆分資產總表時仍可呼叫
         if (typeof showAssetsTotalView === 'function') showAssetsTotalView(false);
     }
 });

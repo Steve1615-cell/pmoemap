@@ -6,7 +6,7 @@ import { safeWrite, backupToRecycleBin } from './db.js';
 import { customAlert, closeSidebar, closeFabMenu, updateDetailContent, showOffices, initView, goHome, goUpLevel } from './ui.js';
 import { approveRequest, rejectRequest, promptStrictAction } from './auth.js';
 
-// ✨ 新增補回：管理員專屬功能提示
+// ✨ 管理員專屬功能提示
 export function openAdminWelcomeModal(e) {
     if(e) e.stopPropagation();
     closeSidebar(); 
@@ -121,7 +121,7 @@ export function renderTitleRankList() {
 }
 export function promptSaveTitleRanks() { const t = document.getElementById('title-rank-scope').options[document.getElementById('title-rank-scope').selectedIndex].text; state.pendingDeleteAction = { type: 'titleRanks' }; document.getElementById('confirm-modal-title').innerText = '⚠️ 套用設定確認'; document.getElementById('confirm-msg').innerText = `確定將此排序套用至\n「${t}」？`; document.getElementById('confirm-modal-overlay').classList.add('active'); }
 
-// ✨ 修正：版本日誌動態渲染，保留最新兩次紀錄
+// ✨ 寫入 v1.7.5 更新日誌
 export function openUpdateLogModal() { 
     closeSidebar(); 
     const d = document.getElementById('avatar-dropdown'); if(d) d.style.display = 'none';
@@ -129,22 +129,23 @@ export function openUpdateLogModal() {
     if (logContent) {
         logContent.innerHTML = `
             <div style="margin-bottom: 20px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px;">
-                <h3 style="margin: 0 0 10px 0; color: var(--primary);">v1.7.0 (最新版本)</h3>
+                <h3 style="margin: 0 0 10px 0; color: var(--primary);">v1.7.5 (最新版本)</h3>
                 <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-main); line-height: 1.6;">
+                    <li>【新增】全新附屬網頁「縮時相機管理」正式上線，擁有獨立視窗與專屬資料流。</li>
+                    <li>【新增】相機管理支援從 Excel (相機庫) 與 Notion CSV (巡檢紀錄) 智慧匯入。</li>
+                    <li>【系統】縮時相機模組導入標籤多選功能 (地點、工項、參與人)。</li>
+                    <li>【修復】修正主網頁新增人員與資產時，畫面不會即時更新的同步延遲問題。</li>
+                    <li>【優化】升級動態資料列表的批次刪除與「24 小時動態安全復原」機制。</li>
+                </ul>
+            </div>
+            <div>
+                <h3 style="margin: 0 0 10px 0; color: var(--text-muted);">v1.7.0</h3>
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.6;">
                     <li>【系統】架構轉型為多頁面應用 (MPA)，大幅提升效能。</li>
                     <li>【系統】新增全域 Esc 鍵關閉彈窗與下拉選單的防呆機制。</li>
                     <li>【新增】庫房實裝「消耗品」與「固定資產」雙軌制與獨立儀表板。</li>
                     <li>【新增】側邊欄附屬網頁獨立化，新增新分頁開啟圖示。</li>
                     <li>【優化】解除跨樓層同名辦公室限制，僅阻擋同樓層同名。</li>
-                    <li>【優化】修復管理員權限交接與專屬功能提示顯示問題。</li>
-                </ul>
-            </div>
-            <div>
-                <h3 style="margin: 0 0 10px 0; color: var(--text-muted);">v1.6.9</h3>
-                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.6;">
-                    <li>【系統】全面實裝 ES6 模組化，將近 3000 行代碼拆分為多個獨立檔案。</li>
-                    <li>【新增】新增「資源回收桶」功能，保留最近 1000 筆刪除紀錄。</li>
-                    <li>【優化】重構權限驗證邏輯，提升白名單與管理員身分切換的安全性。</li>
                 </ul>
             </div>
         `;
@@ -195,7 +196,6 @@ export function openAddOfficeModal() {
 }
 export function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
 
-// ✨ 修正：僅檢查同樓層是否有同名房間
 export async function saveOfficeData() {
     const n = document.getElementById('office-name').value.trim(), p = document.getElementById('office-pwd').value || 'N/A'; if (!n) return customAlert('辦公室名稱不能為空！', true); const btn = document.getElementById('btn-save-office'); btn.disabled = true; btn.innerText = '儲存中...';
     try {
@@ -542,7 +542,7 @@ window.openNicknameModal = openNicknameModal; window.closeNicknameModal = closeN
 window.openShareModal = openShareModal; window.closeShareModal = closeShareModal; window.copyShareLink = copyShareLink; window.inviteUser = inviteUser;
 window.openWhitelistModal = openWhitelistModal; window.closeWhitelistModal = closeWhitelistModal; window.renderWhitelist = renderWhitelist; window.addWhitelistEmail = addWhitelistEmail; window.promptDeleteWhitelist = promptDeleteWhitelist;
 window.openFriendlyLinkModal = openFriendlyLinkModal; window.closeFriendlyLinkModal = closeFriendlyLinkModal; window.saveFriendlyLink = saveFriendlyLink; window.promptDeleteFriendlyLink = promptDeleteFriendlyLink;
-window.openPinModal = openPinModal; window.closePinModal = closePinModal; window.filterPinItemsModal = filterPinItemsModal;
+window.openPinModal = openPinModal; window.closePinModal = closePinModal; window.filterPinItemsModal = filterPinItemsModal; window.addPinItem = addPinItem; window.removePinItem = removePinItem;
 window.openTitleRankModal = openTitleRankModal; window.closeTitleRankModal = closeTitleRankModal; window.changeTitleRankScope = changeTitleRankScope; window.renderTitleRankList = renderTitleRankList; window.promptSaveTitleRanks = promptSaveTitleRanks;
 window.openUpdateLogModal = openUpdateLogModal; window.closeUpdateLogModal = closeUpdateLogModal;
 window.openRecycleBinModal = openRecycleBinModal; window.closeRecycleBinModal = closeRecycleBinModal; window.renderRecycleBinList = renderRecycleBinList;

@@ -20,7 +20,7 @@ export function setupRealtimeListeners() {
     let count = 0; 
     const check = () => { 
         count++; 
-        if (count >= 12 && !state.isInitialized) { 
+        if (count >= 13 && !state.isInitialized) { 
             state.isInitialized = true; 
             const loader = document.getElementById('loading-overlay');
             if(loader) {
@@ -92,6 +92,7 @@ export function setupRealtimeListeners() {
         check();
     }, snapErrorHandler);
 
+    // ✨ 修正：加入即時渲染觸發，新增人員後會立刻更新畫面
     onSnapshot(collection(db, "members"), (s) => { 
         state.globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); check(); 
         if(document.getElementById('owner-panel')?.classList.contains('active') && window.renderOwnerDropdown) window.renderOwnerDropdown(); 
@@ -99,6 +100,7 @@ export function setupRealtimeListeners() {
         if(state.currentLevel === 2 && window.updateDetailContent) window.updateDetailContent(); 
     }, snapErrorHandler);
 
+    // ✨ 修正：加入即時渲染觸發，新增資產後會立刻更新畫面
     onSnapshot(collection(db, "assets"), (s) => { 
         state.globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); check(); 
         if(state.currentLevel === 0 && window.renderPinnedItems) window.renderPinnedItems(); 

@@ -45,6 +45,11 @@ export function initView() {
             });
         }
     }
+    
+    // ✨ 新增：讓開關按鈕的外觀與記憶狀態同步
+    const devToggle = document.getElementById('dev-options-toggle');
+    if (devToggle) devToggle.checked = state.devOptionsEnabled;
+
     document.getElementById('dev-tabs-container').style.display = (state.devOptionsEnabled && state.currentLevel === 0) ? 'flex' : 'none';
     if (state.currentLevel === 0) {
         const p = document.getElementById('pinned-section'), b = document.getElementById('btn-global-pin');
@@ -104,6 +109,8 @@ export function closeFabMenu() { document.getElementById('fab-container').classL
 
 export function toggleDevOptions(e) {
     state.devOptionsEnabled = e.target.checked;
+    // ✨ 新增：寫入 localStorage 記憶狀態
+    localStorage.setItem('pmo_dev_options', state.devOptionsEnabled);
     if (state.currentLevel === 0) { document.getElementById('dev-tabs-container').style.display = state.devOptionsEnabled ? 'flex' : 'none'; }
 }
 
@@ -296,7 +303,7 @@ export function updateDetailContent() {
 export function showAssetsTotalView(push = true) {
     closeSidebar(); state.currentLevel = 4; if (push) history.pushState({ level: 4 }, ""); 
     const container = document.getElementById('assets-total-container');
-    if (!container) return; // 容錯處理，避免在沒有 container 時報錯
+    if (!container) return; 
     container.innerHTML = '';
 
     const fixedAssets = state.globalAssets.filter(a => a.assetType !== 'consumable');

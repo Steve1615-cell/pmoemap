@@ -131,6 +131,7 @@ export function openUpdateLogModal() {
             <div style="margin-bottom: 20px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px;">
                 <h3 style="margin: 0 0 10px 0; color: var(--primary);">v1.7.5 (最新版本)</h3>
                 <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-main); line-height: 1.6;">
+                    <li>【系統】開發人員選項狀態將永久記憶，不受網頁重整影響。</li>
                     <li>【新增】全新附屬網頁「縮時相機管理」正式上線，擁有獨立視窗與專屬資料流。</li>
                     <li>【新增】相機管理支援從 Excel (相機庫) 與 Notion CSV (巡檢紀錄) 智慧匯入。</li>
                     <li>【系統】縮時相機模組導入標籤多選功能 (地點、工項、參與人)。</li>

@@ -28,7 +28,7 @@ export const state = {
     globalRoomTypes: ['辦公室', '庫房', '會議室', '機房'], 
     globalTitleRankSettings: { global: [], offices: {} }, 
     
-    globalWhitelist: [], 
+        globalWhitelist: [], 
     globalUsers: [], 
     globalAdmins: [], 
     globalFriendlyLinks: [], 
@@ -37,7 +37,7 @@ export const state = {
     // ======== 應用程式狀態 (UI State) ========
     currentAssetCategory: '電腦',
     currentRoomType: '辦公室',
-    devOptionsEnabled: false, 
+    devOptionsEnabled: localStorage.getItem('pmo_dev_options') === 'true', 
     tempTitleRanks: [], 
     currentTitleRankScope: 'global',
     

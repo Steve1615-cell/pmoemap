@@ -23,15 +23,14 @@
         .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
         
         .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .notion-table { width: 100%; border-collapse: collapse; min-width: 1000px; text-align: left; font-size: 14px; }
+        /* ✨ 加入禁止反白，讓拖曳多選更順暢 */
+        .notion-table { width: 100%; border-collapse: collapse; min-width: 1000px; text-align: left; font-size: 14px; user-select: none; }
         .notion-table th { background: #f8fafc; color: var(--text-muted); font-weight: bold; padding: 12px 15px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
         .notion-table td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; color: var(--text-main); }
         .notion-table tr:hover { background: #f8fafc; }
         
         .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block; white-space: nowrap; }
         .badge.tag { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
-        .badge.warning { background: #fee2e2; color: #e11d48; border: 1px solid #fca5a5; }
-        .badge.success { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
 
         .batch-checkbox {
             width: 22px; height: 22px; background: white; border: 2px solid #cbd5e1; border-radius: 6px; 
@@ -39,6 +38,16 @@
         }
         .batch-checkbox:checked { background: var(--primary); border-color: var(--primary); }
         .batch-checkbox:checked::after { content: '✔'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: bold; }
+
+        /* ✨ 環形儀表板專屬樣式 */
+        .stats-row { display: flex; justify-content: center; gap: 40px; margin-bottom: 30px; flex-wrap: wrap; }
+        .stat-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; width: 160px; }
+        .donut-chart { width: 110px; height: 110px; border-radius: 50%; display: flex; justify-content: center; align-items: center; position: relative; margin-bottom: 15px; transition: background 0.3s; }
+        .donut-chart::before { content: ""; position: absolute; width: 85px; height: 85px; background: white; border-radius: 50%; }
+        .donut-content { position: relative; z-index: 1; text-align: center; }
+        .donut-value { font-size: 24px; font-weight: bold; color: var(--text-main); line-height: 1; }
+        .donut-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        .stat-title { font-size: 16px; font-weight: bold; color: var(--text-main); }
     </style>
 </head>
 <body>
@@ -50,63 +59,98 @@
         <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋資產名稱、編號、標籤或辦公室..." oninput="window.renderCurrentView()">
     </div>
     
+    <!-- ✨ 新版三大標籤 -->
     <div class="tabs">
-        <button id="tab-btn-fixed" class="tab-btn active" onclick="window.switchTab('fixed')">📌 固定資產</button>
-        <button id="tab-btn-consumable" class="tab-btn" onclick="window.switchTab('consumable')">📦 消耗品明細</button>
-        <button id="tab-btn-summary" class="tab-btn" onclick="window.switchTab('summary')">📊 庫存合併彙總</button>
+        <button id="tab-btn-summary" class="tab-btn active" onclick="window.switchTab('summary')">📊 總覽</button>
+        <button id="tab-btn-registry" class="tab-btn" onclick="window.switchTab('registry')">📝 登記</button>
+        <button id="tab-btn-feed" class="tab-btn" onclick="window.switchTab('feed')">💬 貼文</button>
     </div>
     
-    <!-- 共用 Toolbar -->
-    <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-        <div id="consumable-sort-wrapper" style="display: none; align-items: center; gap: 8px;">
+    <!-- 共用 Toolbar：批次操作列 -->
+    <div id="shared-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-primary" style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe;" onclick="window.openBatchMoveModal()">🔄 批次轉移辦公室</button>
+            <button class="btn-primary" style="background:#fefce8; color:#854d0e; border:1px solid #fef08a;" onclick="window.openBatchEditModal()">✏️ 批次修改屬性</button>
+            <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
             <label style="font-size: 14px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
-            <select id="consumable-sort-select" onchange="window.renderConsumables()" style="border: none; outline: none; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
+            <select id="asset-sort-select" onchange="window.renderCurrentView()" style="border: none; outline: none; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
                 <option value="name">📌 依名稱</option>
-                <option value="qty">🔢 依庫存數量 (高至低)</option>
-                <option value="tag">🏷️ 依分類標籤</option>
                 <option value="office">🏢 依所屬辦公室</option>
+                <option value="qty">🔢 依庫存數量 (高至低)</option>
             </select>
         </div>
     </div>
 
     <div id="loading-msg" style="text-align: center; color: var(--text-muted); padding: 50px; font-size: 18px;">⏳ 資料讀取與連線中...</div>
 
-    <!-- 視圖：固定資產 -->
-    <div id="view-fixed" class="view active"><div id="fixed-container"></div></div>
-    
-    <!-- 視圖：消耗品明細 (支援批次轉移) -->
-    <div id="view-consumable" class="view">
-        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 15px; background: #eff6ff; padding: 10px 20px; border-radius: 8px; border: 1px dashed #93c5fd;">
-            <button class="btn-primary" onclick="window.openBatchMoveModal()">🔄 批次轉移辦公室</button>
-            <span style="font-size: 13px; color: #1e40af; font-weight: bold;">※ 勾選列表左側的白色方格，可將消耗品一次性移轉至其他房間或倉庫。</span>
+    <!-- 視圖 1：總覽 (圓環圖 + 消耗品表格) -->
+    <div id="view-summary" class="view active">
+        <!-- 三大圓環統計區塊 -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="donut-chart" id="chart-consumable">
+                    <div class="donut-content">
+                        <div class="donut-value" id="val-consumable">0</div><div class="donut-label">總件數</div>
+                    </div>
+                </div>
+                <div class="stat-title">📦 消耗品</div>
+            </div>
+            <div class="stat-card">
+                <div class="donut-chart" id="chart-fixed">
+                    <div class="donut-content">
+                        <div class="donut-value" id="val-fixed">0</div><div class="donut-label">總件數</div>
+                    </div>
+                </div>
+                <div class="stat-title">📌 固定資產</div>
+            </div>
+            <div class="stat-card" title="總庫存量低於 10 的消耗品種類比率">
+                <div class="donut-chart" id="chart-shortage">
+                    <div class="donut-content">
+                        <div class="donut-value" id="val-shortage">0%</div><div class="donut-label">不足率</div>
+                    </div>
+                </div>
+                <div class="stat-title">⚠️ 低庫存警告</div>
+            </div>
         </div>
+        
+        <div style="font-size: 13px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">💡 提示：按住滑鼠左鍵並拖曳表格的列，可快速多重選取打勾。</div>
         <div class="table-container">
             <table class="notion-table">
                 <thead>
                     <tr>
-                        <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all" class="batch-checkbox" onchange="window.toggleAllConsumables(this)"></th>
-                        <th>🏷️ 標籤</th><th>Aa 名稱</th><th>🔢 數量</th><th>🏢 存放辦公室</th><th>📞 聯絡人</th><th>📝 備註</th><th>✏️ 操作</th>
+                        <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-cons" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-consumable-row', this)"></th>
+                        <th>✏️ 操作</th><th>🏷️ 標籤</th><th>Aa 名稱</th><th>🔢 數量</th><th>🏢 存放辦公室</th><th>📞 聯絡人</th><th>📝 備註</th>
                     </tr>
                 </thead>
                 <tbody id="consumable-tbody"></tbody>
             </table>
         </div>
     </div>
-
-    <!-- 視圖：消耗品合併計算與警告 -->
-    <div id="view-summary" class="view">
-        <div style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">
-            💡 此頁面會將散落在各個辦公室的「同名且同標籤」消耗品合併計算。當總庫存低於 <b>10</b> 時會自動觸發低庫存警告。
-        </div>
+    
+    <!-- 視圖 2：登記 (固定資產清單) -->
+    <div id="view-registry" class="view">
         <div class="table-container">
             <table class="notion-table">
                 <thead>
                     <tr>
-                        <th>🏷️ 標籤</th><th>Aa 名稱</th><th>📊 總庫存量</th><th>⚠️ 安全警戒</th><th>🏢 分佈位置明細</th>
+                        <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-fixed" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-fixed-row', this)"></th>
+                        <th>✏️ 操作</th><th>🏷️ 類型</th><th>Aa 名稱</th><th>🔢 SN編號</th><th>🚦 狀態</th><th>🏢 存放辦公室</th><th>👤 備註/使用者</th>
                     </tr>
                 </thead>
-                <tbody id="summary-tbody"></tbody>
+                <tbody id="fixed-tbody"></tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- 視圖 3：貼文 (動態牆) -->
+    <div id="view-feed" class="view">
+        <div style="text-align:center; padding:50px; color:#94a3b8; background:white; border-radius:12px; border:1px dashed #cbd5e1;">
+            <h3>💬 綜合資產動態牆</h3>
+            <p>這裡未來將匯入系統內所有機車、攝影機與庫存異動的最新日誌貼文。</p>
         </div>
     </div>
 </div>
@@ -134,7 +178,43 @@
     </div>
 </div>
 
-<!-- ================= Modal: 資產編輯 (整合版，支援選擇辦公室) ================= -->
+<!-- ================= Modal: 批次編輯屬性 ================= -->
+<div id="batch-edit-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeBatchEditModal()">
+    <div class="modal-content" style="overflow: visible;">
+        <div class="modal-header"><span>✏️ 批次編輯屬性</span><button class="btn-close" onclick="window.closeBatchEditModal()">×</button></div>
+        <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px;" id="batch-edit-hint"></div>
+        
+        <!-- 消耗品批次欄位 -->
+        <div id="batch-edit-consumable-fields" style="display:none;">
+            <div class="form-group"><label>分類標籤 (保留空白則不修改)</label><input type="text" id="batch-edit-tag" placeholder="輸入新標籤..."></div>
+            <div class="form-group"><label>聯絡人 (保留空白則不修改)</label><input type="text" id="batch-edit-contact" placeholder="輸入聯絡人..."></div>
+            <div class="form-group"><label>備註 (保留空白則不修改)</label><input type="text" id="batch-edit-remarks" placeholder="輸入備註..."></div>
+        </div>
+
+        <!-- 固定資產批次欄位 -->
+        <div id="batch-edit-fixed-fields" style="display:none;">
+            <div class="form-group">
+                <label>設備狀態 (保留原始選擇則不修改)</label>
+                <select id="batch-edit-status">
+                    <option value="">-- 不修改 --</option>
+                    <option value="正常">🟢 正常</option><option value="碳粉不足">🟡 碳粉不足</option>
+                    <option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>變更資產類型 (保留空白則不修改)</label>
+                <input type="text" id="batch-edit-category" placeholder="輸入新類型 (例如：攝影機)">
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="window.closeBatchEditModal()">取消</button>
+            <button class="btn-primary" onclick="window.executeBatchEdit()">確定修改</button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= Modal: 單一資產編輯 ================= -->
 <div id="asset-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeAssetModal()">
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header"><span id="asset-modal-title">📦 新增/編輯資產</span><button class="btn-close" onclick="window.closeAssetModal()">×</button></div>
@@ -148,55 +228,21 @@
             <input type="hidden" id="asset-main-type" value="fixed">
         </div>
 
-        <!-- ✨ 總表特製：新增/編輯資產必須指定辦公室 -->
         <div class="form-group" style="background: #f1f5f9; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1;">
             <label style="color: var(--primary);">📍 所屬辦公室/區域</label>
-            <select id="asset-office-id" style="font-weight:bold;" onchange="window.resetOwnerSelect()"></select>
+            <select id="asset-office-id" style="font-weight:bold;"></select>
         </div>
 
         <div id="fixed-asset-fields">
-            <div class="form-group">
-                <label>資產類型</label>
-                <div class="custom-dropdown-btn" onclick="window.toggleDropdown('opt-category', event)">
-                    <span id="disp-opt-category">選擇類型...</span><span style="font-size: 12px; color: var(--text-muted);">▼</span>
-                </div>
-                <div class="custom-dropdown-panel" id="opt-category-panel" onclick="event.stopPropagation()">
-                    <div class="dropdown-search-row">
-                        <input type="text" id="opt-category-input" placeholder="搜尋或輸入新類型...">
-                        <button class="btn-primary" onclick="window.addOption('category', event)">➕</button>
-                    </div>
-                    <div class="dropdown-list" id="opt-category-list"></div>
-                </div>
-            </div>
+            <div class="form-group"><label>資產類型</label><input type="text" id="asset-category" placeholder="例如：電腦、影印機"></div>
             <div class="form-group"><label>資產名稱</label><input type="text" id="asset-item" placeholder="未命名設備 (選填)"></div>
-            <div class="form-group"><label>資產編號 / SN (共同項)</label><input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)" oninput="window.syncSnPc('sn')"></div>
+            <div class="form-group"><label>資產編號 / SN (共同項)</label><input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)"></div>
             <div class="form-group">
-                <label>設備狀態 (共同項)</label>
+                <label>設備狀態</label>
                 <select id="asset-status">
                     <option value="正常">🟢 正常</option><option value="碳粉不足">🟡 碳粉不足</option>
                     <option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option>
                 </select>
-            </div>
-            <div id="asset-computer-fields" style="border-top: 1px dashed #cbd5e1; margin: 20px 0 10px 0; padding-top: 15px; display:none;">
-                <div class="form-group">
-                    <label>使用者 <span style="font-weight:normal; font-size:12px; color:#94a3b8;">(限定該辦公室人員)</span></label>
-                    <div class="custom-dropdown-btn" onclick="window.toggleDropdown('opt-owner', event)">
-                        <span id="disp-opt-owner">💻 公用設備 (無指定)</span><span style="font-size: 12px; color: var(--text-muted);">▼</span>
-                    </div>
-                    <input type="hidden" id="asset-owner-id" value="">
-                    <div class="custom-dropdown-panel" id="opt-owner-panel" onclick="event.stopPropagation()">
-                        <div class="dropdown-search-row">
-                            <input type="text" id="opt-owner-input" placeholder="搜尋姓名...">
-                        </div>
-                        <div class="dropdown-list" id="opt-owner-list"></div>
-                    </div>
-                </div>
-                <div class="form-group"><label>電腦編號 (PC ID)</label><input type="text" id="asset-pc" placeholder="例如：9059145 (無則填 N/A)" oninput="window.syncSnPc('pc')"></div>
-                <div class="form-group"><label>網域</label><select id="asset-domain"><option value="外網">🌍 外網</option><option value="內網">🏢 內網</option><option value="混合">🔄 混合</option></select></div>
-                <div class="form-group" style="display:flex; gap: 10px;">
-                    <div style="flex:1;"><label>網路孔</label><input type="text" id="asset-net" placeholder="N/A"></div>
-                    <div style="flex:1;"><label>電話孔</label><input type="text" id="asset-phone" placeholder="N/A"></div>
-                </div>
             </div>
         </div>
 
@@ -212,7 +258,7 @@
         </div>
 
         <div class="modal-footer" style="justify-content: space-between;">
-            <button id="btn-delete-asset" class="btn-danger" style="display:none;" onclick="window.deleteAsset()">🗑️ 刪除</button>
+            <button id="btn-delete-asset" class="btn-danger" style="display:none;" onclick="window.deleteSingleAsset()">🗑️ 刪除</button>
             <div style="display:flex; gap:10px;">
                 <button class="btn-secondary" onclick="window.closeAssetModal()">取消</button>
                 <button class="btn-primary" onclick="window.saveAssetData()">儲存</button>
@@ -229,9 +275,9 @@
     const $$ = sel => document.querySelectorAll(sel);
 
     let db, auth, provider;
-    let globalAssets = [], globalOffices = [], globalMembers = [], categories = ['電腦', '影印機', '機車', '家具'];
+    let globalAssets = [], globalOffices = [], globalMembers = [];
     
-    window.currentTab = 'fixed';
+    window.currentTab = 'summary';
     window.currentEditAssetId = null;
 
     const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
@@ -257,16 +303,13 @@
             }
             $('loading-msg').style.display = 'none';
             fetchData();
+            initDragSelect(); // ✨ 啟動拖曳多選功能
         });
     }
 
     function fetchData() {
         let loaded = 0;
         const checkDone = () => { loaded++; if(loaded >= 3) window.renderCurrentView(); };
-
-        onSnapshot(doc(db, "settings", "categories"), (s) => {
-            if (s.exists() && s.data().list) categories = s.data().list;
-        });
 
         onSnapshot(collection(db, "offices"), (s) => {
             globalOffices = s.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -277,13 +320,11 @@
             globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); checkDone();
         });
 
-        // 核心即時監聽：這會捕捉到主網頁的任何新增/刪除
         onSnapshot(collection(db, "assets"), (s) => {
             globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); checkDone();
         });
     }
 
-    // 填充 Modal 裡的辦公室選單
     function populateOfficeSelects() {
         let html = '';
         [...globalOffices].sort((a,b) => (a.floor||'').localeCompare(b.floor||'')).forEach(o => {
@@ -293,187 +334,256 @@
         if($('batch-move-target-office')) $('batch-move-target-office').innerHTML = html;
     }
 
+    // ======== ✨ 拖曳多重選取功能 ========
+    function initDragSelect() {
+        let isDragging = false;
+        let targetState = false;
+
+        const handleMouseDown = (e) => {
+            const tr = e.target.closest('tr');
+            if (tr && !e.target.closest('button') && !e.target.closest('a')) {
+                const cb = tr.querySelector('.batch-checkbox');
+                if (cb) {
+                    isDragging = true;
+                    targetState = e.target.classList.contains('batch-checkbox') ? e.target.checked : !cb.checked;
+                    cb.checked = targetState;
+                    e.preventDefault(); // 阻止文字反白，確保拖曳順暢
+                }
+            }
+        };
+
+        const handleMouseOver = (e) => {
+            if (isDragging) {
+                const tr = e.target.closest('tr');
+                if (tr) {
+                    const cb = tr.querySelector('.batch-checkbox');
+                    if (cb) cb.checked = targetState;
+                }
+            }
+        };
+
+        const handleMouseUp = () => { isDragging = false; };
+
+        document.querySelectorAll('.notion-table tbody').forEach(tb => {
+            tb.addEventListener('mousedown', handleMouseDown);
+            tb.addEventListener('mouseover', handleMouseOver);
+        });
+        window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    window.toggleAllCheckboxes = (className, el) => $$('.' + className).forEach(cb => cb.checked = el.checked);
+
+    // ======== 環形儀表板繪製 ========
+    function updateDonutChart(id, percent, color, valueText) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.background = `conic-gradient(${color} 0% ${percent}%, #f1f5f9 ${percent}% 100%)`;
+        el.querySelector('.donut-value').innerText = valueText;
+    }
+
     // ======== 視圖切換與渲染 ========
     window.switchTab = (tab) => {
         window.currentTab = tab; 
         $$('.tab-btn').forEach(b => b.classList.remove('active')); $(`tab-btn-${tab}`).classList.add('active');
         $$('.view').forEach(v => v.classList.remove('active')); $(`view-${tab}`).classList.add('active');
         
-        $('consumable-sort-wrapper').style.display = (tab === 'consumable') ? 'flex' : 'none';
+        // 只有總覽和登記頁顯示工具列
+        $('shared-toolbar').style.display = (tab === 'summary' || tab === 'registry') ? 'flex' : 'none';
         window.renderCurrentView();
     };
 
     window.renderCurrentView = () => {
-        if (window.currentTab === 'fixed') window.renderFixedAssets(); 
-        else if (window.currentTab === 'consumable') window.renderConsumables(); 
-        else if (window.currentTab === 'summary') window.renderSummary();
+        if (window.currentTab === 'summary') window.renderSummary(); 
+        else if (window.currentTab === 'registry') window.renderRegistry(); 
     };
 
-    // 1. 固定資產 (分辦公室群組)
-    window.renderFixedAssets = () => {
-        const container = $('fixed-container'); container.innerHTML = '';
+    // 1. 總覽：圓環圖 + 消耗品表格
+    window.renderSummary = () => {
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
+        const cons = globalAssets.filter(a => a.assetType === 'consumable');
+        const fixed = globalAssets.filter(a => a.assetType !== 'consumable');
 
-        const fixedAssets = globalAssets.filter(a => a.assetType !== 'consumable' && (
-            (a.item||'').toLowerCase().includes(keyword) || 
-            (a.sn||'').toLowerCase().includes(keyword) || 
-            (a.category||'').toLowerCase().includes(keyword)
-        ));
-
-        if (fixedAssets.length === 0) return container.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的固定資產。</div>';
-
-        const officeMap = {};
-        fixedAssets.forEach(a => { 
-            const off = globalOffices.find(o => o.id === a.office_id); 
-            const offName = off ? `[${off.floor||'未知'}] ${off.name}` : '未分配區域 / 其他'; 
-            if (!officeMap[offName]) officeMap[offName] = []; officeMap[offName].push(a); 
-        });
-
-        for (let offName in officeMap) {
-            let html = `<div style="margin-bottom: 30px;"><h3 style="font-size: 16px; color: var(--text-main); margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 5px;">🏢 ${offName} (${officeMap[offName].length} 件)</h3><div class="grid-nav" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">`;
-            
-            officeMap[offName].forEach(a => {
-                let oName = '💻 公用設備'; 
-                if (a.category === '電腦' && a.owner_id) { const owner = globalMembers.find(m => m.id === a.owner_id); if (owner) oName = `👤 ${owner.name}`; }
-                let t = a.item || '未命名設備'; if (a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`;
-                let si = a.status === '正常' ? '🟢' : a.status === '待修' ? '🔴' : a.status === '報廢' ? '⚫' : a.status === '碳粉不足' ? '🟡' : '⚪';
-                
-                html += `
-                <div class="nav-card" style="padding: 15px; text-align: left;" onclick="window.openAssetModal('${a.id}')">
-                    <button class="card-edit-btn">✏️</button>
-                    <h4 style="margin:0 0 8px 0; color:var(--primary); font-size:16px;">${t}</h4>
-                    ${a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:8px; font-weight:bold;">${oName}</div>` : ''}
-                    <div style="font-size:13px; margin-bottom: 6px; font-family:monospace; color:var(--danger); font-weight:bold;">SN: ${a.sn || 'N/A'}</div>
-                    <div style="font-size:13px; color: var(--text-main); font-weight:bold;">${si} ${a.status || '未知'}</div>
-                </div>`;
-            });
-            html += `</div></div>`;
-            container.innerHTML += html;
-        }
-    };
-
-    // 2. 消耗品明細與批次刪除
-    window.renderConsumables = () => {
-        const tb = $('consumable-tbody'); tb.innerHTML = ''; $('cb-select-all').checked = false;
-        const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
+        // 計算圖表數據
+        let totalConsQty = cons.reduce((sum, a) => sum + (parseInt(a.quantity) || 0), 0);
+        let totalFixedCount = fixed.length;
         
-        const cons = globalAssets.filter(a => a.assetType === 'consumable' && (
-            (a.item||'').toLowerCase().includes(keyword) || 
-            (a.tag||'').toLowerCase().includes(keyword)
-        ));
+        let groupedConsMap = {};
+        cons.forEach(c => {
+            let key = `${c.tag || '未分類'}_${c.item}`;
+            if (!groupedConsMap[key]) groupedConsMap[key] = 0;
+            groupedConsMap[key] += (parseInt(c.quantity) || 0);
+        });
+        
+        let lowStockGroups = Object.values(groupedConsMap).filter(qty => qty < 10).length;
+        let totalGroups = Object.keys(groupedConsMap).length;
+        let shortagePercent = totalGroups === 0 ? 0 : Math.round((lowStockGroups / totalGroups) * 100);
 
-        if (cons.length === 0) return tb.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的消耗品。</td></tr>';
+        // 渲染圖表
+        updateDonutChart('chart-consumable', 100, '#8b5cf6', totalConsQty);
+        updateDonutChart('chart-fixed', 100, '#2563eb', totalFixedCount);
+        updateDonutChart('chart-shortage', shortagePercent, '#ef4444', shortagePercent + '%');
 
-        const sortBy = $('consumable-sort-select').value;
-        cons.sort((a, b) => {
+        // 渲染消耗品表格
+        const tb = $('consumable-tbody'); tb.innerHTML = '';
+        if($('cb-select-all-cons')) $('cb-select-all-cons').checked = false;
+
+        const filteredCons = cons.filter(a => (a.item||'').toLowerCase().includes(keyword) || (a.tag||'').toLowerCase().includes(keyword));
+        if (filteredCons.length === 0) return tb.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的消耗品。</td></tr>';
+
+        const sortBy = $('asset-sort-select').value;
+        filteredCons.sort((a, b) => {
             if (sortBy === 'name') return (a.item||'').localeCompare(b.item||'');
             if (sortBy === 'qty') return (b.quantity||0) - (a.quantity||0);
-            if (sortBy === 'tag') return (a.tag||'').localeCompare(b.tag||'');
             const offA = globalOffices.find(o => o.id === a.office_id)?.name || '';
             const offB = globalOffices.find(o => o.id === b.office_id)?.name || '';
             return offA.localeCompare(offB);
         });
 
-        cons.forEach(a => {
+        filteredCons.forEach(a => {
             const off = globalOffices.find(o => o.id === a.office_id);
             const offName = off ? `[${off.floor||'?'}] ${off.name}` : '未分配';
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td style="text-align:center;"><input type="checkbox" class="cb-consumable-row batch-checkbox" value="${a.id}"></td>
+                <td><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></td>
                 <td><span class="badge tag">${a.tag || '未分類'}</span></td>
-                <td><b style="font-size:15px;">${a.item}</b></td>
+                <td><b style="font-size:15px; color:var(--text-main);">${a.item}</b></td>
                 <td><span style="font-size:18px; font-weight:bold; color:var(--primary);">${a.quantity || 0}</span> ${a.unit || '個'}</td>
                 <td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td>
                 <td>${a.contactPerson || '-'}</td>
                 <td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td>
-                <td><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></td>
             `;
             tb.appendChild(tr);
         });
     };
 
-    // 3. 庫存合併彙總表 (動態計算)
-    window.renderSummary = () => {
-        const tb = $('summary-tbody'); tb.innerHTML = '';
-        const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
+    // 2. 登記：固定資產表格
+    window.renderRegistry = () => {
+        const tb = $('fixed-tbody'); tb.innerHTML = '';
+        if($('cb-select-all-fixed')) $('cb-select-all-fixed').checked = false;
         
-        const cons = globalAssets.filter(a => a.assetType === 'consumable');
-        const summaryMap = {};
+        const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
+        const fixed = globalAssets.filter(a => a.assetType !== 'consumable' && (
+            (a.item||'').toLowerCase().includes(keyword) || (a.sn||'').toLowerCase().includes(keyword) || (a.category||'').toLowerCase().includes(keyword)
+        ));
 
-        // 依據「名稱 + 標籤」作為唯一鍵值合併
-        cons.forEach(c => {
-            if (!c.item) return;
-            const key = `${c.tag || '未分類'}_${c.item}`;
-            if (!summaryMap[key]) {
-                summaryMap[key] = { tag: c.tag || '未分類', item: c.item, total: 0, unit: c.unit || '個', locs: {} };
-            }
-            summaryMap[key].total += (parseInt(c.quantity) || 0);
-            
-            const off = globalOffices.find(o => o.id === c.office_id);
-            const offName = off ? off.name : '未知區域';
-            summaryMap[key].locs[offName] = (summaryMap[key].locs[offName] || 0) + (parseInt(c.quantity) || 0);
+        if (fixed.length === 0) return tb.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的固定資產。</td></tr>';
+
+        const sortBy = $('asset-sort-select').value;
+        fixed.sort((a, b) => {
+            if (sortBy === 'name') return (a.item||'').localeCompare(b.item||'');
+            const offA = globalOffices.find(o => o.id === a.office_id)?.name || '';
+            const offB = globalOffices.find(o => o.id === b.office_id)?.name || '';
+            return offA.localeCompare(offB);
         });
 
-        const arr = Object.values(summaryMap).filter(s => s.item.toLowerCase().includes(keyword) || s.tag.toLowerCase().includes(keyword));
-        arr.sort((a, b) => a.item.localeCompare(b.item));
-
-        if (arr.length === 0) return tb.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94a3b8;">目前尚無彙總資料。</td></tr>';
-
-        arr.forEach(s => {
-            const locArr = [];
-            for(let o in s.locs) { locArr.push(`<span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:11px; margin:2px; display:inline-block;">${o}: ${s.locs[o]}</span>`); }
+        fixed.forEach(a => {
+            const off = globalOffices.find(o => o.id === a.office_id);
+            const offName = off ? `[${off.floor||'?'}] ${off.name}` : '未分配';
             
-            const isLow = s.total < 10;
-            const statusBadge = isLow ? `<span class="badge warning">⚠️ 庫存偏低</span>` : `<span class="badge success">✅ 庫存充足</span>`;
+            let oName = '💻 公用設備'; 
+            if (a.category === '電腦' && a.owner_id) { const owner = globalMembers.find(m => m.id === a.owner_id); if (owner) oName = `👤 ${owner.name}`; }
+            let si = a.status === '正常' ? '🟢 正常' : a.status === '待修' ? '🔴 待修' : a.status === '報廢' ? '⚫ 報廢' : a.status === '碳粉不足' ? '🟡 碳粉不足' : '⚪ 其他';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><span class="badge tag">${s.tag}</span></td>
-                <td><b style="font-size:16px;">${s.item}</b></td>
-                <td><span style="font-size:22px; font-weight:bold; color:${isLow ? '#e11d48' : 'var(--primary)'};">${s.total}</span> ${s.unit}</td>
-                <td>${statusBadge}</td>
-                <td style="line-height:1.8;">${locArr.join('')}</td>
+                <td style="text-align:center;"><input type="checkbox" class="cb-fixed-row batch-checkbox" value="${a.id}"></td>
+                <td><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></td>
+                <td><span class="badge tag" style="background:#e0e7ff; color:#4f46e5;">${a.category || '其他'}</span></td>
+                <td><b style="font-size:15px; color:var(--primary);">${a.item || '未命名'}</b></td>
+                <td style="font-family:monospace; font-weight:bold; color:var(--danger);">${a.sn || 'N/A'}</td>
+                <td style="font-weight:bold;">${si}</td>
+                <td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td>
+                <td style="font-size:12px; color:var(--text-muted);">${a.category === '電腦' ? oName : '-'}</td>
             `;
             tb.appendChild(tr);
         });
     };
 
-    // ======== 批次轉移功能 ========
-    window.toggleAllConsumables = (el) => $$('.cb-consumable-row').forEach(cb => cb.checked = el.checked);
+    // ======== 批次操作邏輯 ========
+    function getSelectedIds() {
+        if (window.currentTab === 'summary') return Array.from($$('.cb-consumable-row:checked')).map(cb => cb.value);
+        if (window.currentTab === 'registry') return Array.from($$('.cb-fixed-row:checked')).map(cb => cb.value);
+        return [];
+    }
 
+    // 1. 批次轉移
     window.openBatchMoveModal = () => {
-        const sel = Array.from($$('.cb-consumable-row:checked')).map(cb => cb.value); 
-        if (sel.length === 0) return alert('請先勾選要轉移的消耗品！');
-        $('batch-move-hint').innerText = `已勾選 ${sel.length} 項消耗品，它們將被全數轉移至您選擇的辦公室。`;
+        const sel = getSelectedIds();
+        if (sel.length === 0) return alert('請先勾選要轉移的資產！');
+        $('batch-move-hint').innerText = `已勾選 ${sel.length} 項資產，它們將被全數轉移至您選擇的辦公室。`;
         $('batch-move-modal-overlay').classList.add('active');
     };
-    
     window.closeBatchMoveModal = () => $('batch-move-modal-overlay').classList.remove('active');
-
     window.executeBatchMove = async () => {
-        const selIds = Array.from($$('.cb-consumable-row:checked')).map(cb => cb.value); 
+        const selIds = getSelectedIds();
         const targetOfficeId = $('batch-move-target-office').value;
         if(!targetOfficeId || selIds.length === 0) return;
 
-        const ops = [];
-        selIds.forEach(id => { ops.push(updateDoc(doc(db, "assets", id), { office_id: targetOfficeId })); });
-        
+        const ops = selIds.map(id => updateDoc(doc(db, "assets", id), { office_id: targetOfficeId }));
         try {
-            await Promise.all(ops);
-            alert(`🎉 成功轉移 ${selIds.length} 項資產！`);
+            await Promise.all(ops); alert(`🎉 成功轉移 ${selIds.length} 項資產！`);
             window.closeBatchMoveModal();
-        } catch(e) {
-            alert('轉移發生錯誤：' + e.message);
-        }
+        } catch(e) { alert('轉移發生錯誤：' + e.message); }
     };
 
-    // ======== FAB 與 Modal ========
+    // 2. 批次編輯屬性
+    window.openBatchEditModal = () => {
+        const sel = getSelectedIds();
+        if (sel.length === 0) return alert('請先勾選要編輯的資產！');
+        
+        if (window.currentTab === 'summary') {
+            $('batch-edit-consumable-fields').style.display = 'block';
+            $('batch-edit-fixed-fields').style.display = 'none';
+        } else {
+            $('batch-edit-consumable-fields').style.display = 'none';
+            $('batch-edit-fixed-fields').style.display = 'block';
+        }
+        
+        $('batch-edit-hint').innerText = `已勾選 ${sel.length} 項資產。空白的欄位將保持原狀，不會被覆寫。`;
+        ['batch-edit-tag', 'batch-edit-contact', 'batch-edit-remarks', 'batch-edit-status', 'batch-edit-category'].forEach(id => $(id).value = '');
+        $('batch-edit-modal-overlay').classList.add('active');
+    };
+    window.closeBatchEditModal = () => $('batch-edit-modal-overlay').classList.remove('active');
+    window.executeBatchEdit = async () => {
+        const selIds = getSelectedIds(); let payload = {};
+        
+        if (window.currentTab === 'summary') {
+            const t = $('batch-edit-tag').value.trim(); if (t) payload.tag = t;
+            const c = $('batch-edit-contact').value.trim(); if (c) payload.contactPerson = c;
+            const r = $('batch-edit-remarks').value.trim(); if (r) payload.remarks = r;
+        } else {
+            const s = $('batch-edit-status').value; if (s) payload.status = s;
+            const c = $('batch-edit-category').value.trim(); if (c) payload.category = c;
+        }
+        
+        if (Object.keys(payload).length === 0) return alert('未填寫任何修改內容！請至少填寫一個欄位。');
+        
+        const ops = selIds.map(id => updateDoc(doc(db, "assets", id), payload));
+        try {
+            await Promise.all(ops); alert(`🎉 成功批次更新 ${selIds.length} 項資產！`);
+            window.closeBatchEditModal();
+        } catch (e) { alert('編輯發生錯誤：' + e.message); }
+    };
+
+    // 3. 批次刪除
+    window.batchDeleteAssets = async () => {
+        const selIds = getSelectedIds();
+        if (selIds.length === 0) return alert('請先勾選要刪除的資產！');
+        if(!confirm(`⚠️ 確定徹底刪除這 ${selIds.length} 項資產？\n(注意：此動作將從資料庫完全抹除，無法復原)`)) return;
+        
+        const ops = selIds.map(id => deleteDoc(doc(db, "assets", id)));
+        try {
+            await Promise.all(ops); alert(`🎉 已成功刪除 ${selIds.length} 項資產！`);
+        } catch(e) { alert('刪除發生錯誤：' + e.message); }
+    };
+
+    // ======== 單筆編輯與表單 ========
     window.toggleFabMenu = (e) => { 
         if(e) e.stopPropagation(); 
         $('fab-container').classList.toggle('active'); $('fab-menu').classList.toggle('active'); 
     };
 
-    // ✨ 切換固定資產與消耗品表單
     window.switchAssetMainType = (type) => {
         $('asset-main-type').value = type;
         if (type === 'fixed') {
@@ -487,62 +597,6 @@
         }
     };
 
-    // ======== 通用下拉選單 (分類與使用者) ========
-    window.toggleDropdown = (t, e) => { 
-        if(e) e.stopPropagation(); 
-        $$('.custom-dropdown-panel').forEach(p => { if(p.id !== `${t}-panel`) p.classList.remove('active'); }); 
-        $(`${t}-panel`).classList.toggle('active'); 
-        if($(`${t}-panel`).classList.contains('active')) { 
-            if(t === 'opt-category') window.renderCategoryList(); 
-            else if(t === 'opt-owner') window.renderOwnerList();
-            $(`${t}-input`).focus(); 
-        } 
-    };
-
-    window.renderCategoryList = () => {
-        const iv = $('opt-category-input').value.toLowerCase(); const ld = $('opt-category-list'); ld.innerHTML = '';
-        categories.filter(v => v.toLowerCase().includes(iv)).forEach(val => {
-            const d = document.createElement('div'); d.className = 'dropdown-item'; d.innerHTML = `<span>${val}</span>`;
-            d.querySelector('span').onclick = (e) => { 
-                $('disp-opt-category').innerText = val; $('opt-category-panel').classList.remove('active'); 
-                $('asset-computer-fields').style.display = val === '電腦' ? 'block' : 'none';
-            }; ld.appendChild(d);
-        });
-    };
-
-    window.addOption = async (k, e) => {
-        if(e) e.stopPropagation(); const val = $(`opt-${k}-input`).value.trim(); if(!val) return;
-        if(k === 'category') {
-            if(categories.includes(val)) return alert('已存在'); categories.push(val);
-            await setDoc(doc(db, "settings", "categories"), { list: categories });
-            $('disp-opt-category').innerText = val; $('opt-category-panel').classList.remove('active');
-            $('asset-computer-fields').style.display = val === '電腦' ? 'block' : 'none';
-        }
-    };
-
-    // 動態根據選定的辦公室抓取使用者
-    window.resetOwnerSelect = () => { $('asset-owner-id').value = ''; $('disp-opt-owner').innerText = '💻 公用設備 (無指定)'; };
-    window.renderOwnerList = () => {
-        const offId = $('asset-office-id').value; const iv = $('opt-owner-input').value.toLowerCase(); const ld = $('opt-owner-list'); ld.innerHTML = '';
-        const f = globalMembers.filter(m => m.office_id === offId && m.name.toLowerCase().includes(iv));
-        
-        const pub = document.createElement('div'); pub.className = 'dropdown-item'; pub.innerHTML = `<span>💻 公用設備 (無指定)</span>`;
-        pub.onclick = () => { $('asset-owner-id').value = ''; $('disp-opt-owner').innerText = '💻 公用設備 (無指定)'; $('opt-owner-panel').classList.remove('active'); }; ld.appendChild(pub);
-        
-        if(f.length === 0) return;
-        f.forEach(m => {
-            const d = document.createElement('div'); d.className = 'dropdown-item'; d.innerHTML = `<span>👤 ${m.name}</span>`;
-            d.querySelector('span').onclick = () => { $('asset-owner-id').value = m.id; $('disp-opt-owner').innerText = `👤 ${m.name}`; $('opt-owner-panel').classList.remove('active'); }; ld.appendChild(d);
-        });
-    };
-
-    window.syncSnPc = (src) => { 
-        if ($('disp-opt-category').innerText !== '電腦') return; 
-        if (src === 'sn') $('asset-pc').value = $('asset-sn').value; 
-        else $('asset-sn').value = $('asset-pc').value; 
-    };
-
-    // ======== 開啟與儲存資產表單 ========
     window.openAssetModal = (id = null) => {
         window.currentEditAssetId = id; 
         if (id) { 
@@ -553,24 +607,17 @@
                 $('asset-office-id').value = a.office_id || '';
                 
                 if (a.assetType !== 'consumable') {
-                    $('disp-opt-category').innerText = a.category || '其他';
-                    $('asset-computer-fields').style.display = a.category === '電腦' ? 'block' : 'none';
+                    $('asset-category').value = a.category || '其他';
                     $('asset-item').value = a.item || ''; $('asset-sn').value = a.sn || ''; $('asset-status').value = a.status || '正常';
-                    if (a.category === '電腦') {
-                        $('asset-domain').value = a.domain || '外網'; $('asset-pc').value = a.pc_id || ''; $('asset-net').value = a.net_port || ''; $('asset-phone').value = a.phone_port || '';
-                        $('asset-owner-id').value = a.owner_id || ''; 
-                        const owner = globalMembers.find(m => m.id === a.owner_id);
-                        $('disp-opt-owner').innerText = owner ? `👤 ${owner.name}` : '💻 公用設備 (無指定)';
-                    }
                 } else {
                     $('consumable-item').value = a.item || ''; $('consumable-tag').value = a.tag || ''; $('consumable-quantity').value = a.quantity || 0; $('consumable-unit').value = a.unit || '個'; $('consumable-contact').value = a.contactPerson || ''; $('consumable-remarks').value = a.remarks || '';
                 }
             }
         } else { 
             $('asset-modal-title').innerText = '➕ 新增資產'; $('btn-delete-asset').style.display = 'none'; 
-            window.switchAssetMainType('fixed'); $('disp-opt-category').innerText = '電腦'; $('asset-computer-fields').style.display = 'block';
-            ['asset-item', 'asset-sn', 'asset-pc', 'asset-net', 'asset-phone', 'consumable-item', 'consumable-tag', 'consumable-contact', 'consumable-remarks'].forEach(k => $(k).value = '');
-            $('asset-status').value = '正常'; $('asset-domain').value = '外網'; $('consumable-quantity').value = '0'; $('consumable-unit').value = '個'; window.resetOwnerSelect();
+            window.switchAssetMainType(window.currentTab === 'summary' ? 'consumable' : 'fixed'); 
+            ['asset-category', 'asset-item', 'asset-sn', 'consumable-item', 'consumable-tag', 'consumable-contact', 'consumable-remarks'].forEach(k => $(k).value = '');
+            $('asset-status').value = '正常'; $('consumable-quantity').value = '0'; $('consumable-unit').value = '個';
         }
         $('asset-modal-overlay').classList.add('active');
     };
@@ -585,11 +632,8 @@
         let data = { office_id: targetOfficeId, assetType: assetType };
 
         if (assetType === 'fixed') {
-            const cat = $('disp-opt-category').innerText;
+            const cat = $('asset-category').value.trim() || '其他';
             data = { ...data, type: 'public', category: cat, item: $('asset-item').value.trim() || cat, sn: $('asset-sn').value || 'N/A', status: $('asset-status').value };
-            if (cat === '電腦') { 
-                data.domain = $('asset-domain').value; data.pc_id = $('asset-pc').value || 'N/A'; data.net_port = $('asset-net').value || 'N/A'; data.phone_port = $('asset-phone').value || 'N/A'; data.owner_id = $('asset-owner-id').value || null; 
-            }
         } else {
             const item = $('consumable-item').value.trim(); if(!item) return alert('消耗品名稱為必填！');
             data = { ...data, item: item, tag: $('consumable-tag').value || '未分類', quantity: parseInt($('consumable-quantity').value) || 0, unit: $('consumable-unit').value || '個', contactPerson: $('consumable-contact').value || '無', remarks: $('consumable-remarks').value || '' };
@@ -602,14 +646,14 @@
         } catch(e) { alert('儲存失敗：'+e.message); }
     };
 
-    window.deleteAsset = async () => {
-        if(!confirm('確定要徹底刪除此資產？')) return;
+    window.deleteSingleAsset = async () => {
+        if(!confirm('確定要徹底刪除此資產？(無法復原)')) return;
         await deleteDoc(doc(db, "assets", window.currentEditAssetId));
         window.closeAssetModal();
     };
 
-    window.addEventListener('click', () => { $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); $$('.modal-overlay').forEach(m => m.classList.remove('active')); $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); } });
+    window.addEventListener('click', () => { $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { $$('.modal-overlay').forEach(m => m.classList.remove('active')); $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); } });
 </script>
 </body>
 </html>

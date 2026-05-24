@@ -23,14 +23,16 @@
         .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
         
         .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        /* ✨ 加入禁止反白，讓拖曳多選更順暢 */
-        .notion-table { width: 100%; border-collapse: collapse; min-width: 1000px; text-align: left; font-size: 14px; user-select: none; }
+        
+        /* 拖曳多選順暢防護 */
+        .notion-table { width: 100%; border-collapse: collapse; min-width: 1000px; text-align: left; font-size: 14px; user-select: none; -webkit-user-select: none; }
         .notion-table th { background: #f8fafc; color: var(--text-muted); font-weight: bold; padding: 12px 15px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
         .notion-table td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; color: var(--text-main); }
         .notion-table tr:hover { background: #f8fafc; }
         
         .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block; white-space: nowrap; }
         .badge.tag { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
+        .badge.danger { background: #fee2e2; color: #e11d48; border: 1px solid #fca5a5; }
 
         .batch-checkbox {
             width: 22px; height: 22px; background: white; border: 2px solid #cbd5e1; border-radius: 6px; 
@@ -39,15 +41,22 @@
         .batch-checkbox:checked { background: var(--primary); border-color: var(--primary); }
         .batch-checkbox:checked::after { content: '✔'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: bold; }
 
-        /* ✨ 環形儀表板專屬樣式 */
-        .stats-row { display: flex; justify-content: center; gap: 40px; margin-bottom: 30px; flex-wrap: wrap; }
-        .stat-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; width: 160px; }
-        .donut-chart { width: 110px; height: 110px; border-radius: 50%; display: flex; justify-content: center; align-items: center; position: relative; margin-bottom: 15px; transition: background 0.3s; }
-        .donut-chart::before { content: ""; position: absolute; width: 85px; height: 85px; background: white; border-radius: 50%; }
-        .donut-content { position: relative; z-index: 1; text-align: center; }
-        .donut-value { font-size: 24px; font-weight: bold; color: var(--text-main); line-height: 1; }
-        .donut-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-        .stat-title { font-size: 16px; font-weight: bold; color: var(--text-main); }
+        /* ✨ 全新環形儀表板樣式 (滿版寬度) */
+        .stats-row { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
+        .stat-card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 280px; border: 2px solid transparent; transition: all 0.2s; }
+        .stat-card.clickable:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); cursor: pointer; }
+        .stat-card.active-filter { border-color: var(--danger); box-shadow: 0 4px 20px rgba(239,68,68,0.2); }
+        .donut-chart-container { width: 100%; max-width: 200px; aspect-ratio: 1/1; position: relative; margin-bottom: 20px; }
+        .stat-title { font-size: 18px; font-weight: bold; color: var(--text-main); text-align: center; }
+
+        /* ✨ 懸浮批次操作列 */
+        #floating-batch-bar {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: white; padding: 12px 25px; border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 4000; display: flex; gap: 15px; align-items: center; border: 1px solid #cbd5e1;
+            opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        #floating-batch-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
     </style>
 </head>
 <body>
@@ -59,22 +68,14 @@
         <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋資產名稱、編號、標籤或辦公室..." oninput="window.renderCurrentView()">
     </div>
     
-    <!-- ✨ 新版三大標籤 -->
     <div class="tabs">
         <button id="tab-btn-summary" class="tab-btn active" onclick="window.switchTab('summary')">📊 總覽</button>
         <button id="tab-btn-registry" class="tab-btn" onclick="window.switchTab('registry')">📝 登記</button>
         <button id="tab-btn-feed" class="tab-btn" onclick="window.switchTab('feed')">💬 貼文</button>
     </div>
     
-    <!-- 共用 Toolbar：批次操作列 -->
-    <div id="shared-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-        
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-primary" style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe;" onclick="window.openBatchMoveModal()">🔄 批次轉移辦公室</button>
-            <button class="btn-primary" style="background:#fefce8; color:#854d0e; border:1px solid #fef08a;" onclick="window.openBatchEditModal()">✏️ 批次修改屬性</button>
-            <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>
-        </div>
-
+    <!-- 共用 Toolbar：排序 -->
+    <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
         <div style="display: flex; align-items: center; gap: 8px;">
             <label style="font-size: 14px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
             <select id="asset-sort-select" onchange="window.renderCurrentView()" style="border: none; outline: none; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
@@ -89,31 +90,19 @@
 
     <!-- 視圖 1：總覽 (圓環圖 + 消耗品表格) -->
     <div id="view-summary" class="view active">
-        <!-- 三大圓環統計區塊 -->
+        <!-- ✨ 滿版三大圓環統計區塊 -->
         <div class="stats-row">
             <div class="stat-card">
-                <div class="donut-chart" id="chart-consumable">
-                    <div class="donut-content">
-                        <div class="donut-value" id="val-consumable">0</div><div class="donut-label">總件數</div>
-                    </div>
-                </div>
+                <div class="donut-chart-container" id="chart-cons"></div>
                 <div class="stat-title">📦 消耗品</div>
             </div>
             <div class="stat-card">
-                <div class="donut-chart" id="chart-fixed">
-                    <div class="donut-content">
-                        <div class="donut-value" id="val-fixed">0</div><div class="donut-label">總件數</div>
-                    </div>
-                </div>
+                <div class="donut-chart-container" id="chart-fixed"></div>
                 <div class="stat-title">📌 固定資產</div>
             </div>
-            <div class="stat-card" title="總庫存量低於 10 的消耗品種類比率">
-                <div class="donut-chart" id="chart-shortage">
-                    <div class="donut-content">
-                        <div class="donut-value" id="val-shortage">0%</div><div class="donut-label">不足率</div>
-                    </div>
-                </div>
-                <div class="stat-title">⚠️ 低庫存警告</div>
+            <div class="stat-card clickable" id="card-shortage" onclick="window.toggleShortageFilter()" title="點擊過濾出庫存不足的項目">
+                <div class="donut-chart-container" id="chart-shortage"></div>
+                <div class="stat-title">⚠️ 點擊過濾低庫存</div>
             </div>
         </div>
         
@@ -123,7 +112,7 @@
                 <thead>
                     <tr>
                         <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-cons" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-consumable-row', this)"></th>
-                        <th>✏️ 操作</th><th>🏷️ 標籤</th><th>Aa 名稱</th><th>🔢 數量</th><th>🏢 存放辦公室</th><th>📞 聯絡人</th><th>📝 備註</th>
+                        <th>🏷️ 標籤</th><th>Aa 名稱</th><th>🔢 數量狀態</th><th>🏢 存放辦公室</th><th>📞 聯絡人</th><th>📝 備註</th>
                     </tr>
                 </thead>
                 <tbody id="consumable-tbody"></tbody>
@@ -133,12 +122,13 @@
     
     <!-- 視圖 2：登記 (固定資產清單) -->
     <div id="view-registry" class="view">
+        <div style="font-size: 13px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">💡 提示：按住滑鼠左鍵並拖曳表格的列，可快速多重選取打勾。</div>
         <div class="table-container">
             <table class="notion-table">
                 <thead>
                     <tr>
                         <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-fixed" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-fixed-row', this)"></th>
-                        <th>✏️ 操作</th><th>🏷️ 類型</th><th>Aa 名稱</th><th>🔢 SN編號</th><th>🚦 狀態</th><th>🏢 存放辦公室</th><th>👤 備註/使用者</th>
+                        <th>🏷️ 類型</th><th>Aa 名稱</th><th>🔢 SN編號</th><th>🚦 狀態</th><th>🏢 存放辦公室</th><th>👤 備註/使用者</th>
                     </tr>
                 </thead>
                 <tbody id="fixed-tbody"></tbody>
@@ -155,6 +145,15 @@
     </div>
 </div>
 
+<!-- ✨ 懸浮動作列 (取代單筆編輯按鈕) -->
+<div id="floating-batch-bar">
+    <span id="batch-sel-count" style="font-size:16px; font-weight:bold; color:var(--primary); margin-right:15px; border-right:2px solid #e2e8f0; padding-right:15px;">已選擇 0 項</span>
+    <button class="btn-primary" style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe;" onclick="window.openBatchMoveModal()">🔄 轉移</button>
+    <button class="btn-primary" style="background:#fefce8; color:#854d0e; border:1px solid #fef08a;" onclick="window.openBatchEditModal()">✏️ 編輯屬性</button>
+    <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>
+</div>
+
+<!-- 新增物件浮動按鈕 -->
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px;">
     <div class="fab-menu" id="fab-menu">
         <button class="fab-item" onclick="window.openAssetModal()">➕ 新增實體資產</button>
@@ -184,14 +183,14 @@
         <div class="modal-header"><span>✏️ 批次編輯屬性</span><button class="btn-close" onclick="window.closeBatchEditModal()">×</button></div>
         <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px;" id="batch-edit-hint"></div>
         
-        <!-- 消耗品批次欄位 -->
         <div id="batch-edit-consumable-fields" style="display:none;">
             <div class="form-group"><label>分類標籤 (保留空白則不修改)</label><input type="text" id="batch-edit-tag" placeholder="輸入新標籤..."></div>
             <div class="form-group"><label>聯絡人 (保留空白則不修改)</label><input type="text" id="batch-edit-contact" placeholder="輸入聯絡人..."></div>
+            <!-- ✨ 批次寫入不足量 -->
+            <div class="form-group"><label>最低安全庫存/不足量 (空白不改)</label><input type="number" id="batch-edit-min" placeholder="設定新的不足警告量..." min="0"></div>
             <div class="form-group"><label>備註 (保留空白則不修改)</label><input type="text" id="batch-edit-remarks" placeholder="輸入備註..."></div>
         </div>
 
-        <!-- 固定資產批次欄位 -->
         <div id="batch-edit-fixed-fields" style="display:none;">
             <div class="form-group">
                 <label>設備狀態 (保留原始選擇則不修改)</label>
@@ -201,10 +200,7 @@
                     <option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label>變更資產類型 (保留空白則不修改)</label>
-                <input type="text" id="batch-edit-category" placeholder="輸入新類型 (例如：攝影機)">
-            </div>
+            <div class="form-group"><label>變更資產類型 (保留空白不修改)</label><input type="text" id="batch-edit-category" placeholder="輸入新類型 (例如：攝影機)"></div>
         </div>
 
         <div class="modal-footer">
@@ -250,10 +246,15 @@
             <div class="form-group"><label>消耗品名稱</label><input type="text" id="consumable-item" placeholder="例如：A4 影印紙 (必填)"></div>
             <div class="form-group"><label>分類標籤</label><input type="text" id="consumable-tag" placeholder="例如：文具、清潔用品 (選填)"></div>
             <div class="form-group" style="display:flex; gap: 10px;">
-                <div style="flex:2;"><label>目前庫存數量</label><input type="number" id="consumable-quantity" placeholder="0" min="0"></div>
-                <div style="flex:1;"><label>單位</label><input type="text" id="consumable-unit" placeholder="箱/包/個"></div>
+                <div style="flex:2;"><label>目前庫存</label><input type="number" id="consumable-quantity" placeholder="0" min="0"></div>
+                <div style="flex:1;"><label>單位</label><input type="text" id="consumable-unit" placeholder="箱/包"></div>
             </div>
-            <div class="form-group"><label>庫存用盡領取聯絡人</label><input type="text" id="consumable-contact" placeholder="例如：王小明 (分機 6100)"></div>
+            <!-- ✨ 新增：最低安全庫存設定 -->
+            <div class="form-group" style="background:#fff7ed; padding:8px; border-radius:6px; border:1px solid #fef08a;">
+                <label style="color:#b45309;">⚠️ 最低安全庫存 (不足量提示)</label>
+                <input type="number" id="consumable-min" placeholder="預設: 10" min="0" style="border-color:#fef08a;">
+            </div>
+            <div class="form-group"><label>領取聯絡人</label><input type="text" id="consumable-contact" placeholder="例如：王小明"></div>
             <div class="form-group"><label>備註</label><input type="text" id="consumable-remarks" placeholder="補充說明..."></div>
         </div>
 
@@ -269,22 +270,26 @@
 
 <script type="module">
     import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { onAuthStateChanged, signInWithPopup, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const $ = id => document.getElementById(id);
     const $$ = sel => document.querySelectorAll(sel);
 
-    let db, auth, provider;
+    // ✨ 用來產生圖表區段的調色盤
+    const chartPalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#eab308'];
+
+    let db, auth;
     let globalAssets = [], globalOffices = [], globalMembers = [];
     
     window.currentTab = 'summary';
     window.currentEditAssetId = null;
+    window.showOnlyShortage = false; // 不足率過濾器狀態
 
     const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
 
     if (isRealEnvironment) {
         import('./js/firebase-config.js').then(m => {
-            db = m.db; auth = m.auth; provider = m.provider; initializeApp();
+            db = m.db; auth = m.auth; initializeApp();
         }).catch(e => showError('載入設定檔失敗：' + e.message));
     } else {
         showError('⚠️ 線上預覽模式無法跨檔案載入，請於本機 VS Code 中測試。');
@@ -297,13 +302,13 @@
     function initializeApp() {
         onAuthStateChanged(auth, (user) => {
             if (!user) {
-                $('loading-msg').innerHTML = `⛔ 尚未登入<br><br><button class="btn-primary" onclick="location.reload()">重新整理</button>`;
+                $('loading-msg').innerHTML = `⛔ 尚未登入，請回首頁登入！`;
                 $('loading-msg').style.color = 'var(--danger)';
                 return;
             }
             $('loading-msg').style.display = 'none';
             fetchData();
-            initDragSelect(); // ✨ 啟動拖曳多選功能
+            initDragSelect(); // ✨ 啟動拖曳多選防護
         });
     }
 
@@ -341,13 +346,14 @@
 
         const handleMouseDown = (e) => {
             const tr = e.target.closest('tr');
-            if (tr && !e.target.closest('button') && !e.target.closest('a')) {
+            if (tr && !e.target.closest('button')) {
                 const cb = tr.querySelector('.batch-checkbox');
                 if (cb) {
                     isDragging = true;
                     targetState = e.target.classList.contains('batch-checkbox') ? e.target.checked : !cb.checked;
                     cb.checked = targetState;
-                    e.preventDefault(); // 阻止文字反白，確保拖曳順暢
+                    window.updateFloatingBar();
+                    e.preventDefault(); 
                 }
             }
         };
@@ -357,7 +363,7 @@
                 const tr = e.target.closest('tr');
                 if (tr) {
                     const cb = tr.querySelector('.batch-checkbox');
-                    if (cb) cb.checked = targetState;
+                    if (cb) { cb.checked = targetState; window.updateFloatingBar(); }
                 }
             }
         };
@@ -371,24 +377,82 @@
         window.addEventListener('mouseup', handleMouseUp);
     }
 
-    window.toggleAllCheckboxes = (className, el) => $$('.' + className).forEach(cb => cb.checked = el.checked);
+    window.toggleAllCheckboxes = (className, el) => {
+        $$('.' + className).forEach(cb => cb.checked = el.checked);
+        window.updateFloatingBar();
+    };
 
-    // ======== 環形儀表板繪製 ========
-    function updateDonutChart(id, percent, color, valueText) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.style.background = `conic-gradient(${color} 0% ${percent}%, #f1f5f9 ${percent}% 100%)`;
-        el.querySelector('.donut-value').innerText = valueText;
+    window.updateFloatingBar = () => {
+        const sel = getSelectedIds();
+        const bar = $('floating-batch-bar');
+        const countSpan = $('batch-sel-count');
+        if (sel.length > 0) {
+            countSpan.innerText = `已選擇 ${sel.length} 項`;
+            bar.classList.add('show');
+        } else {
+            bar.classList.remove('show');
+        }
+    };
+
+    // ======== ✨ 超強 SVG 動態圓環儀表板 ========
+    function drawSvgDonut(containerId, dataArray, centerVal, centerLbl) {
+        const c = document.getElementById(containerId);
+        if(!c) return;
+        
+        const total = dataArray.reduce((sum, d) => sum + d.value, 0);
+        let html = `<svg viewBox="0 0 200 200" style="width:100%; height:100%;">`;
+        
+        if (total === 0) {
+            html += `<circle cx="100" cy="100" r="80" fill="none" stroke="#f1f5f9" stroke-width="30"></circle>`;
+        } else {
+            let acc = 0;
+            const C = 2 * Math.PI * 80; 
+            dataArray.forEach((d, i) => {
+                if(d.value === 0) return;
+                const pct = d.value / total;
+                const dashArr = `${pct * C} ${C}`;
+                const dashOff = - (acc / total) * C;
+                const color = d.color || chartPalette[i % chartPalette.length];
+                
+                html += `<circle cx="100" cy="100" r="80" fill="none" stroke="${color}" stroke-width="30"
+                    stroke-dasharray="${dashArr}" stroke-dashoffset="${dashOff}"
+                    transform="rotate(-90 100 100)"
+                    style="transition: stroke-width 0.2s; cursor:crosshair;"
+                    onmouseover="window.hoverSvgDonut(this, '${containerId}', '${d.label}', '${d.value}', '${color}')"
+                    onmouseout="window.outSvgDonut(this, '${containerId}', '${centerLbl}', '${centerVal}')"
+                ></circle>`;
+                acc += d.value;
+            });
+        }
+        
+        html += `<text id="${containerId}-val" x="100" y="95" text-anchor="middle" dominant-baseline="central" font-size="36" font-weight="bold" fill="var(--text-main)" style="pointer-events:none;">${centerVal}</text>`;
+        html += `<text id="${containerId}-lbl" x="100" y="130" text-anchor="middle" dominant-baseline="central" font-size="14" fill="var(--text-muted)" style="pointer-events:none;">${centerLbl}</text>`;
+        html += `</svg>`;
+        c.innerHTML = html;
     }
+
+    window.hoverSvgDonut = (el, cid, lbl, val, color) => {
+        el.setAttribute('stroke-width', '38');
+        const v = document.getElementById(cid+'-val');
+        const l = document.getElementById(cid+'-lbl');
+        if(v){ v.textContent = val; v.setAttribute('fill', color); }
+        if(l) l.textContent = lbl;
+    };
+    
+    window.outSvgDonut = (el, cid, lbl, val) => {
+        el.setAttribute('stroke-width', '30');
+        const v = document.getElementById(cid+'-val');
+        const l = document.getElementById(cid+'-lbl');
+        if(v){ v.textContent = val; v.setAttribute('fill', 'var(--text-main)'); }
+        if(l) l.textContent = lbl;
+    };
 
     // ======== 視圖切換與渲染 ========
     window.switchTab = (tab) => {
         window.currentTab = tab; 
         $$('.tab-btn').forEach(b => b.classList.remove('active')); $(`tab-btn-${tab}`).classList.add('active');
         $$('.view').forEach(v => v.classList.remove('active')); $(`view-${tab}`).classList.add('active');
-        
-        // 只有總覽和登記頁顯示工具列
-        $('shared-toolbar').style.display = (tab === 'summary' || tab === 'registry') ? 'flex' : 'none';
+        $('floating-batch-bar').classList.remove('show'); // 切換視圖時收起懸浮列
         window.renderCurrentView();
     };
 
@@ -397,38 +461,66 @@
         else if (window.currentTab === 'registry') window.renderRegistry(); 
     };
 
+    // ✨ 不足率過濾器觸發
+    window.toggleShortageFilter = () => {
+        window.showOnlyShortage = !window.showOnlyShortage;
+        const card = $('card-shortage');
+        if(window.showOnlyShortage) { card.classList.add('active-filter'); }
+        else { card.classList.remove('active-filter'); }
+        window.renderSummary();
+    };
+
     // 1. 總覽：圓環圖 + 消耗品表格
     window.renderSummary = () => {
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
         const cons = globalAssets.filter(a => a.assetType === 'consumable');
         const fixed = globalAssets.filter(a => a.assetType !== 'consumable');
 
-        // 計算圖表數據
-        let totalConsQty = cons.reduce((sum, a) => sum + (parseInt(a.quantity) || 0), 0);
-        let totalFixedCount = fixed.length;
-        
+        // ==== 計算圖表數據 ====
+        // 消耗品：依照 Tag 加總數量
+        const consTagMap = {}; let totalConsQty = 0;
+        cons.forEach(c => { const t = c.tag || '未分類'; const q = parseInt(c.quantity) || 0; consTagMap[t] = (consTagMap[t]||0) + q; totalConsQty += q; });
+        const consChartData = Object.keys(consTagMap).map(k => ({ label: k, value: consTagMap[k] }));
+
+        // 固定資產：依照 Category 加總件數
+        const fixedCatMap = {}; let totalFixedCount = 0;
+        fixed.forEach(c => { const t = c.category || '其他'; fixedCatMap[t] = (fixedCatMap[t]||0) + 1; totalFixedCount++; });
+        const fixedChartData = Object.keys(fixedCatMap).map(k => ({ label: k, value: fixedCatMap[k] }));
+
+        // 庫存警告 (同名同標籤合併計算不足)
         let groupedConsMap = {};
         cons.forEach(c => {
             let key = `${c.tag || '未分類'}_${c.item}`;
-            if (!groupedConsMap[key]) groupedConsMap[key] = 0;
-            groupedConsMap[key] += (parseInt(c.quantity) || 0);
+            if (!groupedConsMap[key]) groupedConsMap[key] = { qty: 0, threshold: c.minThreshold !== undefined ? c.minThreshold : 10 };
+            groupedConsMap[key].qty += (parseInt(c.quantity) || 0);
         });
         
-        let lowStockGroups = Object.values(groupedConsMap).filter(qty => qty < 10).length;
-        let totalGroups = Object.keys(groupedConsMap).length;
-        let shortagePercent = totalGroups === 0 ? 0 : Math.round((lowStockGroups / totalGroups) * 100);
+        let shortageKinds = 0, normalKinds = 0;
+        Object.values(groupedConsMap).forEach(g => { if(g.qty < g.threshold) shortageKinds++; else normalKinds++; });
+        let totalGroups = shortageKinds + normalKinds;
+        let shortagePercent = totalGroups === 0 ? 0 : Math.round((shortageKinds / totalGroups) * 100);
+        const shortageChartData = [
+            { label: '庫存不足項目', value: shortageKinds, color: '#ef4444' }, 
+            { label: '庫存安全項目', value: normalKinds, color: '#10b981' }
+        ];
 
-        // 渲染圖表
-        updateDonutChart('chart-consumable', 100, '#8b5cf6', totalConsQty);
-        updateDonutChart('chart-fixed', 100, '#2563eb', totalFixedCount);
-        updateDonutChart('chart-shortage', shortagePercent, '#ef4444', shortagePercent + '%');
+        // 渲染三大圓環
+        drawSvgDonut('chart-cons', consChartData, totalConsQty, '總件數');
+        drawSvgDonut('chart-fixed', fixedChartData, totalFixedCount, '總件數');
+        drawSvgDonut('chart-shortage', shortageChartData, shortagePercent + '%', window.showOnlyShortage ? '點擊解除過濾' : '不足率');
 
-        // 渲染消耗品表格
+        // ==== 渲染表格 ====
         const tb = $('consumable-tbody'); tb.innerHTML = '';
         if($('cb-select-all-cons')) $('cb-select-all-cons').checked = false;
 
-        const filteredCons = cons.filter(a => (a.item||'').toLowerCase().includes(keyword) || (a.tag||'').toLowerCase().includes(keyword));
-        if (filteredCons.length === 0) return tb.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的消耗品。</td></tr>';
+        let filteredCons = cons.filter(a => (a.item||'').toLowerCase().includes(keyword) || (a.tag||'').toLowerCase().includes(keyword));
+        
+        // ✨ 不足量過濾邏輯
+        if (window.showOnlyShortage) {
+            filteredCons = filteredCons.filter(a => (parseInt(a.quantity) || 0) < (a.minThreshold !== undefined ? a.minThreshold : 10));
+        }
+
+        if (filteredCons.length === 0) return tb.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的消耗品。</td></tr>';
 
         const sortBy = $('asset-sort-select').value;
         filteredCons.sort((a, b) => {
@@ -442,19 +534,33 @@
         filteredCons.forEach(a => {
             const off = globalOffices.find(o => o.id === a.office_id);
             const offName = off ? `[${off.floor||'?'}] ${off.name}` : '未分配';
+            const qty = parseInt(a.quantity) || 0;
+            const minT = a.minThreshold !== undefined ? a.minThreshold : 10;
+            const isLow = qty < minT;
+            
+            // ✨ 數量欄位動態顯示：正常 vs 不足警告
+            let qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--primary);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span>`;
+            if (isLow) {
+                if (window.showOnlyShortage) {
+                    qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--danger);">${qty}</span> <span style="font-size:13px; color:var(--text-muted);">/ (安全量 ${minT})</span>`;
+                } else {
+                    qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--danger);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span><div style="color:var(--danger); font-size:11px; font-weight:bold; margin-top:4px;">⚠️ 需補 ${minT - qty}</div>`;
+                }
+            }
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="text-align:center;"><input type="checkbox" class="cb-consumable-row batch-checkbox" value="${a.id}"></td>
-                <td><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></td>
+                <td style="text-align:center;"><input type="checkbox" class="cb-consumable-row batch-checkbox" value="${a.id}" onchange="window.updateFloatingBar()"></td>
                 <td><span class="badge tag">${a.tag || '未分類'}</span></td>
-                <td><b style="font-size:15px; color:var(--text-main);">${a.item}</b></td>
-                <td><span style="font-size:18px; font-weight:bold; color:var(--primary);">${a.quantity || 0}</span> ${a.unit || '個'}</td>
+                <td><b style="font-size:15px; color:var(--text-main); cursor:pointer;" onclick="window.openAssetModal('${a.id}')" title="點擊編輯">${a.item}</b></td>
+                <td>${qtyHtml}</td>
                 <td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td>
                 <td>${a.contactPerson || '-'}</td>
                 <td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td>
             `;
             tb.appendChild(tr);
         });
+        window.updateFloatingBar();
     };
 
     // 2. 登記：固定資產表格
@@ -467,7 +573,7 @@
             (a.item||'').toLowerCase().includes(keyword) || (a.sn||'').toLowerCase().includes(keyword) || (a.category||'').toLowerCase().includes(keyword)
         ));
 
-        if (fixed.length === 0) return tb.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的固定資產。</td></tr>';
+        if (fixed.length === 0) return tb.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的固定資產。</td></tr>';
 
         const sortBy = $('asset-sort-select').value;
         fixed.sort((a, b) => {
@@ -487,10 +593,9 @@
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="text-align:center;"><input type="checkbox" class="cb-fixed-row batch-checkbox" value="${a.id}"></td>
-                <td><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></td>
+                <td style="text-align:center;"><input type="checkbox" class="cb-fixed-row batch-checkbox" value="${a.id}" onchange="window.updateFloatingBar()"></td>
                 <td><span class="badge tag" style="background:#e0e7ff; color:#4f46e5;">${a.category || '其他'}</span></td>
-                <td><b style="font-size:15px; color:var(--primary);">${a.item || '未命名'}</b></td>
+                <td><b style="font-size:15px; color:var(--primary); cursor:pointer;" onclick="window.openAssetModal('${a.id}')" title="點擊編輯">${a.item || '未命名'}</b></td>
                 <td style="font-family:monospace; font-weight:bold; color:var(--danger);">${a.sn || 'N/A'}</td>
                 <td style="font-weight:bold;">${si}</td>
                 <td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td>
@@ -498,6 +603,7 @@
             `;
             tb.appendChild(tr);
         });
+        window.updateFloatingBar();
     };
 
     // ======== 批次操作邏輯 ========
@@ -524,6 +630,7 @@
         try {
             await Promise.all(ops); alert(`🎉 成功轉移 ${selIds.length} 項資產！`);
             window.closeBatchMoveModal();
+            window.updateFloatingBar();
         } catch(e) { alert('轉移發生錯誤：' + e.message); }
     };
 
@@ -541,7 +648,7 @@
         }
         
         $('batch-edit-hint').innerText = `已勾選 ${sel.length} 項資產。空白的欄位將保持原狀，不會被覆寫。`;
-        ['batch-edit-tag', 'batch-edit-contact', 'batch-edit-remarks', 'batch-edit-status', 'batch-edit-category'].forEach(id => $(id).value = '');
+        ['batch-edit-tag', 'batch-edit-contact', 'batch-edit-min', 'batch-edit-remarks', 'batch-edit-status', 'batch-edit-category'].forEach(id => $(id).value = '');
         $('batch-edit-modal-overlay').classList.add('active');
     };
     window.closeBatchEditModal = () => $('batch-edit-modal-overlay').classList.remove('active');
@@ -552,6 +659,7 @@
             const t = $('batch-edit-tag').value.trim(); if (t) payload.tag = t;
             const c = $('batch-edit-contact').value.trim(); if (c) payload.contactPerson = c;
             const r = $('batch-edit-remarks').value.trim(); if (r) payload.remarks = r;
+            const m = $('batch-edit-min').value; if (m !== '') payload.minThreshold = parseInt(m) || 0;
         } else {
             const s = $('batch-edit-status').value; if (s) payload.status = s;
             const c = $('batch-edit-category').value.trim(); if (c) payload.category = c;
@@ -563,6 +671,7 @@
         try {
             await Promise.all(ops); alert(`🎉 成功批次更新 ${selIds.length} 項資產！`);
             window.closeBatchEditModal();
+            window.updateFloatingBar();
         } catch (e) { alert('編輯發生錯誤：' + e.message); }
     };
 
@@ -570,11 +679,12 @@
     window.batchDeleteAssets = async () => {
         const selIds = getSelectedIds();
         if (selIds.length === 0) return alert('請先勾選要刪除的資產！');
-        if(!confirm(`⚠️ 確定徹底刪除這 ${selIds.length} 項資產？\n(注意：此動作將從資料庫完全抹除，無法復原)`)) return;
+        if(!confirm(`⚠️ 確定徹底刪除這 ${selIds.length} 項資產？\n(注意：此動作將從資料庫完全抹除，若需復原請回主系統回收桶)`)) return;
         
         const ops = selIds.map(id => deleteDoc(doc(db, "assets", id)));
         try {
             await Promise.all(ops); alert(`🎉 已成功刪除 ${selIds.length} 項資產！`);
+            window.updateFloatingBar();
         } catch(e) { alert('刪除發生錯誤：' + e.message); }
     };
 
@@ -610,14 +720,17 @@
                     $('asset-category').value = a.category || '其他';
                     $('asset-item').value = a.item || ''; $('asset-sn').value = a.sn || ''; $('asset-status').value = a.status || '正常';
                 } else {
-                    $('consumable-item').value = a.item || ''; $('consumable-tag').value = a.tag || ''; $('consumable-quantity').value = a.quantity || 0; $('consumable-unit').value = a.unit || '個'; $('consumable-contact').value = a.contactPerson || ''; $('consumable-remarks').value = a.remarks || '';
+                    $('consumable-item').value = a.item || ''; $('consumable-tag').value = a.tag || ''; 
+                    $('consumable-quantity').value = a.quantity || 0; $('consumable-unit').value = a.unit || '個'; 
+                    $('consumable-min').value = a.minThreshold !== undefined ? a.minThreshold : 10;
+                    $('consumable-contact').value = a.contactPerson || ''; $('consumable-remarks').value = a.remarks || '';
                 }
             }
         } else { 
             $('asset-modal-title').innerText = '➕ 新增資產'; $('btn-delete-asset').style.display = 'none'; 
             window.switchAssetMainType(window.currentTab === 'summary' ? 'consumable' : 'fixed'); 
             ['asset-category', 'asset-item', 'asset-sn', 'consumable-item', 'consumable-tag', 'consumable-contact', 'consumable-remarks'].forEach(k => $(k).value = '');
-            $('asset-status').value = '正常'; $('consumable-quantity').value = '0'; $('consumable-unit').value = '個';
+            $('asset-status').value = '正常'; $('consumable-quantity').value = '0'; $('consumable-unit').value = '個'; $('consumable-min').value = '10';
         }
         $('asset-modal-overlay').classList.add('active');
     };
@@ -636,7 +749,7 @@
             data = { ...data, type: 'public', category: cat, item: $('asset-item').value.trim() || cat, sn: $('asset-sn').value || 'N/A', status: $('asset-status').value };
         } else {
             const item = $('consumable-item').value.trim(); if(!item) return alert('消耗品名稱為必填！');
-            data = { ...data, item: item, tag: $('consumable-tag').value || '未分類', quantity: parseInt($('consumable-quantity').value) || 0, unit: $('consumable-unit').value || '個', contactPerson: $('consumable-contact').value || '無', remarks: $('consumable-remarks').value || '' };
+            data = { ...data, item: item, tag: $('consumable-tag').value || '未分類', quantity: parseInt($('consumable-quantity').value) || 0, minThreshold: parseInt($('consumable-min').value) || 0, unit: $('consumable-unit').value || '個', contactPerson: $('consumable-contact').value || '無', remarks: $('consumable-remarks').value || '' };
         }
 
         try {
@@ -647,7 +760,7 @@
     };
 
     window.deleteSingleAsset = async () => {
-        if(!confirm('確定要徹底刪除此資產？(無法復原)')) return;
+        if(!confirm('確定要徹底刪除此資產？(若需復原請回主系統回收桶操作)')) return;
         await deleteDoc(doc(db, "assets", window.currentEditAssetId));
         window.closeAssetModal();
     };

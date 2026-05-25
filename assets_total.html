@@ -12,11 +12,7 @@
         .header-title { margin: 0; font-size: 45px; color: var(--primary); text-align: center; }
         
         .search-container { margin-bottom: 30px; width: 100%; }
-        .search-box { 
-            padding: 15px 25px; border: 2px solid #cbd5e1; border-radius: 40px; 
-            width: 100%; box-sizing: border-box; font-size: 35px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-            transition: border-color 0.2s; outline: none;
-        }
+        .search-box { padding: 15px 25px; border: 2px solid #cbd5e1; border-radius: 40px; width: 100%; box-sizing: border-box; font-size: 35px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: border-color 0.2s; outline: none; }
         .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.2); }
 
         .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -32,36 +28,21 @@
         .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block; white-space: nowrap; }
         .badge.tag { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
 
-        .batch-checkbox {
-            width: 22px; height: 22px; background: white; border: 2px solid #cbd5e1; border-radius: 6px; 
-            cursor: pointer; position: relative; appearance: none; transition: 0.2s; vertical-align: middle;
-        }
+        .batch-checkbox { width: 22px; height: 22px; background: white; border: 2px solid #cbd5e1; border-radius: 6px; cursor: pointer; position: relative; appearance: none; transition: 0.2s; vertical-align: middle; }
         .batch-checkbox:checked { background: var(--primary); border-color: var(--primary); }
         .batch-checkbox:checked::after { content: '✔'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: bold; }
 
-        /* 滿版圓環儀表板 */
-        .stats-row { 
-            display: flex; justify-content: space-between; gap: 20px; margin-bottom: 30px; 
-            flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; width: 100%;
-        }
-        .stat-card { 
-            background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
-            display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 250px; 
-            border: 2px solid transparent; transition: all 0.2s; cursor: pointer;
-        }
+        /* ✨ 滿版圓環儀表板 (維持單一橫列) */
+        .stats-row { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 30px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; width: 100%; }
+        .stat-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 250px; border: 2px solid transparent; transition: all 0.2s; cursor: pointer; }
         .stat-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 8px 25px rgba(37,99,235,0.1); }
         .stat-card.active-filter { border-color: var(--danger); box-shadow: 0 4px 20px rgba(239,68,68,0.2); background: #fef2f2; }
         .donut-chart-container { width: 100%; max-width: 180px; aspect-ratio: 1/1; position: relative; margin-bottom: 15px; }
         .stat-title { font-size: 18px; font-weight: bold; color: var(--text-main); text-align: center; }
         .stat-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
 
-        /* 懸浮批次操作列 */
-        #floating-batch-bar {
-            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px);
-            background: white; padding: 12px 25px; border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            z-index: 4000; display: flex; gap: 15px; align-items: center; border: 1px solid #cbd5e1;
-            opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-        }
+        /* ✨ 懸浮批次操作列 */
+        #floating-batch-bar { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px); background: white; padding: 12px 25px; border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 4000; display: flex; gap: 15px; align-items: center; border: 1px solid #cbd5e1; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         #floating-batch-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
         
         .fab-submenu { position: absolute; right: 100%; margin-right: 15px; display: flex; gap: 10px; white-space: nowrap; transition: all 0.3s ease; opacity: 0; transform: translateX(20px); pointer-events: none; }
@@ -70,20 +51,15 @@
         #import-preview-modal-overlay .modal-content { max-width: 95vw; height: 90vh; display: flex; flex-direction: column; }
         #import-preview-modal-overlay .table-container { flex: 1; overflow: auto; margin-top: 15px; border: 1px solid #e2e8f0; }
 
-        #feed-unread-badge {
-            position: absolute; top: -5px; right: -5px; width: 14px; height: 14px;
-            background-color: var(--danger); border-radius: 50%; border: 2px solid white; display: none;
-        }
-
+        #feed-unread-badge { position: absolute; top: -5px; right: -5px; width: 14px; height: 14px; background-color: var(--danger); border-radius: 50%; border: 2px solid white; display: none; }
+        
         .bar-chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
         .bar-chart-label { width: 80px; font-size: 11px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
         .bar-chart-track { flex: 1; background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden; }
         .bar-chart-fill { background: var(--primary); height: 100%; border-radius: 4px; transition: width 0.5s ease; }
         .bar-chart-val { font-size: 11px; font-weight: bold; width: 30px; color: var(--text-muted); }
 
-        .checkout-stats-wrapper {
-            display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap;
-        }
+        .checkout-stats-wrapper { display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap; }
     </style>
 </head>
 <body>
@@ -191,7 +167,6 @@
                 </select>
             </div>
         </div>
-
         <div class="board-container" id="feed-board" style="flex-wrap: wrap; justify-content:center;"></div>
     </div>
 </div>
@@ -205,7 +180,7 @@
     <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>
 </div>
 
-<!-- FAB 右下角按鈕群 -->
+<!-- ✨ FAB 右下角按鈕群 (絕對最高層) -->
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 9999;">
     <div class="fab-menu" id="fab-menu">
         <div style="position: relative; display: flex; align-items: center; justify-content: flex-end;">
@@ -231,7 +206,6 @@
 <div id="checkout-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeCheckoutModal()">
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header"><span>📝 領用登記</span><button class="btn-close" onclick="window.closeCheckoutModal()">×</button></div>
-        
         <div class="form-group">
             <label>名稱 (選擇在列資產)</label>
             <div class="custom-dropdown-btn" onclick="window.toggleDropdown('opt-checkout-asset', event)">
@@ -245,31 +219,17 @@
                 <div class="dropdown-list" id="opt-checkout-asset-list"></div>
             </div>
         </div>
-
         <div class="form-group">
             <label>存放辦公室 (選定資產後自動鎖定)</label>
             <input type="text" id="checkout-location" disabled style="background:#f8fafc; color:#64748b; font-weight:bold;" placeholder="選擇資產後自動帶入">
             <input type="hidden" id="checkout-location-id" value="">
         </div>
-
         <div class="form-group" style="display:flex; gap:10px;">
             <div style="flex:1;"><label>出庫數量</label><input type="number" id="checkout-qty" value="1" min="1"></div>
-            <div style="flex:2;">
-                <label>領取人</label>
-                <input type="text" id="checkout-borrower" placeholder="輸入領取人姓名" oninput="window.autoFillCheckoutRemarks()">
-            </div>
+            <div style="flex:2;"><label>領取人</label><input type="text" id="checkout-borrower" placeholder="輸入領取人姓名" oninput="window.autoFillCheckoutRemarks()"></div>
         </div>
-
-        <div class="form-group">
-            <label>日期時間</label>
-            <input type="datetime-local" id="checkout-date">
-        </div>
-
-        <div class="form-group">
-            <label>備註 (智慧帶入前例)</label>
-            <textarea id="checkout-remarks" rows="2" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; resize:vertical;" placeholder="可自由修改補充說明..."></textarea>
-        </div>
-
+        <div class="form-group"><label>日期時間</label><input type="datetime-local" id="checkout-date"></div>
+        <div class="form-group"><label>備註 (智慧帶入前例)</label><textarea id="checkout-remarks" rows="2" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; resize:vertical;" placeholder="可自由修改補充說明..."></textarea></div>
         <div class="modal-footer"><button class="btn-secondary" onclick="window.closeCheckoutModal()">取消</button><button class="btn-primary" onclick="window.saveCheckout()">確認登記</button></div>
     </div>
 </div>
@@ -286,7 +246,6 @@
                 <button class="btn-close" onclick="window.closeImportPreviewModal()" style="margin-left:15px;">×</button>
             </div>
         </div>
-        
         <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
             <label style="font-weight: bold; color: var(--primary);">📥 此表格匯入至：</label>
             <select id="import-target-type" onchange="window.renderPreviewModal()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight:bold;">
@@ -297,11 +256,9 @@
                 <input type="checkbox" id="import-deduct-stock" checked style="width:16px; height:16px;"> 寫入時同步扣除現有資產庫存
             </label>
         </div>
-        
         <div class="table-container">
             <table class="notion-table">
-                <thead id="preview-thead"></thead>
-                <tbody id="preview-tbody"></tbody>
+                <thead id="preview-thead"></thead><tbody id="preview-tbody"></tbody>
             </table>
         </div>
     </div>
@@ -381,10 +338,7 @@
             <div class="form-group"><label>消耗品名稱</label><input type="text" id="consumable-item" placeholder="例如：A4 影印紙 (必填)"></div>
             <div class="form-group"><label>分類標籤</label><input type="text" id="consumable-tag" placeholder="例如：文具、清潔用品 (選填)"></div>
             <div class="form-group" style="display:flex; gap: 10px;"><div style="flex:2;"><label>目前庫存</label><input type="number" id="consumable-quantity" placeholder="0" min="0"></div><div style="flex:1;"><label>單位</label><input type="text" id="consumable-unit" placeholder="箱/包"></div></div>
-            <div class="form-group" style="background:#fff7ed; padding:8px; border-radius:6px; border:1px solid #fef08a;">
-                <label style="color:#b45309;">⚠️ 最低安全庫存 (0或空白即不警告)</label>
-                <input type="number" id="consumable-min" placeholder="預設: 10" min="0" style="border-color:#fef08a;">
-            </div>
+            <div class="form-group" style="background:#fff7ed; padding:8px; border-radius:6px; border:1px solid #fef08a;"><label style="color:#b45309;">⚠️ 最低安全庫存 (0或空白即不警告)</label><input type="number" id="consumable-min" placeholder="預設: 10" min="0" style="border-color:#fef08a;"></div>
             <div class="form-group"><label>領取聯絡人</label><input type="text" id="consumable-contact" placeholder="例如：王小明"></div>
             <div class="form-group"><label>備註</label><input type="text" id="consumable-remarks" placeholder="補充說明..."></div>
         </div>
@@ -402,7 +356,7 @@
     const chartPalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#eab308'];
 
     let db, auth;
-    let globalAssets = [], globalOffices = [], globalMembers = [], globalCheckouts = [];
+    let globalAssets = [], globalOffices = [], globalCheckouts = [];
     
     window.displayMode = { 'cons': 'qty', 'fixed': 'qty' };
     window.showOnlyShortage = false; 
@@ -432,7 +386,6 @@
 
     function fetchData() {
         onSnapshot(collection(db, "offices"), (s) => { globalOffices = s.docs.map(d => ({ id: d.id, ...d.data() })); populateOfficeSelects(); window.renderCurrentView(); });
-        onSnapshot(collection(db, "members"), (s) => { globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); window.renderCurrentView(); });
         onSnapshot(collection(db, "assets"), (s) => { globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); window.renderCurrentView(); });
         onSnapshot(collection(db, "asset_checkouts"), (s) => { 
             globalCheckouts = s.docs.map(d => ({ id: d.id, ...d.data() })); 
@@ -462,7 +415,6 @@
 
     window.toggleAllCheckboxes = (className, el) => { $$('.' + className).forEach(cb => cb.checked = el.checked); window.updateFloatingBar(); };
     window.toggleAllPreview = (el) => { $$('.cb-preview-row').forEach(cb => cb.checked = el.checked); };
-
     window.clearBatchSelection = () => { $$('.batch-checkbox').forEach(cb => cb.checked = false); window.updateFloatingBar(); };
 
     window.updateFloatingBar = () => {
@@ -471,6 +423,7 @@
         if (window.currentTab === 'registry') sel = Array.from($$('.cb-checkout-row:checked')).map(cb => cb.value);
 
         const bar = $('floating-batch-bar'); const countSpan = $('batch-sel-count');
+        if (!bar || !countSpan) return;
         if (sel.length > 0) { 
             countSpan.innerText = `已選擇 ${sel.length} 項`; bar.classList.add('show'); 
             if (window.currentTab === 'registry') {
@@ -483,7 +436,7 @@
 
     function getSelectedIds() { return window.currentTab === 'summary' ? Array.from($$('.cb-consumable-row:checked')).map(cb => cb.value) : []; }
 
-    // ======== ✨ 滿版圓環圖引擎 ========
+    // ======== ✨ 滿版圓環圖引擎 (使用安全 dataset 防字串污染) ========
     window.toggleDataDisplay = (type) => { window.displayMode[type] = window.displayMode[type] === 'qty' ? 'percent' : 'qty'; window.renderSummary(); };
 
     function drawSvgDonut(containerId, dataArray, totalValStr, percentValStr, centerLbl, typeKey) {
@@ -496,7 +449,7 @@
             dataArray.forEach((d, i) => {
                 if(d.value === 0) return; const pct = d.value / total; const dashArr = `${pct * C} ${C}`; const dashOff = - (acc / total) * C; const color = d.color || chartPalette[i % chartPalette.length];
                 let hoverVal = typeKey && window.displayMode[typeKey] === 'percent' ? Math.round(pct*100)+'%' : d.value; if(containerId === 'chart-shortage') hoverVal = d.value;
-                html += `<circle cx="100" cy="100" r="80" fill="none" stroke="${color}" stroke-width="30" stroke-dasharray="${dashArr}" stroke-dashoffset="${dashOff}" transform="rotate(-90 100 100)" style="transition: stroke-width 0.2s; cursor:pointer;" onmouseover="window.hoverSvgDonut(this, '${containerId}', '${d.label}', '${hoverVal}', '${color}')" onmouseout="window.outSvgDonut(this, '${containerId}')"><title>${d.label}: ${d.value}</title></circle>`; acc += d.value;
+                html += `<circle cx="100" cy="100" r="80" fill="none" stroke="${color}" stroke-width="30" stroke-dasharray="${dashArr}" stroke-dashoffset="${dashOff}" transform="rotate(-90 100 100)" style="transition: stroke-width 0.2s; cursor:pointer;" data-lbl="${d.label}" data-val="${hoverVal}" data-color="${color}" onmouseover="window.hoverSvgDonut(this, '${containerId}')" onmouseout="window.outSvgDonut(this, '${containerId}')"><title>${d.label}: ${d.value}</title></circle>`; acc += d.value;
             });
         }
         let displayVal = typeKey && window.displayMode[typeKey] === 'percent' ? percentValStr : totalValStr; if(containerId === 'chart-shortage') displayVal = totalValStr; 
@@ -504,8 +457,20 @@
         html += `<text id="${containerId}-val" x="100" y="95" text-anchor="middle" dominant-baseline="central" font-size="32" font-weight="bold" fill="var(--text-main)" style="pointer-events:none; transition:0.2s;">${displayVal}</text><text id="${containerId}-lbl" x="100" y="135" text-anchor="middle" dominant-baseline="central" font-size="13" fill="var(--text-muted)" style="pointer-events:none;">${centerLbl}</text></svg>`; c.innerHTML = html;
     }
 
-    window.hoverSvgDonut = (el, cid, lbl, val, color) => { el.setAttribute('stroke-width', '40'); const v = $(cid+'-val'), l = $(cid+'-lbl'); if(v) { v.textContent = val; v.setAttribute('fill', color); } if(l) l.textContent = lbl; };
-    window.outSvgDonut = (el, cid) => { el.setAttribute('stroke-width', '30'); const c = $(cid), v = $(cid+'-val'), l = $(cid+'-lbl'); if(v && c) { v.textContent = c.dataset.origVal; v.setAttribute('fill', 'var(--text-main)'); } if(l && c) l.textContent = c.dataset.origLbl; };
+    // 圓環滑鼠懸浮事件
+    window.hoverSvgDonut = (el, cid) => {
+        el.setAttribute('stroke-width', '40');
+        const v = $(cid+'-val'), l = $(cid+'-lbl');
+        if(v) { v.textContent = el.dataset.val; v.setAttribute('fill', el.dataset.color); }
+        if(l) l.textContent = el.dataset.lbl;
+    };
+    
+    window.outSvgDonut = (el, cid) => {
+        el.setAttribute('stroke-width', '30');
+        const c = $(cid), v = $(cid+'-val'), l = $(cid+'-lbl');
+        if(v && c) { v.textContent = c.dataset.origVal; v.setAttribute('fill', 'var(--text-main)'); }
+        if(l && c) l.textContent = c.dataset.origLbl;
+    };
 
     // ======== 視圖切換與渲染 ========
     window.switchTab = (tab) => {
@@ -658,7 +623,7 @@
                 <td><span style="font-weight:bold;">${c.borrower}</span></td>
                 <td style="font-family:monospace; color:var(--text-muted);">${c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '-'}</td>
                 <td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.remarks || '-'}</td>
-                <td><button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteCheckout('${c.id}', event)">🗑️</button></td>
+                <td><button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteSingleRecord('${c.id}', event)">🗑️</button></td>
             `;
             tb.appendChild(tr);
         });
@@ -763,7 +728,7 @@
                         <button class="btn-like ${liked ? 'liked' : ''}" onclick="window.toggleCheckoutLike('${rec.id}')">
                             ${liked ? '❤️' : '🤍'} ${rec.likes ? rec.likes.length : 0}
                         </button>
-                        <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteCheckout('${rec.id}', event)">🗑️ 刪除紀錄</button>
+                        <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteSingleRecord('${rec.id}', event)">🗑️ 刪除紀錄</button>
                     </div>
                 </div>`;
         }); 
@@ -825,6 +790,21 @@
         try { await Promise.all(ops); alert(`🎉 已刪除並返還庫存！`); window.clearBatchSelection(); } catch(e) { alert('錯誤：' + e.message); }
     };
 
+    window.deleteSingleRecord = async (rId, e) => {
+        if(e) e.stopPropagation(); if(!confirm('確定刪除此領用紀錄？\n(若為消耗品，扣除的庫存將自動返還)')) return;
+        const r = globalCheckouts.find(x => x.id === rId); if(!r) return;
+        
+        const ops = [];
+        const asset = globalAssets.find(a => a.id === r.assetId);
+        if (asset && asset.assetType === 'consumable') {
+            const newQty = (parseInt(asset.quantity)||0) + (parseInt(r.quantity)||0);
+            ops.push(updateDoc(doc(db, 'assets', asset.id), { quantity: newQty }));
+        }
+        ops.push(deleteDoc(doc(db, "asset_checkouts", rId)));
+        
+        try { await Promise.all(ops); alert('已刪除紀錄並返還庫存！'); } catch(err) { alert('刪除失敗'); }
+    };
+
     // ======== ✨ 匯入預覽系統 ========
     window.toggleSubmenu = (id, e) => { e.stopPropagation(); $$('.fab-submenu').forEach(s => { if(s.id!==id) s.classList.remove('open'); }); $(id).classList.toggle('open'); };
 
@@ -878,7 +858,10 @@
                 if (window.pendingImports.length > 0) { window.renderPreviewModal(); $('import-preview-modal-overlay').classList.add('active'); } else { alert('表格無有效資料'); }
             } catch(err) { alert('解析失敗：' + err.message); } finally { loader.style.display = 'none'; }
         }; reader.readAsArrayBuffer(file);
-        $('fab-container').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open'));
+        
+        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
+        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
     window.renderPreviewModal = () => {
@@ -995,7 +978,10 @@
             const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "在列資產總表");
             XLSX.writeFile(wb, `PMO_Assets_Export_${new Date().toISOString().slice(0,10)}.${type}`);
         }
-        $('fab-container').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open'));
+        
+        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
+        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
     window.openAssetModal = (id = null) => {
@@ -1025,8 +1011,67 @@
         try { if(window.currentEditAssetId) await updateDoc(doc(db, "assets", window.currentEditAssetId), data); else await addDoc(collection(db, "assets"), data); window.closeAssetModal(); window.clearBatchSelection(); } catch(e) { alert('儲存失敗：'+e.message); }
     };
 
-    window.addEventListener('click', () => { $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open')); $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { $$('.modal-overlay').forEach(m => m.classList.remove('active')); $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open')); $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active'));} });
+    window.openCheckoutModal = () => {
+        const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        $('checkout-date').value = now.toISOString().slice(0,16); $('checkout-borrower').value = currentUserProfile.name || ''; $('checkout-qty').value = 1; $('checkout-remarks').value = ''; $('checkout-asset-id').value = ''; $('checkout-location-id').value = ''; $('checkout-location').value = ''; $('disp-checkout-asset').innerText = '請搜尋並選擇資產...'; $('opt-checkout-asset-input').value = '';
+        window.renderCheckoutAssetList(); $('checkout-modal-overlay').classList.add('active');
+    };
+    window.closeCheckoutModal = () => $('checkout-modal-overlay').classList.remove('active');
+
+    window.renderCheckoutAssetList = () => {
+        const iv = $('opt-checkout-asset-input').value.toLowerCase().trim(); const ld = $('opt-checkout-asset-list'); ld.innerHTML = '';
+        const f = globalAssets.filter(a => (a.item||'').toLowerCase().includes(iv) || (a.sn||'').toLowerCase().includes(iv) || (a.tag||'').toLowerCase().includes(iv));
+        if(f.length === 0) return ld.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到資產</div>';
+        f.slice(0,50).forEach(a => {
+            const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未知辦公室'; const ty = a.assetType === 'consumable' ? '📦' : '📌';
+            const d = document.createElement('div'); d.className = 'dropdown-item'; d.innerHTML = `<span>${ty} ${a.item} <span style="font-size:11px; color:#94a3b8;">(${offName})</span></span>`;
+            d.onclick = (e) => { e.stopPropagation(); $('checkout-asset-id').value = a.id; $('disp-checkout-asset').innerText = `${ty} ${a.item}`; $('checkout-location-id').value = off ? off.id : ''; $('checkout-location').value = offName; $('opt-checkout-asset-panel').classList.remove('active'); window.autoFillCheckoutRemarks(); }; ld.appendChild(d);
+        });
+    };
+
+    window.autoFillCheckoutRemarks = () => {
+        const aId = $('checkout-asset-id').value; const oName = $('checkout-location').value; const bName = $('checkout-borrower').value.trim().toLowerCase();
+        if (!aId || !bName) return;
+        const past = globalCheckouts.find(c => { let matches = 0; if (c.assetId === aId) matches++; if (c.officeName === oName) matches++; if ((c.borrower||'').toLowerCase() === bName) matches++; return matches >= 2 && c.remarks; });
+        if (past && !$('checkout-remarks').value.trim()) $('checkout-remarks').value = past.remarks;
+    };
+
+    window.saveCheckout = async () => {
+        const aId = $('checkout-asset-id').value; const qty = parseInt($('checkout-qty').value); const borrower = $('checkout-borrower').value.trim(); const dStr = $('checkout-date').value; const rem = $('checkout-remarks').value.trim(); const locName = $('checkout-location').value;
+        if(!aId || !qty || !borrower || !dStr) return alert('資產、數量、領取人與日期皆為必填！');
+        const asset = globalAssets.find(a => a.id === aId); if(!asset) return alert('資產不存在！');
+        const checkoutData = { assetId: asset.id, assetName: asset.item || '未命名', assetType: asset.assetType || 'fixed', officeName: locName, quantity: qty, borrower: borrower, checkoutDate: dStr, remarks: rem, createdAt: new Date().toISOString(), creatorName: currentUserProfile.name, creatorEmail: currentUserProfile.email, creatorAvatar: currentUserProfile.avatar, likes: [] };
+        const btn = document.querySelector('#checkout-modal-overlay .btn-primary'); btn.disabled = true; btn.innerText = '登記中...';
+        try {
+            const ops = [];
+            if (asset.assetType === 'consumable') { const currentQty = parseInt(asset.quantity) || 0; const newQty = Math.max(0, currentQty - qty); ops.push(updateDoc(doc(db, 'assets', asset.id), { quantity: newQty })); }
+            ops.push(addDoc(collection(db, 'asset_checkouts'), checkoutData)); await Promise.all(ops); alert('🎉 領用登記成功！'); window.closeCheckoutModal();
+        } catch(e) { alert('登記失敗：' + e.message); } finally { btn.disabled = false; btn.innerText = '確認登記'; }
+    };
+
+    window.toggleFabMenu = (e) => { 
+        if(e) e.stopPropagation(); 
+        const c = $('fab-container'); if(c) c.classList.toggle('active'); 
+        const m = $('fab-menu'); if(m) m.classList.toggle('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+    };
+
+    window.addEventListener('click', () => { 
+        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
+        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+        $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
+    });
+    
+    window.addEventListener('keydown', (e) => { 
+        if (e.key === 'Escape') { 
+            $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
+            $$('.modal-overlay').forEach(m => m.classList.remove('active')); 
+            const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
+            const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
+            $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+        } 
+    });
 </script>
 </body>
 </html>

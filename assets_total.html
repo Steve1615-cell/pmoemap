@@ -51,7 +51,8 @@
         }
         .stat-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 8px 25px rgba(37,99,235,0.1); }
         .stat-card.active-filter { border-color: var(--danger); box-shadow: 0 4px 20px rgba(239,68,68,0.2); background: #fef2f2; }
-        .donut-chart-container { width: 100%; max-width: 220px; aspect-ratio: 1/1; position: relative; margin-bottom: 15px; }
+        /* 縮小寬度以確保 hover 感應精準 */
+        .donut-chart-container { width: 100%; max-width: 180px; aspect-ratio: 1/1; position: relative; margin-bottom: 15px; }
         .stat-title { font-size: 18px; font-weight: bold; color: var(--text-main); text-align: center; }
         .stat-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
 
@@ -160,7 +161,7 @@
     </div>
 </div>
 
-<!-- ✨ 懸浮動作列 -->
+<!-- ✨ 懸浮動作列 (含取消多選) -->
 <div id="floating-batch-bar">
     <button onclick="window.clearBatchSelection()" style="background:none; border:none; color:#64748b; font-weight:bold; cursor:pointer; text-decoration:underline; margin-right:10px;">❌ 取消多選</button>
     <span id="batch-sel-count" style="font-size:15px; font-weight:bold; color:var(--primary); margin-right:15px; border-right:2px solid #e2e8f0; padding-right:15px;">0 項</span>
@@ -170,11 +171,10 @@
 </div>
 
 <!-- FAB 右下角按鈕群 (含匯入預覽與匯出) -->
-<div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px;">
+<div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 9999;">
     <div class="fab-menu" id="fab-menu">
         <div style="position: relative; display: flex; align-items: center; justify-content: flex-end;">
             <div id="export-submenu" class="fab-submenu">
-                <!-- 直接用 SheetJS 匯出 XLSX 即可滿足 XLS/CSV 需求。若是 PDF 會叫出瀏覽器列印 -->
                 <button class="fab-item" onclick="window.exportAssets('pdf')">📄 匯出 PDF (列印)</button>
                 <button class="fab-item" onclick="window.exportAssets('xlsx')">📊 匯出 Excel / CSV</button>
             </div>
@@ -379,6 +379,7 @@
     window.toggleAllCheckboxes = (className, el) => { $$('.' + className).forEach(cb => cb.checked = el.checked); window.updateFloatingBar(); };
     window.toggleAllPreview = (el) => { $$('.cb-preview-row').forEach(cb => cb.checked = el.checked); };
 
+    // 取消多選
     window.clearBatchSelection = () => {
         $$('.batch-checkbox').forEach(cb => cb.checked = false);
         window.updateFloatingBar();
@@ -395,7 +396,7 @@
         return [];
     }
 
-    // ======== ✨ 滿版圓環圖引擎 ========
+    // ======== ✨ 滿版圓環圖引擎 (支援滑鼠懸浮變化) ========
     window.toggleDataDisplay = (type) => {
         window.displayMode[type] = window.displayMode[type] === 'qty' ? 'percent' : 'qty';
         window.renderSummary();
@@ -404,25 +405,52 @@
     function drawSvgDonut(containerId, dataArray, totalValStr, percentValStr, centerLbl, typeKey) {
         const c = $(containerId); if(!c) return;
         const total = dataArray.reduce((sum, d) => sum + d.value, 0);
-        let html = `<svg viewBox="0 0 200 200" style="width:100%; height:100%;">`;
+        let html = `<svg viewBox="0 0 200 200" style="width:100%; height:100%; overflow:visible;">`;
         
-        if (total === 0) { html += `<circle cx="100" cy="100" r="80" fill="none" stroke="#f1f5f9" stroke-width="40"></circle>`; } 
+        if (total === 0) { html += `<circle cx="100" cy="100" r="80" fill="none" stroke="#f1f5f9" stroke-width="30"></circle>`; } 
         else {
             let acc = 0; const C = 2 * Math.PI * 80; 
             dataArray.forEach((d, i) => {
-                if(d.value === 0) return; const pct = d.value / total; const dashArr = `${pct * C} ${C}`; const dashOff = - (acc / total) * C; const color = d.color || chartPalette[i % chartPalette.length];
-                html += `<circle cx="100" cy="100" r="80" fill="none" stroke="${color}" stroke-width="40" stroke-dasharray="${dashArr}" stroke-dashoffset="${dashOff}" transform="rotate(-90 100 100)" style="transition: stroke-width 0.2s;" onmouseover="this.setAttribute('stroke-width', '45')" onmouseout="this.setAttribute('stroke-width', '40')"><title>${d.label}: ${d.value}</title></circle>`;
+                if(d.value === 0) return; 
+                const pct = d.value / total; 
+                const dashArr = `${pct * C} ${C}`; 
+                const dashOff = - (acc / total) * C; 
+                const color = d.color || chartPalette[i % chartPalette.length];
+                
+                let hoverVal = typeKey && window.displayMode[typeKey] === 'percent' ? Math.round(pct*100)+'%' : d.value;
+                if(containerId === 'chart-shortage') hoverVal = d.value;
+
+                html += `<circle cx="100" cy="100" r="80" fill="none" stroke="${color}" stroke-width="30" stroke-dasharray="${dashArr}" stroke-dashoffset="${dashOff}" transform="rotate(-90 100 100)" style="transition: stroke-width 0.2s; cursor:pointer;" onmouseover="window.hoverSvgDonut(this, '${containerId}', '${d.label}', '${hoverVal}', '${color}')" onmouseout="window.outSvgDonut(this, '${containerId}')"><title>${d.label}: ${d.value}</title></circle>`;
                 acc += d.value;
             });
         }
         
         let displayVal = typeKey && window.displayMode[typeKey] === 'percent' ? percentValStr : totalValStr;
-        if(containerId === 'chart-shortage') displayVal = totalValStr; // 預設就是 % 字串
+        if(containerId === 'chart-shortage') displayVal = totalValStr; 
         
-        html += `<text x="100" y="95" text-anchor="middle" dominant-baseline="central" font-size="40" font-weight="bold" fill="var(--text-main)" style="pointer-events:none; transition:0.3s;">${displayVal}</text>`;
-        html += `<text x="100" y="135" text-anchor="middle" dominant-baseline="central" font-size="15" fill="var(--text-muted)" style="pointer-events:none;">${centerLbl}</text>`;
+        c.dataset.origVal = displayVal;
+        c.dataset.origLbl = centerLbl;
+
+        html += `<text id="${containerId}-val" x="100" y="95" text-anchor="middle" dominant-baseline="central" font-size="32" font-weight="bold" fill="var(--text-main)" style="pointer-events:none; transition:0.2s;">${displayVal}</text>`;
+        html += `<text id="${containerId}-lbl" x="100" y="135" text-anchor="middle" dominant-baseline="central" font-size="13" fill="var(--text-muted)" style="pointer-events:none;">${centerLbl}</text>`;
         html += `</svg>`; c.innerHTML = html;
     }
+
+    // 圓環滑鼠懸浮事件
+    window.hoverSvgDonut = (el, cid, lbl, val, color) => {
+        el.setAttribute('stroke-width', '40');
+        const v = $(cid+'-val'), l = $(cid+'-lbl');
+        if(v) { v.textContent = val; v.setAttribute('fill', color); }
+        if(l) l.textContent = lbl;
+    };
+    
+    window.outSvgDonut = (el, cid) => {
+        el.setAttribute('stroke-width', '30');
+        const c = $(cid);
+        const v = $(cid+'-val'), l = $(cid+'-lbl');
+        if(v && c) { v.textContent = c.dataset.origVal; v.setAttribute('fill', 'var(--text-main)'); }
+        if(l && c) l.textContent = c.dataset.origLbl;
+    };
 
     // ======== 視圖切換與渲染 ========
     window.switchTab = (tab) => {
@@ -502,7 +530,7 @@
             if (isLow) { qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--danger);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span><div style="color:var(--danger); font-size:11px; font-weight:bold; margin-top:4px;">⚠️ 需補 ${minT - qty}</div>`; }
 
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-consumable-row batch-checkbox" value="${a.id}"></td><td><span class="badge tag">${a.tag || '未分類'}</span></td><td><b style="font-size:15px; color:var(--text-main);">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td>${a.contactPerson || '-'}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td>`;
+            tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-consumable-row batch-checkbox" value="${a.id}"></td><td><span class="badge tag">${a.tag || '未分類'}</span></td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td>${a.contactPerson || '-'}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td>`;
             tb.appendChild(tr);
         });
         window.updateFloatingBar();
@@ -530,7 +558,7 @@
             let si = a.status === '正常' ? '🟢 正常' : a.status === '待修' ? '🔴 待修' : a.status === '報廢' ? '⚫ 報廢' : a.status === '碳粉不足' ? '🟡 碳粉不足' : '⚪ 其他';
 
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-fixed-row batch-checkbox" value="${a.id}"></td><td><span class="badge tag" style="background:#e0e7ff; color:#4f46e5;">${a.category || '其他'}</span></td><td><b style="font-size:15px; color:var(--primary);">${a.item || '未命名'}</b></td><td style="font-family:monospace; font-weight:bold; color:var(--danger);">${a.sn || 'N/A'}</td><td style="font-weight:bold;">${si}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td style="font-size:12px; color:var(--text-muted);">${a.category === '電腦' ? oName : '-'}</td>`;
+            tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-fixed-row batch-checkbox" value="${a.id}"></td><td><span class="badge tag" style="background:#e0e7ff; color:#4f46e5;">${a.category || '其他'}</span></td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;">${a.item || '未命名'}</b></td><td style="font-family:monospace; font-weight:bold; color:var(--danger);">${a.sn || 'N/A'}</td><td style="font-weight:bold;">${si}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td style="font-size:12px; color:var(--text-muted);">${a.category === '電腦' ? oName : '-'}</td>`;
             tb.appendChild(tr);
         });
         window.updateFloatingBar();
@@ -701,7 +729,14 @@
         let data = { office_id: off, assetType: aType };
         if (aType === 'fixed') { const cat = $('asset-category').value.trim() || '其他'; data = { ...data, type: 'public', category: cat, item: $('asset-item').value.trim() || cat, sn: $('asset-sn').value || 'N/A', status: $('asset-status').value, createdAt: new Date().toISOString() }; } 
         else { const item = $('consumable-item').value.trim(); if(!item) return alert('名稱必填！'); data = { ...data, item: item, tag: $('consumable-tag').value || '未分類', quantity: parseInt($('consumable-quantity').value) || 0, minThreshold: parseInt($('consumable-min').value) || 0, unit: $('consumable-unit').value || '個', contactPerson: $('consumable-contact').value || '無', remarks: $('consumable-remarks').value || '', createdAt: new Date().toISOString() }; }
-        try { if(window.currentEditAssetId) await updateDoc(doc(db, "assets", window.currentEditAssetId), data); else await addDoc(collection(db, "assets"), data); window.closeAssetModal(); } catch(e) { alert('儲存失敗：'+e.message); }
+        try { if(window.currentEditAssetId) await updateDoc(doc(db, "assets", window.currentEditAssetId), data); else await addDoc(collection(db, "assets"), data); window.closeAssetModal(); window.clearBatchSelection(); } catch(e) { alert('儲存失敗：'+e.message); }
+    };
+
+    window.toggleFabMenu = (e) => { 
+        if(e) e.stopPropagation(); 
+        const c = $('fab-container'); if(c) c.classList.toggle('active'); 
+        const m = $('fab-menu'); if(m) m.classList.toggle('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
     };
 
     window.addEventListener('click', () => { $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open')); });

@@ -32,7 +32,7 @@
         .batch-checkbox:checked { background: var(--primary); border-color: var(--primary); }
         .batch-checkbox:checked::after { content: '✔'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: bold; }
 
-        /* ✨ 滿版圓環儀表板 (維持單一橫列) */
+        /* 滿版圓環儀表板 */
         .stats-row { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 30px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; width: 100%; }
         .stat-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 250px; border: 2px solid transparent; transition: all 0.2s; cursor: pointer; }
         .stat-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 8px 25px rgba(37,99,235,0.1); }
@@ -41,7 +41,7 @@
         .stat-title { font-size: 18px; font-weight: bold; color: var(--text-main); text-align: center; }
         .stat-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
 
-        /* ✨ 懸浮批次操作列 */
+        /* 懸浮批次操作列 */
         #floating-batch-bar { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px); background: white; padding: 12px 25px; border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 4000; display: flex; gap: 15px; align-items: center; border: 1px solid #cbd5e1; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         #floating-batch-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
         
@@ -58,7 +58,6 @@
         .bar-chart-track { flex: 1; background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden; }
         .bar-chart-fill { background: var(--primary); height: 100%; border-radius: 4px; transition: width 0.5s ease; }
         .bar-chart-val { font-size: 11px; font-weight: bold; width: 30px; color: var(--text-muted); }
-
         .checkout-stats-wrapper { display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap; }
     </style>
 </head>
@@ -78,16 +77,6 @@
     </div>
     
     <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-        <div id="filter-container-wrapper" style="position: relative; display: none; margin-right: auto;">
-            <button class="btn-secondary" onclick="window.toggleFilterPanel(event)" id="filter-btn-text" style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer;">
-                🏷️ 專案過濾 (載入中...) ▼
-            </button>
-            <div class="custom-dropdown-panel" id="opt-filter-panel" style="position: absolute; top: 100%; left: 0; width: 300px; padding: 15px; z-index: 3100;" onclick="event.stopPropagation()">
-                <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px; font-weight:bold; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">☑️ 勾選顯示的專案</div>
-                <div id="filter-checkboxes" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;"></div>
-            </div>
-        </div>
-
         <div id="asset-sort-wrapper" style="display: flex; align-items: center; gap: 8px;">
             <label style="font-size: 14px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
             <select id="asset-sort-select" onchange="window.renderCurrentView()" style="border: none; outline: none; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
@@ -171,7 +160,7 @@
     </div>
 </div>
 
-<!-- ✨ 懸浮動作列 (含取消多選) -->
+<!-- 懸浮動作列 -->
 <div id="floating-batch-bar">
     <button onclick="window.clearBatchSelection()" style="background:none; border:none; color:#64748b; font-weight:bold; cursor:pointer; text-decoration:underline; margin-right:10px;">❌ 取消多選</button>
     <span id="batch-sel-count" style="font-size:15px; font-weight:bold; color:var(--primary); margin-right:15px; border-right:2px solid #e2e8f0; padding-right:15px;">0 項</span>
@@ -180,22 +169,11 @@
     <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>
 </div>
 
-<!-- ✨ FAB 右下角按鈕群 (絕對最高層) -->
+<!-- ✨ FAB 右下角按鈕群 (含更新版匯入與匯出面板) -->
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 9999;">
     <div class="fab-menu" id="fab-menu">
-        <div style="position: relative; display: flex; align-items: center; justify-content: flex-end;">
-            <div id="export-submenu" class="fab-submenu">
-                <button class="fab-item" onclick="window.exportAssets('pdf')">📄 匯出 PDF (列印)</button>
-                <button class="fab-item" onclick="window.exportAssets('xlsx')">📊 匯出 Excel / CSV</button>
-            </div>
-            <button class="fab-item" onclick="window.toggleSubmenu('export-submenu', event)">📤 匯出資料 ◀</button>
-        </div>
-        <div style="position: relative; display: flex; align-items: center; justify-content: flex-end;">
-            <div id="import-submenu" class="fab-submenu">
-                <button class="fab-item" onclick="document.getElementById('file-upload').click()">📥 選擇表格 (CSV/XLSX)</button>
-            </div>
-            <button class="fab-item" onclick="window.toggleSubmenu('import-submenu', event)">📥 匯入預覽 ◀</button>
-        </div>
+        <button class="fab-item" onclick="window.openExportModal()">📤 匯出資料中心</button>
+        <button class="fab-item" onclick="document.getElementById('file-upload').click()">📥 匯入外部表格 (CSV/XLSX)</button>
         <button class="fab-item" onclick="window.openAssetModal()">➕ 新增實體資產</button>
     </div>
     <button class="fab-btn" onclick="window.toggleFabMenu(event)">＋</button>
@@ -273,6 +251,32 @@
         <div class="form-group"><label>分類標籤/類別 (留空不改)</label><input type="text" id="preview-batch-category"></div>
         <div class="form-group"><label>最低安全庫存 (僅消耗品，留空不改)</label><input type="number" id="preview-batch-min" min="0"></div>
         <div class="modal-footer"><button class="btn-secondary" onclick="window.closePreviewBatchEditModal()">取消</button><button class="btn-primary" onclick="window.executePreviewBatchEdit()">修改暫存資料</button></div>
+    </div>
+</div>
+
+<!-- ================= ✨ Modal: 資料匯出中心 ================= -->
+<div id="export-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeExportModal()">
+    <div class="modal-content">
+        <div class="modal-header"><span>📤 匯出資料中心</span><button class="btn-close" onclick="window.closeExportModal()">×</button></div>
+        
+        <div class="form-group">
+            <label>1. 選擇匯出資料範圍：</label>
+            <select id="export-target-data" style="font-weight: bold; background: #f8fafc; border-color: var(--primary);">
+                <option value="assets">📦 總覽標籤頁 (所有資產與消耗品庫存)</option>
+                <option value="checkouts">📝 登記標籤頁 (物品出入庫與領用紀錄)</option>
+            </select>
+        </div>
+
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
+            <label style="display:block; font-size:13px; color:var(--text-muted); margin-bottom:10px; font-weight:bold;">2. 選擇匯出檔案格式：</label>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button class="btn-primary" onclick="window.executeExport('pdf')" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5;">📄 匯出 PDF (黑白列印排版)</button>
+                <button class="btn-primary" onclick="window.executeExport('xlsx')" style="background:#dcfce7; color:#065f46; border:1px solid #6ee7b7;">📊 匯出 Excel 表格 (.xlsx)</button>
+                <button class="btn-primary" onclick="window.executeExport('csv')" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;">📝 匯出純文字表格 (.csv)</button>
+            </div>
+        </div>
+
+        <div class="modal-footer"><button class="btn-secondary" onclick="window.closeExportModal()">關閉</button></div>
     </div>
 </div>
 
@@ -356,7 +360,7 @@
     const chartPalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#eab308'];
 
     let db, auth;
-    let globalAssets = [], globalOffices = [], globalCheckouts = [];
+    let globalAssets = [], globalOffices = [], globalMembers = [], globalCheckouts = [];
     
     window.displayMode = { 'cons': 'qty', 'fixed': 'qty' };
     window.showOnlyShortage = false; 
@@ -386,6 +390,7 @@
 
     function fetchData() {
         onSnapshot(collection(db, "offices"), (s) => { globalOffices = s.docs.map(d => ({ id: d.id, ...d.data() })); populateOfficeSelects(); window.renderCurrentView(); });
+        onSnapshot(collection(db, "members"), (s) => { globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); window.renderCurrentView(); });
         onSnapshot(collection(db, "assets"), (s) => { globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); window.renderCurrentView(); });
         onSnapshot(collection(db, "asset_checkouts"), (s) => { 
             globalCheckouts = s.docs.map(d => ({ id: d.id, ...d.data() })); 
@@ -436,7 +441,7 @@
 
     function getSelectedIds() { return window.currentTab === 'summary' ? Array.from($$('.cb-consumable-row:checked')).map(cb => cb.value) : []; }
 
-    // ======== ✨ 滿版圓環圖引擎 (使用安全 dataset 防字串污染) ========
+    // ======== ✨ 滿版圓環圖引擎 (使用安全 dataset) ========
     window.toggleDataDisplay = (type) => { window.displayMode[type] = window.displayMode[type] === 'qty' ? 'percent' : 'qty'; window.renderSummary(); };
 
     function drawSvgDonut(containerId, dataArray, totalValStr, percentValStr, centerLbl, typeKey) {
@@ -457,20 +462,8 @@
         html += `<text id="${containerId}-val" x="100" y="95" text-anchor="middle" dominant-baseline="central" font-size="32" font-weight="bold" fill="var(--text-main)" style="pointer-events:none; transition:0.2s;">${displayVal}</text><text id="${containerId}-lbl" x="100" y="135" text-anchor="middle" dominant-baseline="central" font-size="13" fill="var(--text-muted)" style="pointer-events:none;">${centerLbl}</text></svg>`; c.innerHTML = html;
     }
 
-    // 圓環滑鼠懸浮事件
-    window.hoverSvgDonut = (el, cid) => {
-        el.setAttribute('stroke-width', '40');
-        const v = $(cid+'-val'), l = $(cid+'-lbl');
-        if(v) { v.textContent = el.dataset.val; v.setAttribute('fill', el.dataset.color); }
-        if(l) l.textContent = el.dataset.lbl;
-    };
-    
-    window.outSvgDonut = (el, cid) => {
-        el.setAttribute('stroke-width', '30');
-        const c = $(cid), v = $(cid+'-val'), l = $(cid+'-lbl');
-        if(v && c) { v.textContent = c.dataset.origVal; v.setAttribute('fill', 'var(--text-main)'); }
-        if(l && c) l.textContent = c.dataset.origLbl;
-    };
+    window.hoverSvgDonut = (el, cid) => { el.setAttribute('stroke-width', '40'); const v = $(cid+'-val'), l = $(cid+'-lbl'); if(v) { v.textContent = el.dataset.val; v.setAttribute('fill', el.dataset.color); } if(l) l.textContent = el.dataset.lbl; };
+    window.outSvgDonut = (el, cid) => { el.setAttribute('stroke-width', '30'); const c = $(cid), v = $(cid+'-val'), l = $(cid+'-lbl'); if(v && c) { v.textContent = c.dataset.origVal; v.setAttribute('fill', 'var(--text-main)'); } if(l && c) l.textContent = c.dataset.origLbl; };
 
     // ======== 視圖切換與渲染 ========
     window.switchTab = (tab) => {
@@ -805,36 +798,51 @@
         try { await Promise.all(ops); alert('已刪除紀錄並返還庫存！'); } catch(err) { alert('刪除失敗'); }
     };
 
-    // ======== ✨ 匯入預覽系統 ========
+    // ======== ✨ 匯入預覽與防亂碼雙軌解碼系統 ========
     window.toggleSubmenu = (id, e) => { e.stopPropagation(); $$('.fab-submenu').forEach(s => { if(s.id!==id) s.classList.remove('open'); }); $(id).classList.toggle('open'); };
 
     window.handlePreviewImport = async (e) => {
         const file = e.target.files[0]; if (!file) return; e.target.value = '';
         const loader = $('loading-msg'); loader.innerHTML = '⏳ 正在解析表格...'; loader.style.display = 'block';
         
+        const fileExt = file.name.split('.').pop().toLowerCase();
         const reader = new FileReader();
+
         reader.onload = async (evt) => {
             try {
-                const data = new Uint8Array(evt.target.result); const workbook = XLSX.read(data, { type: 'array' });
+                let workbook;
+                // ✨ 解決台灣 Excel 匯出 CSV 造成的 Big5 亂碼問題
+                if (fileExt === 'csv') {
+                    const buffer = evt.target.result;
+                    let text = new TextDecoder('utf-8').decode(buffer);
+                    if (text.includes('') || text.match(/[\uFFFD]/)) {
+                        text = new TextDecoder('big5').decode(buffer);
+                    }
+                    workbook = XLSX.read(text, { type: 'string' });
+                } else {
+                    const data = new Uint8Array(evt.target.result); 
+                    workbook = XLSX.read(data, { type: 'array' });
+                }
+
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                let hi = rawRows.findIndex(row => row.some(cell => typeof cell === 'string' && (cell.includes('名稱') || cell.includes('編號') || cell.includes('item') || cell.includes('品名') || cell.includes('項目') || cell.includes('規格'))));
+                let hi = rawRows.findIndex(row => Array.isArray(row) && row.some(cell => typeof cell === 'string' && (cell.includes('名稱') || cell.includes('編號') || cell.includes('item') || cell.includes('品名') || cell.includes('項目') || cell.includes('規格'))));
                 if (hi === -1) hi = 0;
                 
                 const headers = rawRows[hi] || [];
-                const rows = rawRows.slice(hi + 1).map(row => { let obj = {}; headers.forEach((h, i) => { if (h !== undefined) obj[h.toString().trim()] = row[i]; }); return obj; });
+                const rows = rawRows.slice(hi + 1).map(row => { let obj = {}; headers.forEach((h, i) => { if (h !== undefined && h !== '') obj[h.toString().trim()] = row[i]; }); return obj; });
 
-                const isCheckoutFile = headers.some(h => String(h).includes('出庫') || String(h).includes('領取'));
+                const isCheckoutFile = headers.some(h => String(h).includes('出庫') || String(h).includes('領取') || String(h).includes('領用'));
                 $('import-target-type').value = isCheckoutFile ? 'checkouts' : 'assets';
                 
                 window.pendingImports = []; const seenFixedItems = new Set();
-                const getVal = (r, possibleKeys) => { for (let pk of possibleKeys) { const foundKey = Object.keys(r).find(k => k.toLowerCase().includes(pk.toLowerCase())); if (foundKey && r[foundKey] !== undefined) return String(r[foundKey]).trim(); } return ''; };
+                const getVal = (r, possibleKeys) => { for (let pk of possibleKeys) { const foundKey = Object.keys(r).find(k => k.toLowerCase().includes(pk.toLowerCase())); if (foundKey && r[foundKey] !== undefined && r[foundKey] !== '') return String(r[foundKey]).trim(); } return ''; };
 
                 rows.forEach(r => {
-                    const item = getVal(r, ['機台名稱', '設備名稱', '物品名稱', '品名', '名稱', '消耗品名稱', '資產名稱', 'item', '編號', '項目']);
+                    const item = getVal(r, ['物品名稱', '機台名稱', '設備名稱', '品名', '名稱', '消耗品名稱', '資產名稱', 'item', '編號', '項目']);
                     if (!item) return;
 
-                    const isCons = Object.keys(r).some(k => k.includes('數量') || k.includes('單位') || k.includes('消耗'));
+                    const isCons = Object.keys(r).some(k => k.includes('數量') || k.includes('單位') || k.includes('消耗') || k.includes('庫存'));
                     if (!isCons && !isCheckoutFile) { if (seenFixedItems.has(item)) return; seenFixedItems.add(item); }
 
                     const p = { 
@@ -849,15 +857,16 @@
                         checkoutDate: getVal(r, ['日期', '時間', '檢查時間']) || new Date().toISOString().slice(0,16).replace('T',' '),
                         officeName: getVal(r, ['存放位置', '地點', '辦公室', '庫房']) || '未知',
                         
-                        tag: getVal(r, ['標籤', '分類', '類別']), quantity: parseInt(getVal(r, ['數量', '庫存', '入庫', 'qty'])) || 0, unit: getVal(r, ['單位', 'unit']) || '個', minThreshold: parseInt(getVal(r, ['最低', '安全', '不足', 'min'])) || 0, contactPerson: getVal(r, ['聯絡人', '負責人', 'contact']), remarks: getVal(r, ['備註', '說明', 'remark']),
+                        tag: getVal(r, ['標籤', '分類', '類別']), quantity: parseInt(getVal(r, ['庫存數量', '數量', '庫存', '入庫', 'qty'])) || 0, unit: getVal(r, ['單位', 'unit']) || '個', minThreshold: parseInt(getVal(r, ['最低庫存量', '最低', '安全', '不足', 'min'])) || 0, contactPerson: getVal(r, ['聯絡人', '負責人', 'contact']), remarks: getVal(r, ['備註', '說明', 'remark']),
                         category: getVal(r, ['類型', '分類', '類別', '項目', 'category']) || '其他', sn: getVal(r, ['SN', '資產編號', '序號', '編號']) || 'N/A', status: getVal(r, ['狀態', 'status']) || '正常'
                     };
                     window.pendingImports.push(p);
                 });
                 
-                if (window.pendingImports.length > 0) { window.renderPreviewModal(); $('import-preview-modal-overlay').classList.add('active'); } else { alert('表格無有效資料'); }
+                if (window.pendingImports.length > 0) { window.renderPreviewModal(); $('import-preview-modal-overlay').classList.add('active'); } else { alert('表格無有效資料，請確認標題列是否包含「名稱」或「編號」等關鍵字。'); }
             } catch(err) { alert('解析失敗：' + err.message); } finally { loader.style.display = 'none'; }
-        }; reader.readAsArrayBuffer(file);
+        }; 
+        if(fileExt === 'csv') reader.readAsArrayBuffer(file); else reader.readAsArrayBuffer(file);
         
         const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
         const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
@@ -953,32 +962,59 @@
         }
     };
 
-    // ======== ✨ 匯出 PDF/CSV/XLSX 系統 ========
-    window.exportAssets = (type) => {
-        const aoa = [["資產屬性", "類別/標籤", "名稱", "編號/庫存", "單位", "存放辦公室", "狀態", "最低安全庫存", "備註"]];
-        let consQty = 0, fixedCnt = 0, shortCnt = 0;
-        
-        globalAssets.forEach(a => {
-            const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配';
-            if (a.assetType === 'consumable') {
-                consQty += (parseInt(a.quantity)||0); const m = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; if(m > 0 && (parseInt(a.quantity)||0) < m) shortCnt++;
-                aoa.push(["消耗品", a.tag||'未分類', a.item, a.quantity||0, a.unit||'個', offName, '-', m, a.remarks||'-']);
-            } else {
-                fixedCnt++; aoa.push(["固定資產", a.category||'其他', a.item||'未命名', a.sn||'N/A', '-', offName, a.status||'正常', '-', '-']);
-            }
-        });
+    // ======== ✨ 匯出中心 (PDF/CSV/XLSX) ========
+    window.openExportModal = () => { $('export-modal-overlay').classList.add('active'); };
+    window.closeExportModal = () => { $('export-modal-overlay').classList.remove('active'); };
 
-        if (type === 'pdf') {
-            let html = `<html><head><title>在列資產總表</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;} .summary{margin-top:20px; font-weight:bold; font-size:14px;}</style></head><body><h1>📦 在列資產總表</h1><table>`;
-            aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
-            html += `</table><div class="summary"><p>📊 統計總結</p><ul><li>📦 消耗品總庫存：${consQty} 件</li><li>📌 固定資產總數：${fixedCnt} 件</li><li>⚠️ 不足品項數：${shortCnt} 項</li></ul></div></body></html>`;
-            const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
-        } else {
-            aoa.push([]); aoa.push(["📊 統計總結"]); aoa.push(["📦 消耗品總庫存", consQty]); aoa.push(["📌 固定資產總數", fixedCnt]); aoa.push(["⚠️ 不足品項數", shortCnt]);
-            const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "在列資產總表");
-            XLSX.writeFile(wb, `PMO_Assets_Export_${new Date().toISOString().slice(0,10)}.${type}`);
+    window.executeExport = (format) => {
+        const target = $('export-target-data').value;
+        let aoa = []; let filename = `PMO_Export_${new Date().toISOString().slice(0,10)}`;
+
+        if (target === 'assets') {
+            filename = `PMO_在列資產總表_${new Date().toISOString().slice(0,10)}`;
+            aoa = [["資產屬性", "類別/標籤", "名稱", "編號/庫存", "單位", "存放辦公室", "狀態", "最低安全庫存", "備註"]];
+            let consQty = 0, fixedCnt = 0, shortCnt = 0;
+            
+            globalAssets.forEach(a => {
+                const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配';
+                if (a.assetType === 'consumable') {
+                    consQty += (parseInt(a.quantity)||0); const m = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; if(m > 0 && (parseInt(a.quantity)||0) < m) shortCnt++;
+                    aoa.push(["消耗品", a.tag||'未分類', a.item, a.quantity||0, a.unit||'個', offName, '-', m, a.remarks||'-']);
+                } else {
+                    fixedCnt++; aoa.push(["固定資產", a.category||'其他', a.item||'未命名', a.sn||'N/A', '-', offName, a.status||'正常', '-', '-']);
+                }
+            });
+
+            if (format === 'pdf') {
+                let html = `<html><head><title>在列資產總表</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;} .summary{margin-top:20px; font-weight:bold; font-size:14px;}</style></head><body><h1>📦 在列資產總表</h1><table>`;
+                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
+                html += `</table><div class="summary"><p>📊 統計總結</p><ul><li>📦 消耗品總庫存：${consQty} 件</li><li>📌 固定資產總數：${fixedCnt} 件</li><li>⚠️ 不足品項數：${shortCnt} 項</li></ul></div></body></html>`;
+                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
+                window.closeExportModal(); return;
+            } else {
+                aoa.push([]); aoa.push(["📊 統計總結"]); aoa.push(["📦 消耗品總庫存", consQty]); aoa.push(["📌 固定資產總數", fixedCnt]); aoa.push(["⚠️ 不足品項數", shortCnt]);
+            }
+        } else if (target === 'checkouts') {
+            filename = `PMO_領用登記紀錄_${new Date().toISOString().slice(0,10)}`;
+            aoa = [["物品名稱", "資產屬性", "出庫數量", "存放辦公室", "領取人", "日期時間", "備註"]];
+            
+            globalCheckouts.forEach(c => {
+                const ty = c.assetType === 'consumable' ? '消耗品' : '固定資產';
+                aoa.push([c.assetName, ty, c.quantity || 1, c.officeName, c.borrower, c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '', c.remarks || '-']);
+            });
+
+            if (format === 'pdf') {
+                let html = `<html><head><title>領用登記紀錄</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;}</style></head><body><h1>📝 領用登記紀錄</h1><table>`;
+                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
+                html += `</table></body></html>`;
+                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
+                window.closeExportModal(); return;
+            }
         }
-        
+
+        const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "匯出資料");
+        XLSX.writeFile(wb, `${filename}.${format}`);
+        window.closeExportModal();
         const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
         const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
         $$('.fab-submenu').forEach(s => s.classList.remove('open'));

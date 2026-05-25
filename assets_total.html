@@ -20,7 +20,7 @@
         .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.2); }
 
         .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .tab-btn { padding: 10px 30px; background: white; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; color: var(--text-muted); }
+        .tab-btn { position: relative; padding: 10px 30px; background: white; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; color: var(--text-muted); }
         .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
         
         .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
@@ -51,7 +51,6 @@
         }
         .stat-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 8px 25px rgba(37,99,235,0.1); }
         .stat-card.active-filter { border-color: var(--danger); box-shadow: 0 4px 20px rgba(239,68,68,0.2); background: #fef2f2; }
-        /* 縮小寬度以確保 hover 感應精準 */
         .donut-chart-container { width: 100%; max-width: 180px; aspect-ratio: 1/1; position: relative; margin-bottom: 15px; }
         .stat-title { font-size: 18px; font-weight: bold; color: var(--text-main); text-align: center; }
         .stat-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
@@ -68,9 +67,21 @@
         .fab-submenu { position: absolute; right: 100%; margin-right: 15px; display: flex; gap: 10px; white-space: nowrap; transition: all 0.3s ease; opacity: 0; transform: translateX(20px); pointer-events: none; }
         .fab-submenu.open { opacity: 1; transform: translateX(0); pointer-events: auto; }
         
-        /* 預覽模式 Modal 專屬全螢幕 */
         #import-preview-modal-overlay .modal-content { max-width: 95vw; height: 90vh; display: flex; flex-direction: column; }
         #import-preview-modal-overlay .table-container { flex: 1; overflow: auto; margin-top: 15px; border: 1px solid #e2e8f0; }
+
+        /* 貼文紅點 */
+        #feed-unread-badge {
+            position: absolute; top: -5px; right: -5px; width: 14px; height: 14px;
+            background-color: var(--danger); border-radius: 50%; border: 2px solid white; display: none;
+        }
+
+        /* 統計直條圖 */
+        .bar-chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .bar-chart-label { width: 80px; font-size: 11px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+        .bar-chart-track { flex: 1; background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden; }
+        .bar-chart-fill { background: var(--primary); height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+        .bar-chart-val { font-size: 11px; font-weight: bold; width: 30px; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -85,11 +96,21 @@
     <div class="tabs">
         <button id="tab-btn-summary" class="tab-btn" onclick="window.switchTab('summary')">📊 總覽</button>
         <button id="tab-btn-registry" class="tab-btn" onclick="window.switchTab('registry')">📝 登記</button>
-        <button id="tab-btn-feed" class="tab-btn" onclick="window.switchTab('feed')">💬 貼文</button>
+        <button id="tab-btn-feed" class="tab-btn" onclick="window.switchTab('feed')">💬 貼文 <span id="feed-unread-badge"></span></button>
     </div>
     
     <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div id="filter-container-wrapper" style="position: relative; display: none; margin-right: auto;">
+            <button class="btn-secondary" onclick="window.toggleFilterPanel(event)" id="filter-btn-text" style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer;">
+                🏷️ 專案過濾 (載入中...) ▼
+            </button>
+            <div class="custom-dropdown-panel" id="opt-filter-panel" style="position: absolute; top: 100%; left: 0; width: 300px; padding: 15px; z-index: 3100;" onclick="event.stopPropagation()">
+                <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px; font-weight:bold; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">☑️ 勾選顯示的專案</div>
+                <div id="filter-checkboxes" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;"></div>
+            </div>
+        </div>
+
+        <div id="asset-sort-wrapper" style="display: flex; align-items: center; gap: 8px;">
             <label style="font-size: 14px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
             <select id="asset-sort-select" onchange="window.renderCurrentView()" style="border: none; outline: none; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
                 <option value="time">🕒 依登錄時間</option>
@@ -102,7 +123,7 @@
 
     <div id="loading-msg" style="text-align: center; color: var(--text-muted); padding: 50px; font-size: 18px;">⏳ 資料讀取與連線中...</div>
 
-    <!-- 視圖 1：總覽 -->
+    <!-- ================= 視圖 1：總覽 (不變) ================= -->
     <div id="view-summary" class="view">
         <div class="stats-row">
             <div class="stat-card" onclick="window.toggleDataDisplay('cons')">
@@ -136,28 +157,54 @@
         </div>
     </div>
     
-    <!-- 視圖 2：登記 -->
+    <!-- ================= 視圖 2：登記 (改為領用紀錄表) ================= -->
     <div id="view-registry" class="view">
-        <div style="font-size: 13px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">💡 提示：按住滑鼠左鍵並拖曳表格的列，可快速多重選取打勾。</div>
+        <!-- 頂部領用登記與柱狀圖統計區 -->
+        <div style="display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap;">
+            <div style="text-align:center;">
+                <button class="btn-primary" style="font-size:18px; padding:15px 30px; border-radius:30px; box-shadow:0 4px 15px rgba(37,99,235,0.3);" onclick="window.openCheckoutModal()">📝 領用登記</button>
+            </div>
+            
+            <div style="flex:1; border-left:2px dashed #cbd5e1; padding-left:20px; min-width:300px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <div style="font-weight:bold; color:var(--text-main); font-size:16px;">📊 借用狀態統計</div>
+                    <select id="checkout-stats-range" onchange="window.renderCheckoutStats()" style="border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; font-size:13px; outline:none; font-weight:bold; color:var(--primary); cursor:pointer;">
+                        <option value="month">本月</option><option value="week">當週</option><option value="day">今日</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:25px; align-items:center;">
+                    <div style="text-align:center; padding-right:25px; border-right:1px solid #e2e8f0;">
+                        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;" id="lbl-stats-total">本月領用總數</div>
+                        <div id="stats-total-qty" style="font-size:32px; font-weight:bold; color:var(--primary); line-height:1;">0</div>
+                    </div>
+                    <div id="stats-top-items" style="flex:1; display:flex; flex-direction:column; gap:6px;">
+                        <!-- 柱狀圖將渲染於此 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="table-container">
             <table class="notion-table">
                 <thead>
                     <tr>
-                        <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-fixed" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-fixed-row', this)"></th>
-                        <th>🏷️ 類型</th><th>Aa 名稱</th><th>🔢 SN編號</th><th>🚦 狀態</th><th>🏢 存放辦公室</th><th>👤 備註/使用者</th>
+                        <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-checkout" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-checkout-row', this)"></th>
+                        <th>Aa 名稱</th><th>🏢 存放辦公室</th><th>🔢 出庫數量</th><th>👤 領取人</th>
+                        <th style="cursor:pointer; color:var(--primary); transition:0.2s;" onclick="window.toggleCheckoutSort()" title="點擊切換新舊排序">📅 日期 <span id="checkout-sort-icon">⬇</span></th>
+                        <th>📝 備註</th><th>🗑️ 刪除</th>
                     </tr>
                 </thead>
-                <tbody id="fixed-tbody"></tbody>
+                <tbody id="checkout-tbody"></tbody>
             </table>
         </div>
     </div>
 
-    <!-- 視圖 3：貼文 -->
+    <!-- ================= 視圖 3：貼文 ================= -->
     <div id="view-feed" class="view">
-        <div style="text-align:center; padding:50px; color:#94a3b8; background:white; border-radius:12px; border:1px dashed #cbd5e1;">
-            <h3>💬 綜合資產動態牆</h3>
-            <p>這裡未來將匯入系統內所有機車、攝影機與庫存異動的最新日誌貼文。</p>
+        <div style="margin-bottom:20px;">
+            <button class="btn-primary" style="font-size:16px; padding:10px 25px; border-radius:30px; box-shadow:0 4px 10px rgba(37,99,235,0.2);" onclick="window.openCheckoutModal()">📝 領用登記</button>
         </div>
+        <div class="board-container" id="feed-board" style="flex-wrap: wrap; justify-content:center;"></div>
     </div>
 </div>
 
@@ -180,19 +227,64 @@
             </div>
             <button class="fab-item" onclick="window.toggleSubmenu('export-submenu', event)">📤 匯出資料 ◀</button>
         </div>
-        
         <div style="position: relative; display: flex; align-items: center; justify-content: flex-end;">
             <div id="import-submenu" class="fab-submenu">
                 <button class="fab-item" onclick="document.getElementById('file-upload').click()">📥 選擇表格 (CSV/XLSX)</button>
             </div>
             <button class="fab-item" onclick="window.toggleSubmenu('import-submenu', event)">📥 匯入預覽 ◀</button>
         </div>
-        
         <button class="fab-item" onclick="window.openAssetModal()">➕ 新增實體資產</button>
     </div>
     <button class="fab-btn" onclick="window.toggleFabMenu(event)">＋</button>
 </div>
 <input type="file" id="file-upload" accept=".xlsx, .xls, .csv" style="display:none;" onchange="window.handlePreviewImport(event)">
+
+<!-- ================= Modal: 領用登記表單 ================= -->
+<div id="checkout-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeCheckoutModal()">
+    <div class="modal-content" style="overflow: visible;">
+        <div class="modal-header"><span>📝 領用登記</span><button class="btn-close" onclick="window.closeCheckoutModal()">×</button></div>
+        
+        <div class="form-group">
+            <label>名稱 (選擇在列資產)</label>
+            <div class="custom-dropdown-btn" onclick="window.toggleDropdown('opt-checkout-asset', event)">
+                <span id="disp-checkout-asset">請搜尋並選擇資產...</span><span style="font-size: 12px; color: var(--text-muted);">▼</span>
+            </div>
+            <input type="hidden" id="checkout-asset-id" value="">
+            <div class="custom-dropdown-panel" id="opt-checkout-asset-panel" onclick="event.stopPropagation()">
+                <div class="dropdown-search-row">
+                    <input type="text" id="opt-checkout-asset-input" placeholder="🔍 搜尋資產名稱或編號..." oninput="window.renderCheckoutAssetList()">
+                </div>
+                <div class="dropdown-list" id="opt-checkout-asset-list"></div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>存放辦公室 (鎖定)</label>
+            <input type="text" id="checkout-location" disabled style="background:#f8fafc; color:#64748b; font-weight:bold;" placeholder="選擇資產後自動帶入">
+            <input type="hidden" id="checkout-location-id" value="">
+        </div>
+
+        <div class="form-group" style="display:flex; gap:10px;">
+            <div style="flex:1;"><label>出庫數量</label><input type="number" id="checkout-qty" value="1" min="1"></div>
+            <div style="flex:2;">
+                <label>領取人</label>
+                <input type="text" id="checkout-borrower" placeholder="輸入領取人姓名" oninput="window.autoFillCheckoutRemarks()">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>日期時間</label>
+            <input type="datetime-local" id="checkout-date">
+        </div>
+
+        <div class="form-group">
+            <label>備註 (智慧帶入前例)</label>
+            <textarea id="checkout-remarks" rows="2" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; resize:vertical;" placeholder="可自由修改補充說明..."></textarea>
+        </div>
+
+        <div class="modal-footer"><button class="btn-secondary" onclick="window.closeCheckoutModal()">取消</button><button class="btn-primary" onclick="window.saveCheckout()">確認登記</button></div>
+    </div>
+</div>
 
 <!-- ================= Modal: 匯入預覽所 (全螢幕) ================= -->
 <div id="import-preview-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeImportPreviewModal()">
@@ -210,10 +302,7 @@
         <div class="table-container">
             <table class="notion-table">
                 <thead>
-                    <tr>
-                        <th style="width:40px;"><input type="checkbox" id="cb-preview-all" class="batch-checkbox" onchange="window.toggleAllPreview(this)"></th>
-                        <th>類型</th><th>名稱</th><th>庫存/SN</th><th>辦公室</th><th>標籤/類別</th>
-                    </tr>
+                    <tr><th style="width:40px;"><input type="checkbox" id="cb-preview-all" class="batch-checkbox" onchange="window.toggleAllPreview(this)"></th><th>類型</th><th>名稱</th><th>庫存/SN</th><th>辦公室</th><th>標籤/類別</th></tr>
                 </thead>
                 <tbody id="preview-tbody"></tbody>
             </table>
@@ -226,16 +315,10 @@
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header"><span>✏️ 批次修改預覽清單</span><button class="btn-close" onclick="window.closePreviewBatchEditModal()">×</button></div>
         <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px;" id="preview-batch-edit-hint"></div>
-        <div class="form-group">
-            <label>將所屬辦公室修改為：(留空不改)</label>
-            <select id="preview-batch-office" style="background: #f8fafc; border-color: var(--primary);"></select>
-        </div>
+        <div class="form-group"><label>將所屬辦公室修改為：(留空不改)</label><select id="preview-batch-office" style="background: #f8fafc; border-color: var(--primary);"></select></div>
         <div class="form-group"><label>分類標籤/類別 (留空不改)</label><input type="text" id="preview-batch-category"></div>
         <div class="form-group"><label>最低安全庫存 (僅消耗品，留空不改)</label><input type="number" id="preview-batch-min" min="0"></div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="window.closePreviewBatchEditModal()">取消</button>
-            <button class="btn-primary" onclick="window.executePreviewBatchEdit()">修改暫存資料</button>
-        </div>
+        <div class="modal-footer"><button class="btn-secondary" onclick="window.closePreviewBatchEditModal()">取消</button><button class="btn-primary" onclick="window.executePreviewBatchEdit()">修改暫存資料</button></div>
     </div>
 </div>
 
@@ -263,12 +346,7 @@
         </div>
 
         <div id="batch-edit-fixed-fields" style="display:none;">
-            <div class="form-group">
-                <label>設備狀態 (保留原始選擇則不修改)</label>
-                <select id="batch-edit-status">
-                    <option value="">-- 不修改 --</option><option value="正常">🟢 正常</option><option value="碳粉不足">🟡 碳粉不足</option><option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option>
-                </select>
-            </div>
+            <div class="form-group"><label>設備狀態 (保留原始選擇則不修改)</label><select id="batch-edit-status"><option value="">-- 不修改 --</option><option value="正常">🟢 正常</option><option value="碳粉不足">🟡 碳粉不足</option><option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option></select></div>
             <div class="form-group"><label>變更資產類型 (保留空白不修改)</label><input type="text" id="batch-edit-category" placeholder="輸入新類型 (例如：攝影機)"></div>
         </div>
 
@@ -305,10 +383,7 @@
         <div id="consumable-asset-fields" style="display:none;">
             <div class="form-group"><label>消耗品名稱</label><input type="text" id="consumable-item" placeholder="例如：A4 影印紙 (必填)"></div>
             <div class="form-group"><label>分類標籤</label><input type="text" id="consumable-tag" placeholder="例如：文具、清潔用品 (選填)"></div>
-            <div class="form-group" style="display:flex; gap: 10px;">
-                <div style="flex:2;"><label>目前庫存</label><input type="number" id="consumable-quantity" placeholder="0" min="0"></div>
-                <div style="flex:1;"><label>單位</label><input type="text" id="consumable-unit" placeholder="箱/包"></div>
-            </div>
+            <div class="form-group" style="display:flex; gap: 10px;"><div style="flex:2;"><label>目前庫存</label><input type="number" id="consumable-quantity" placeholder="0" min="0"></div><div style="flex:1;"><label>單位</label><input type="text" id="consumable-unit" placeholder="箱/包"></div></div>
             <div class="form-group" style="background:#fff7ed; padding:8px; border-radius:6px; border:1px solid #fef08a;">
                 <label style="color:#b45309;">⚠️ 最低安全庫存 (0或空白即不警告)</label>
                 <input type="number" id="consumable-min" placeholder="預設: 10" min="0" style="border-color:#fef08a;">
@@ -330,11 +405,14 @@
     const chartPalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#eab308'];
 
     let db, auth;
-    let globalAssets = [], globalOffices = [], globalMembers = [];
+    let globalAssets = [], globalOffices = [], globalMembers = [], globalCheckouts = [];
     
     window.displayMode = { 'cons': 'qty', 'fixed': 'qty' };
     window.showOnlyShortage = false; 
     window.pendingImports = []; 
+    window.currentEditAssetId = null;
+    window.registrySortOrder = 'desc'; // 登記紀錄排序：desc(新到舊), asc(舊到新)
+    window.lastFeedTime = parseInt(localStorage.getItem('pmo_last_feed_time') || '0');
 
     const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
     if (isRealEnvironment) { import('./js/firebase-config.js').then(m => { db = m.db; auth = m.auth; initializeApp(); }).catch(e => showError('載入設定檔失敗：' + e.message)); } 
@@ -342,11 +420,14 @@
 
     function showError(msg) { if($('loading-msg')) { $('loading-msg').innerHTML = msg; $('loading-msg').style.color = 'var(--danger)'; } }
 
+    let currentUserProfile = {};
+
     function initializeApp() {
         onAuthStateChanged(auth, (user) => {
             if (!user) { $('loading-msg').innerHTML = `⛔ 尚未登入，請回首頁登入！`; $('loading-msg').style.color = 'var(--danger)'; return; }
-            $('loading-msg').style.display = 'none'; fetchData(); initDragSelect();
-            
+            $('loading-msg').style.display = 'none'; 
+            currentUserProfile = { name: user.displayName || '訪客', email: user.email || 'anonymous', avatar: user.photoURL || 'https://via.placeholder.com/32' };
+            fetchData(); initDragSelect();
             const savedTab = localStorage.getItem('assets_total_tab') || 'summary';
             window.switchTab(savedTab);
         });
@@ -356,6 +437,19 @@
         onSnapshot(collection(db, "offices"), (s) => { globalOffices = s.docs.map(d => ({ id: d.id, ...d.data() })); populateOfficeSelects(); window.renderCurrentView(); });
         onSnapshot(collection(db, "members"), (s) => { globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); window.renderCurrentView(); });
         onSnapshot(collection(db, "assets"), (s) => { globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); window.renderCurrentView(); });
+        
+        // ✨ 新增：監聽領用紀錄庫
+        onSnapshot(collection(db, "asset_checkouts"), (s) => { 
+            globalCheckouts = s.docs.map(d => ({ id: d.id, ...d.data() })); 
+            
+            // 未讀紅點判斷
+            const latestTime = Math.max(...globalCheckouts.map(r => new Date(r.createdAt).getTime()), 0);
+            if (latestTime > window.lastFeedTime && window.currentTab !== 'feed') {
+                const b = $('feed-unread-badge'); if(b) b.style.display = 'block';
+            }
+
+            if(window.currentTab === 'registry' || window.currentTab === 'feed') window.renderCurrentView(); 
+        });
     }
 
     function populateOfficeSelects() {
@@ -379,115 +473,92 @@
     window.toggleAllCheckboxes = (className, el) => { $$('.' + className).forEach(cb => cb.checked = el.checked); window.updateFloatingBar(); };
     window.toggleAllPreview = (el) => { $$('.cb-preview-row').forEach(cb => cb.checked = el.checked); };
 
-    // 取消多選
-    window.clearBatchSelection = () => {
-        $$('.batch-checkbox').forEach(cb => cb.checked = false);
-        window.updateFloatingBar();
-    };
+    window.clearBatchSelection = () => { $$('.batch-checkbox').forEach(cb => cb.checked = false); window.updateFloatingBar(); };
 
     window.updateFloatingBar = () => {
-        const sel = getSelectedIds(); const bar = $('floating-batch-bar'); const countSpan = $('batch-sel-count');
-        if (sel.length > 0) { countSpan.innerText = `已選擇 ${sel.length} 項`; bar.classList.add('show'); } else { bar.classList.remove('show'); }
+        let sel = [];
+        if (window.currentTab === 'summary') sel = Array.from($$('.cb-consumable-row:checked')).map(cb => cb.value);
+        // 領用紀錄暫不支援批次編輯資產，故隱藏操作列，或另外處理批次刪除
+        if (window.currentTab === 'registry') sel = Array.from($$('.cb-checkout-row:checked')).map(cb => cb.value);
+
+        const bar = $('floating-batch-bar'); const countSpan = $('batch-sel-count');
+        if (sel.length > 0) { 
+            countSpan.innerText = `已選擇 ${sel.length} 項`; bar.classList.add('show'); 
+            // 領用紀錄的批次列只保留刪除和取消
+            if (window.currentTab === 'registry') {
+                bar.innerHTML = `<button onclick="window.clearBatchSelection()" style="background:none; border:none; color:#64748b; font-weight:bold; cursor:pointer; text-decoration:underline; margin-right:10px;">❌ 取消多選</button><span id="batch-sel-count" style="font-size:15px; font-weight:bold; color:var(--primary); margin-right:15px; border-right:2px solid #e2e8f0; padding-right:15px;">已選擇 ${sel.length} 項</span><button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteCheckouts()">🗑️ 刪除紀錄</button>`;
+            } else {
+                bar.innerHTML = `<button onclick="window.clearBatchSelection()" style="background:none; border:none; color:#64748b; font-weight:bold; cursor:pointer; text-decoration:underline; margin-right:10px;">❌ 取消多選</button><span id="batch-sel-count" style="font-size:15px; font-weight:bold; color:var(--primary); margin-right:15px; border-right:2px solid #e2e8f0; padding-right:15px;">已選擇 ${sel.length} 項</span><button class="btn-primary" style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe;" onclick="window.openBatchMoveModal()">🔄 轉移</button><button class="btn-primary" style="background:#fefce8; color:#854d0e; border:1px solid #fef08a;" onclick="window.openBatchEditModal()">✏️ 編輯</button><button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>`;
+            }
+        } else { bar.classList.remove('show'); }
     };
 
-    function getSelectedIds() {
-        if (window.currentTab === 'summary') return Array.from($$('.cb-consumable-row:checked')).map(cb => cb.value);
-        if (window.currentTab === 'registry') return Array.from($$('.cb-fixed-row:checked')).map(cb => cb.value);
-        return [];
-    }
+    function getSelectedIds() { return window.currentTab === 'summary' ? Array.from($$('.cb-consumable-row:checked')).map(cb => cb.value) : []; }
 
-    // ======== ✨ 滿版圓環圖引擎 (支援滑鼠懸浮變化) ========
-    window.toggleDataDisplay = (type) => {
-        window.displayMode[type] = window.displayMode[type] === 'qty' ? 'percent' : 'qty';
-        window.renderSummary();
-    };
+    // ======== ✨ 滿版圓環圖引擎 ========
+    window.toggleDataDisplay = (type) => { window.displayMode[type] = window.displayMode[type] === 'qty' ? 'percent' : 'qty'; window.renderSummary(); };
 
     function drawSvgDonut(containerId, dataArray, totalValStr, percentValStr, centerLbl, typeKey) {
         const c = $(containerId); if(!c) return;
         const total = dataArray.reduce((sum, d) => sum + d.value, 0);
         let html = `<svg viewBox="0 0 200 200" style="width:100%; height:100%; overflow:visible;">`;
-        
         if (total === 0) { html += `<circle cx="100" cy="100" r="80" fill="none" stroke="#f1f5f9" stroke-width="30"></circle>`; } 
         else {
             let acc = 0; const C = 2 * Math.PI * 80; 
             dataArray.forEach((d, i) => {
-                if(d.value === 0) return; 
-                const pct = d.value / total; 
-                const dashArr = `${pct * C} ${C}`; 
-                const dashOff = - (acc / total) * C; 
-                const color = d.color || chartPalette[i % chartPalette.length];
-                
-                let hoverVal = typeKey && window.displayMode[typeKey] === 'percent' ? Math.round(pct*100)+'%' : d.value;
-                if(containerId === 'chart-shortage') hoverVal = d.value;
-
-                html += `<circle cx="100" cy="100" r="80" fill="none" stroke="${color}" stroke-width="30" stroke-dasharray="${dashArr}" stroke-dashoffset="${dashOff}" transform="rotate(-90 100 100)" style="transition: stroke-width 0.2s; cursor:pointer;" onmouseover="window.hoverSvgDonut(this, '${containerId}', '${d.label}', '${hoverVal}', '${color}')" onmouseout="window.outSvgDonut(this, '${containerId}')"><title>${d.label}: ${d.value}</title></circle>`;
-                acc += d.value;
+                if(d.value === 0) return; const pct = d.value / total; const dashArr = `${pct * C} ${C}`; const dashOff = - (acc / total) * C; const color = d.color || chartPalette[i % chartPalette.length];
+                let hoverVal = typeKey && window.displayMode[typeKey] === 'percent' ? Math.round(pct*100)+'%' : d.value; if(containerId === 'chart-shortage') hoverVal = d.value;
+                html += `<circle cx="100" cy="100" r="80" fill="none" stroke="${color}" stroke-width="30" stroke-dasharray="${dashArr}" stroke-dashoffset="${dashOff}" transform="rotate(-90 100 100)" style="transition: stroke-width 0.2s; cursor:pointer;" onmouseover="window.hoverSvgDonut(this, '${containerId}', '${d.label}', '${hoverVal}', '${color}')" onmouseout="window.outSvgDonut(this, '${containerId}')"><title>${d.label}: ${d.value}</title></circle>`; acc += d.value;
             });
         }
-        
-        let displayVal = typeKey && window.displayMode[typeKey] === 'percent' ? percentValStr : totalValStr;
-        if(containerId === 'chart-shortage') displayVal = totalValStr; 
-        
-        c.dataset.origVal = displayVal;
-        c.dataset.origLbl = centerLbl;
-
-        html += `<text id="${containerId}-val" x="100" y="95" text-anchor="middle" dominant-baseline="central" font-size="32" font-weight="bold" fill="var(--text-main)" style="pointer-events:none; transition:0.2s;">${displayVal}</text>`;
-        html += `<text id="${containerId}-lbl" x="100" y="135" text-anchor="middle" dominant-baseline="central" font-size="13" fill="var(--text-muted)" style="pointer-events:none;">${centerLbl}</text>`;
-        html += `</svg>`; c.innerHTML = html;
+        let displayVal = typeKey && window.displayMode[typeKey] === 'percent' ? percentValStr : totalValStr; if(containerId === 'chart-shortage') displayVal = totalValStr; 
+        c.dataset.origVal = displayVal; c.dataset.origLbl = centerLbl;
+        html += `<text id="${containerId}-val" x="100" y="95" text-anchor="middle" dominant-baseline="central" font-size="32" font-weight="bold" fill="var(--text-main)" style="pointer-events:none; transition:0.2s;">${displayVal}</text><text id="${containerId}-lbl" x="100" y="135" text-anchor="middle" dominant-baseline="central" font-size="13" fill="var(--text-muted)" style="pointer-events:none;">${centerLbl}</text></svg>`; c.innerHTML = html;
     }
 
-    // 圓環滑鼠懸浮事件
-    window.hoverSvgDonut = (el, cid, lbl, val, color) => {
-        el.setAttribute('stroke-width', '40');
-        const v = $(cid+'-val'), l = $(cid+'-lbl');
-        if(v) { v.textContent = val; v.setAttribute('fill', color); }
-        if(l) l.textContent = lbl;
-    };
-    
-    window.outSvgDonut = (el, cid) => {
-        el.setAttribute('stroke-width', '30');
-        const c = $(cid);
-        const v = $(cid+'-val'), l = $(cid+'-lbl');
-        if(v && c) { v.textContent = c.dataset.origVal; v.setAttribute('fill', 'var(--text-main)'); }
-        if(l && c) l.textContent = c.dataset.origLbl;
-    };
+    window.hoverSvgDonut = (el, cid, lbl, val, color) => { el.setAttribute('stroke-width', '40'); const v = $(cid+'-val'), l = $(cid+'-lbl'); if(v) { v.textContent = val; v.setAttribute('fill', color); } if(l) l.textContent = lbl; };
+    window.outSvgDonut = (el, cid) => { el.setAttribute('stroke-width', '30'); const c = $(cid), v = $(cid+'-val'), l = $(cid+'-lbl'); if(v && c) { v.textContent = c.dataset.origVal; v.setAttribute('fill', 'var(--text-main)'); } if(l && c) l.textContent = c.dataset.origLbl; };
 
     // ======== 視圖切換與渲染 ========
     window.switchTab = (tab) => {
         window.currentTab = tab; localStorage.setItem('assets_total_tab', tab);
         $$('.tab-btn').forEach(b => b.classList.remove('active')); $(`tab-btn-${tab}`).classList.add('active');
         $$('.view').forEach(v => v.classList.remove('active')); $(`view-${tab}`).classList.add('active');
-        $('shared-toolbar').style.display = (tab === 'summary' || tab === 'registry') ? 'flex' : 'none';
+        $('shared-toolbar').style.display = (tab === 'summary') ? 'flex' : 'none';
+        
+        if (tab === 'feed') {
+            window.lastFeedTime = Date.now();
+            localStorage.setItem('pmo_last_feed_time', window.lastFeedTime.toString());
+            const b = $('feed-unread-badge'); if(b) b.style.display = 'none';
+        }
         window.clearBatchSelection(); window.renderCurrentView();
     };
 
-    window.renderCurrentView = () => { if (window.currentTab === 'summary') window.renderSummary(); else if (window.currentTab === 'registry') window.renderRegistry(); };
-
-    window.toggleShortageFilter = () => {
-        window.showOnlyShortage = !window.showOnlyShortage;
-        const card = $('card-shortage'); if(window.showOnlyShortage) { card.classList.add('active-filter'); } else { card.classList.remove('active-filter'); }
-        window.renderSummary();
+    window.renderCurrentView = () => { 
+        if (window.currentTab === 'summary') window.renderSummary(); 
+        else if (window.currentTab === 'registry') window.renderCheckouts(); 
+        else if (window.currentTab === 'feed') window.renderFeed();
     };
 
+    window.toggleShortageFilter = () => { window.showOnlyShortage = !window.showOnlyShortage; const card = $('card-shortage'); if(window.showOnlyShortage) { card.classList.add('active-filter'); } else { card.classList.remove('active-filter'); } window.renderSummary(); };
+
+    // 1. 總覽渲染
     window.renderSummary = () => {
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
         const cons = globalAssets.filter(a => a.assetType === 'consumable');
         const fixed = globalAssets.filter(a => a.assetType !== 'consumable');
         const totalAssetsCnt = globalAssets.length;
 
-        // 圖表數據 (消耗品)
         const consTagMap = {}; let totalConsQty = 0;
         cons.forEach(c => { const t = c.tag || '未分類'; const q = parseInt(c.quantity) || 0; consTagMap[t] = (consTagMap[t]||0) + q; totalConsQty += q; });
         const consChartData = Object.keys(consTagMap).map(k => ({ label: k, value: consTagMap[k] }));
         const consPct = totalAssetsCnt === 0 ? '0%' : Math.round((cons.length / totalAssetsCnt) * 100) + '%';
 
-        // 圖表數據 (固定資產)
         const fixedCatMap = {}; let totalFixedCount = fixed.length;
         fixed.forEach(c => { const t = c.category || '其他'; fixedCatMap[t] = (fixedCatMap[t]||0) + 1; });
         const fixedChartData = Object.keys(fixedCatMap).map(k => ({ label: k, value: fixedCatMap[k] }));
         const fixedPct = totalAssetsCnt === 0 ? '0%' : Math.round((fixed.length / totalAssetsCnt) * 100) + '%';
 
-        // 庫存警告 
         let groupedConsMap = {};
         cons.forEach(c => {
             let key = `${c.tag || '未分類'}_${c.item}`;
@@ -504,7 +575,6 @@
         drawSvgDonut('chart-fixed', fixedChartData, totalFixedCount, fixedPct, '總件數', 'fixed');
         drawSvgDonut('chart-shortage', shortageChartData, shortagePercent + '%', '', window.showOnlyShortage ? '解除過濾' : '不足率', null);
 
-        // 表格渲染
         const tb = $('consumable-tbody'); tb.innerHTML = '';
         if($('cb-select-all-cons')) $('cb-select-all-cons').checked = false;
 
@@ -530,41 +600,153 @@
             if (isLow) { qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--danger);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span><div style="color:var(--danger); font-size:11px; font-weight:bold; margin-top:4px;">⚠️ 需補 ${minT - qty}</div>`; }
 
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-consumable-row batch-checkbox" value="${a.id}"></td><td><span class="badge tag">${a.tag || '未分類'}</span></td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td>${a.contactPerson || '-'}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td>`;
+            tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-consumable-row batch-checkbox" value="${a.id}"></td><td><span class="badge tag">${a.tag || '未分類'}</span></td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;" title="點擊編輯">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td>${a.contactPerson || '-'}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td>`;
             tb.appendChild(tr);
         });
         window.updateFloatingBar();
     };
 
-    window.renderRegistry = () => {
-        const tb = $('fixed-tbody'); tb.innerHTML = '';
-        if($('cb-select-all-fixed')) $('cb-select-all-fixed').checked = false;
+    // ✨ 2. 登記：領用紀錄表格渲染
+    window.toggleCheckoutSort = () => {
+        window.registrySortOrder = window.registrySortOrder === 'desc' ? 'asc' : 'desc';
+        $('checkout-sort-icon').innerText = window.registrySortOrder === 'desc' ? '⬇' : '⬆';
+        window.renderCheckouts();
+    };
+
+    window.renderCheckouts = () => {
+        const tb = $('checkout-tbody'); tb.innerHTML = '';
+        if($('cb-select-all-checkout')) $('cb-select-all-checkout').checked = false;
         
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
-        const fixed = globalAssets.filter(a => a.assetType !== 'consumable' && ((a.item||'').toLowerCase().includes(keyword) || (a.sn||'').toLowerCase().includes(keyword) || (a.category||'').toLowerCase().includes(keyword)));
-        if (fixed.length === 0) return tb.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的固定資產。</td></tr>';
+        let filtered = globalCheckouts.filter(c => 
+            (c.assetName||'').toLowerCase().includes(keyword) || 
+            (c.borrower||'').toLowerCase().includes(keyword) || 
+            (c.officeName||'').toLowerCase().includes(keyword) ||
+            (c.remarks||'').toLowerCase().includes(keyword)
+        );
 
-        const sortBy = $('asset-sort-select').value;
-        fixed.sort((a, b) => {
-            if (sortBy === 'time') return (b.createdAt||'').localeCompare(a.createdAt||'');
-            if (sortBy === 'name') return (a.item||'').localeCompare(b.item||'');
-            const offA = globalOffices.find(o => o.id === a.office_id)?.name || ''; const offB = globalOffices.find(o => o.id === b.office_id)?.name || '';
-            return offA.localeCompare(offB);
+        if (filtered.length === 0) return tb.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的紀錄。</td></tr>';
+
+        filtered.sort((a, b) => {
+            const res = String(a.checkoutDate||'').localeCompare(String(b.checkoutDate||''));
+            return window.registrySortOrder === 'desc' ? -res : res;
         });
 
-        fixed.forEach(a => {
-            const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? `[${off.floor||'?'}] ${off.name}` : '未分配';
-            let oName = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = globalMembers.find(m => m.id === a.owner_id); if (owner) oName = `👤 ${owner.name}`; }
-            let si = a.status === '正常' ? '🟢 正常' : a.status === '待修' ? '🔴 待修' : a.status === '報廢' ? '⚫ 報廢' : a.status === '碳粉不足' ? '🟡 碳粉不足' : '⚪ 其他';
-
+        filtered.forEach(c => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-fixed-row batch-checkbox" value="${a.id}"></td><td><span class="badge tag" style="background:#e0e7ff; color:#4f46e5;">${a.category || '其他'}</span></td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;">${a.item || '未命名'}</b></td><td style="font-family:monospace; font-weight:bold; color:var(--danger);">${a.sn || 'N/A'}</td><td style="font-weight:bold;">${si}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td style="font-size:12px; color:var(--text-muted);">${a.category === '電腦' ? oName : '-'}</td>`;
+            tr.innerHTML = `
+                <td style="text-align:center;"><input type="checkbox" class="cb-checkout-row batch-checkbox" value="${c.id}"></td>
+                <td><b style="font-size:15px; color:var(--primary);">${c.assetName}</b></td>
+                <td><span style="font-weight:bold; color:var(--text-main);">${c.officeName}</span></td>
+                <td><span style="font-size:18px; font-weight:bold; color:var(--danger);">${c.quantity || 1}</span></td>
+                <td><span style="font-weight:bold;">${c.borrower}</span></td>
+                <td style="font-family:monospace; color:var(--text-muted);">${c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '-'}</td>
+                <td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.remarks || '-'}</td>
+                <td><button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteCheckout('${c.id}', event)">🗑️</button></td>
+            `;
             tb.appendChild(tr);
         });
+        
+        window.renderCheckoutStats(); // 同步渲染柱狀圖
         window.updateFloatingBar();
     };
 
-    // ======== ✨ 主系統批次操作 ========
+    // ✨ 領用統計柱狀圖
+    window.renderCheckoutStats = () => {
+        const range = $('checkout-stats-range') ? $('checkout-stats-range').value : 'month';
+        let targetRecords = [];
+        const now = new Date();
+        
+        if (range === 'day') {
+            const todayStr = now.toISOString().split('T')[0];
+            targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'').startsWith(todayStr));
+            $('lbl-stats-total').innerText = '今日領用總數';
+        } else if (range === 'week') {
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'') >= weekAgo);
+            $('lbl-stats-total').innerText = '近7日領用總數';
+        } else {
+            const monthStr = now.toISOString().slice(0, 7); // YYYY-MM
+            targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'').startsWith(monthStr));
+            $('lbl-stats-total').innerText = '本月領用總數';
+        }
+
+        const totalQty = targetRecords.reduce((sum, r) => sum + (parseInt(r.quantity)||1), 0);
+        if($('stats-total-qty')) $('stats-total-qty').innerText = totalQty;
+
+        const countMap = {};
+        targetRecords.forEach(r => { countMap[r.assetName] = (countMap[r.assetName]||0) + 1; }); // 計算「次數」
+        const sortedItems = Object.keys(countMap).map(k => ({ name: k, count: countMap[k] })).sort((a,b) => b.count - a.count).slice(0, 5);
+
+        const maxCount = sortedItems.length > 0 ? sortedItems[0].count : 1;
+        const topContainer = $('stats-top-items');
+        if (topContainer) {
+            topContainer.innerHTML = '';
+            if (sortedItems.length === 0) { topContainer.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">此期間無領用紀錄</div>'; }
+            else {
+                sortedItems.forEach((item, i) => {
+                    const pct = Math.max(5, (item.count / maxCount) * 100);
+                    const color = chartPalette[i % chartPalette.length];
+                    topContainer.innerHTML += `
+                        <div class="bar-chart-row">
+                            <div class="bar-chart-label" title="${item.name}">${item.name}</div>
+                            <div class="bar-chart-track"><div class="bar-chart-fill" style="width:${pct}%; background:${color};"></div></div>
+                            <div class="bar-chart-val">${item.count}次</div>
+                        </div>
+                    `;
+                });
+            }
+        }
+    };
+
+    // 3. 渲染：貼文動態牆 (領用紀錄貼文)
+    window.renderFeed = () => {
+        const bd = $('feed-board'); bd.innerHTML = '';
+        const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
+        
+        let filtered = globalCheckouts.filter(c => 
+            (c.assetName||'').toLowerCase().includes(keyword) || 
+            (c.borrower||'').toLowerCase().includes(keyword) || 
+            (c.officeName||'').toLowerCase().includes(keyword) ||
+            (c.remarks||'').toLowerCase().includes(keyword)
+        );
+
+        if(filtered.length === 0) return bd.innerHTML = '<div style="width:100%; text-align:center; color:#94a3b8; padding:30px;">尚無領用動態</div>';
+
+        filtered.sort((a,b) => String(b.checkoutDate||b.createdAt||'').localeCompare(String(a.checkoutDate||a.createdAt||'')));
+        
+        filtered.forEach(rec => {
+            const liked = rec.likes && rec.likes.includes(currentUserProfile.email);
+            bd.innerHTML += `
+                <div class="feed-card" style="width: 320px;">
+                    <div class="feed-header">
+                        <img src="${rec.creatorAvatar}" class="feed-avatar">
+                        <div class="feed-meta"><b>${rec.creatorName}</b> 登記<br>${(rec.checkoutDate||rec.createdAt).replace('T', ' ')}</div>
+                    </div>
+                    <div class="feed-content">
+                        <p style="font-weight:bold; color:var(--primary); margin:0 0 5px 0;">📦 借出：${rec.assetName}</p>
+                        <p style="margin:0 0 5px 0;">🏢 存放地：${rec.officeName}</p>
+                        <p style="margin:0 0 5px 0;">🔢 數量：<span style="color:var(--danger); font-weight:bold;">${rec.quantity || 1}</span></p>
+                        <p style="margin:0 0 5px 0;">👤 領取人：${rec.borrower}</p>
+                        ${rec.remarks ? `<div style="background:#f8fafc; padding:8px; border-radius:6px; margin-top:8px; font-size:12px; color:var(--text-main);">${rec.remarks}</div>` : ''}
+                    </div>
+                    <div class="feed-footer">
+                        <button class="btn-like ${liked ? 'liked' : ''}" onclick="window.toggleCheckoutLike('${rec.id}')">
+                            ${liked ? '❤️' : '🤍'} ${rec.likes ? rec.likes.length : 0}
+                        </button>
+                        <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteCheckout('${rec.id}', event)">🗑️ 刪除紀錄</button>
+                    </div>
+                </div>`;
+        }); 
+    };
+
+    window.toggleCheckoutLike = async (rId) => { 
+        const r = globalCheckouts.find(x => x.id === rId); if(!r) return; 
+        let lk = r.likes || []; if(lk.includes(currentUserProfile.email)) lk = lk.filter(e => e !== currentUserProfile.email); else lk.push(currentUserProfile.email); 
+        await setDoc(doc(db, "asset_checkouts", rId), { likes: lk }, { merge: true }); 
+    };
+
+    // ======== ✨ 主系統操作 (總覽批次處理) ========
     window.openBatchMoveModal = () => { $('batch-move-modal-overlay').classList.add('active'); };
     window.closeBatchMoveModal = () => $('batch-move-modal-overlay').classList.remove('active');
     window.executeBatchMove = async () => {
@@ -573,22 +755,17 @@
     };
 
     window.openBatchEditModal = () => {
-        if (window.currentTab === 'summary') { $('batch-edit-consumable-fields').style.display = 'block'; $('batch-edit-fixed-fields').style.display = 'none'; } else { $('batch-edit-consumable-fields').style.display = 'none'; $('batch-edit-fixed-fields').style.display = 'block'; }
-        ['batch-edit-tag', 'batch-edit-contact', 'batch-edit-min', 'batch-edit-remarks', 'batch-edit-status', 'batch-edit-category'].forEach(id => $(id).value = '');
+        ['batch-edit-tag', 'batch-edit-contact', 'batch-edit-min', 'batch-edit-remarks'].forEach(id => $(id).value = '');
         $('batch-edit-modal-overlay').classList.add('active');
     };
     window.closeBatchEditModal = () => $('batch-edit-modal-overlay').classList.remove('active');
     window.executeBatchEdit = async () => {
         const selIds = getSelectedIds(); let payload = {};
-        if (window.currentTab === 'summary') {
-            const t = $('batch-edit-tag').value.trim(); if (t) payload.tag = t;
-            const c = $('batch-edit-contact').value.trim(); if (c) payload.contactPerson = c;
-            const r = $('batch-edit-remarks').value.trim(); if (r) payload.remarks = r;
-            const m = $('batch-edit-min').value; if (m !== '') payload.minThreshold = parseInt(m) || 0;
-        } else {
-            const s = $('batch-edit-status').value; if (s) payload.status = s;
-            const c = $('batch-edit-category').value.trim(); if (c) payload.category = c;
-        }
+        const t = $('batch-edit-tag').value.trim(); if (t) payload.tag = t;
+        const c = $('batch-edit-contact').value.trim(); if (c) payload.contactPerson = c;
+        const r = $('batch-edit-remarks').value.trim(); if (r) payload.remarks = r;
+        const m = $('batch-edit-min').value; if (m !== '') payload.minThreshold = parseInt(m) || 0;
+        
         if (Object.keys(payload).length === 0) return alert('未填寫任何修改內容！');
         try { await Promise.all(selIds.map(id => updateDoc(doc(db, "assets", id), payload))); alert(`🎉 成功批次更新 ${selIds.length} 項資產！`); window.closeBatchEditModal(); window.clearBatchSelection(); } catch (e) { alert('編輯發生錯誤：' + e.message); }
     };
@@ -597,11 +774,31 @@
         const selIds = getSelectedIds(); if(!confirm(`⚠️ 確定徹底刪除這 ${selIds.length} 項資產？(無法復原)`)) return;
         try { await Promise.all(selIds.map(id => deleteDoc(doc(db, "assets", id)))); alert(`🎉 已成功刪除 ${selIds.length} 項資產！`); window.clearBatchSelection(); } catch(e) { alert('刪除發生錯誤：' + e.message); }
     };
+    
+    // 批次刪除領用紀錄
+    window.batchDeleteCheckouts = async () => {
+        const selIds = Array.from($$('.cb-checkout-row:checked')).map(cb => cb.value); 
+        if (selIds.length === 0) return alert('未勾選任何紀錄項目！'); 
+        if(!confirm(`確定批次刪除這 ${selIds.length} 筆領用紀錄？\n(將自動返還消耗品庫存)`)) return; 
+        
+        const ops = [];
+        selIds.forEach(id => {
+            const r = globalCheckouts.find(x => x.id === id);
+            if (r) {
+                const asset = globalAssets.find(a => a.id === r.assetId);
+                if (asset && asset.assetType === 'consumable') {
+                    const newQty = (parseInt(asset.quantity)||0) + (parseInt(r.quantity)||0);
+                    ops.push(updateDoc(doc(db, 'assets', asset.id), { quantity: newQty }));
+                }
+                ops.push(deleteDoc(doc(db, "asset_checkouts", id)));
+            }
+        });
+        try { await Promise.all(ops); alert(`🎉 已刪除並返還庫存！`); window.clearBatchSelection(); } catch(e) { alert('錯誤：' + e.message); }
+    };
 
     // ======== ✨ 匯入預覽系統 ========
     window.toggleSubmenu = (id, e) => { e.stopPropagation(); $$('.fab-submenu').forEach(s => { if(s.id!==id) s.classList.remove('open'); }); $(id).classList.toggle('open'); };
 
-    // ✨ 修復與增強 CSV 匯入辨識能力
     window.handlePreviewImport = async (e) => {
         const file = e.target.files[0]; if (!file) return; e.target.value = '';
         const loader = $('loading-msg'); loader.innerHTML = '⏳ 正在解析表格...'; loader.style.display = 'block';
@@ -609,72 +806,32 @@
         const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
-                const data = new Uint8Array(evt.target.result); 
-                const workbook = XLSX.read(data, { type: 'array' });
-                
-                // 動態取得有效表頭行 (避開大標題)
+                const data = new Uint8Array(evt.target.result); const workbook = XLSX.read(data, { type: 'array' });
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
                 let hi = rawRows.findIndex(row => row.some(cell => typeof cell === 'string' && (cell.includes('名稱') || cell.includes('編號') || cell.includes('item') || cell.includes('品名') || cell.includes('項目'))));
                 if (hi === -1) hi = 0;
                 
                 const headers = rawRows[hi] || [];
-                const rows = rawRows.slice(hi + 1).map(row => {
-                    let obj = {};
-                    headers.forEach((h, i) => { if (h !== undefined) obj[h.toString().trim()] = row[i]; });
-                    return obj;
-                });
+                const rows = rawRows.slice(hi + 1).map(row => { let obj = {}; headers.forEach((h, i) => { if (h !== undefined) obj[h.toString().trim()] = row[i]; }); return obj; });
 
-                window.pendingImports = [];
-                const seenFixedItems = new Set(); // 用於歷史紀錄去重
-
-                // 擴充比對邏輯
-                const getVal = (r, possibleKeys) => {
-                    for (let pk of possibleKeys) { 
-                        const foundKey = Object.keys(r).find(k => k.toLowerCase().includes(pk.toLowerCase()));
-                        if (foundKey && r[foundKey] !== undefined) return String(r[foundKey]).trim();
-                    }
-                    return '';
-                };
+                window.pendingImports = []; const seenFixedItems = new Set();
+                const getVal = (r, possibleKeys) => { for (let pk of possibleKeys) { const foundKey = Object.keys(r).find(k => k.toLowerCase().includes(pk.toLowerCase())); if (foundKey && r[foundKey] !== undefined) return String(r[foundKey]).trim(); } return ''; };
 
                 rows.forEach(r => {
-                    // 加入您附件中的「機台名稱」、「項目」等
                     const item = getVal(r, ['機台名稱', '設備名稱', '物品名稱', '品名', '名稱', '消耗品名稱', '資產名稱', 'item', '編號', '項目']);
                     if (!item) return;
 
                     const isCons = Object.keys(r).some(k => k.includes('數量') || k.includes('單位') || k.includes('消耗'));
-                    
-                    if (!isCons) {
-                        // ✨ 匯入巡檢紀錄防呆：去除重疊的相機名稱
-                        if (seenFixedItems.has(item)) return;
-                        seenFixedItems.add(item);
-                    }
+                    if (!isCons) { if (seenFixedItems.has(item)) return; seenFixedItems.add(item); }
 
-                    const p = { id: 'preview_' + Math.random().toString(36).substr(2, 9), assetType: isCons ? 'consumable' : 'fixed', item: item, office_id: '', createdAt: new Date().toISOString() };
-                    
-                    if (isCons) { 
-                        p.tag = getVal(r, ['標籤', '分類', '類別']); 
-                        p.quantity = parseInt(getVal(r, ['數量', '庫存', 'qty'])) || 0; 
-                        p.unit = getVal(r, ['單位', 'unit']) || '個'; 
-                        p.minThreshold = parseInt(getVal(r, ['最低', '安全', '不足', 'min'])) || 0; 
-                        p.contactPerson = getVal(r, ['聯絡人', '負責人', 'contact']);
-                        p.remarks = getVal(r, ['備註', '說明', 'remark']);
-                    } 
-                    else { 
-                        p.category = getVal(r, ['類型', '分類', '類別', '項目', 'category']) || (item.includes('縮時') ? '縮時相機' : '其他'); 
-                        p.sn = getVal(r, ['SN', '資產編號', '序號', '編號']) || 'N/A'; 
-                        p.status = getVal(r, ['狀態', 'status']) || '正常'; 
-                        p.remarks = getVal(r, ['備註', '說明', 'remark']);
-                    }
+                    const p = { id: 'preview_' + Math.random().toString(36).substr(2, 9), assetType: isCons ? 'consumable' : 'fixed', item: item.replace(/縮時/g, '').trim(), office_id: '', createdAt: new Date().toISOString() };
+                    if (isCons) { p.tag = getVal(r, ['標籤', '分類', '類別']); p.quantity = parseInt(getVal(r, ['數量', '庫存', 'qty'])) || 0; p.unit = getVal(r, ['單位', 'unit']) || '個'; p.minThreshold = parseInt(getVal(r, ['最低', '安全', '不足', 'min'])) || 0; p.contactPerson = getVal(r, ['聯絡人', '負責人', 'contact']); p.remarks = getVal(r, ['備註', '說明', 'remark']); } 
+                    else { p.category = getVal(r, ['類型', '分類', '類別', '項目', 'category']) || '其他'; p.sn = getVal(r, ['SN', '資產編號', '序號', '編號']) || 'N/A'; p.status = getVal(r, ['狀態', 'status']) || '正常'; p.remarks = getVal(r, ['備註', '說明', 'remark']); }
                     window.pendingImports.push(p);
                 });
                 
-                if (window.pendingImports.length > 0) { 
-                    window.renderPreviewModal(); 
-                    $('import-preview-modal-overlay').classList.add('active'); 
-                } else { 
-                    alert('表格無有效資料，請確認表格是否包含「名稱」或「編號」相關的欄位標題。'); 
-                }
+                if (window.pendingImports.length > 0) { window.renderPreviewModal(); $('import-preview-modal-overlay').classList.add('active'); } else { alert('表格無有效資料'); }
             } catch(err) { alert('解析失敗：' + err.message); } finally { loader.style.display = 'none'; }
         }; reader.readAsArrayBuffer(file);
         $('fab-container').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open'));
@@ -694,18 +851,10 @@
     };
 
     window.closeImportPreviewModal = () => { if(confirm('確定要捨棄這些尚未匯入的資料？')) { window.pendingImports = []; $('import-preview-modal-overlay').classList.remove('active'); } };
-
-    window.previewBatchDelete = () => {
-        const selIds = Array.from($$('.cb-preview-row:checked')).map(cb => cb.value); if(selIds.length === 0) return alert('未勾選');
-        window.pendingImports = window.pendingImports.filter(p => !selIds.includes(p.id)); window.renderPreviewModal();
-    };
-
-    window.openPreviewBatchEditModal = () => {
-        const selIds = Array.from($$('.cb-preview-row:checked')).map(cb => cb.value); if(selIds.length === 0) return alert('未勾選');
-        ['preview-batch-category', 'preview-batch-min'].forEach(id => $(id).value = ''); $('preview-batch-edit-hint').innerText = `已勾選 ${selIds.length} 項暫存資料。`;
-        $('preview-batch-edit-modal-overlay').classList.add('active');
-    };
+    window.previewBatchDelete = () => { const selIds = Array.from($$('.cb-preview-row:checked')).map(cb => cb.value); if(selIds.length === 0) return alert('未勾選'); window.pendingImports = window.pendingImports.filter(p => !selIds.includes(p.id)); window.renderPreviewModal(); };
+    window.openPreviewBatchEditModal = () => { const selIds = Array.from($$('.cb-preview-row:checked')).map(cb => cb.value); if(selIds.length === 0) return alert('未勾選'); ['preview-batch-category', 'preview-batch-min'].forEach(id => $(id).value = ''); $('preview-batch-edit-hint').innerText = `已勾選 ${selIds.length} 項暫存資料。`; $('preview-batch-edit-modal-overlay').classList.add('active'); };
     window.closePreviewBatchEditModal = () => $('preview-batch-edit-modal-overlay').classList.remove('active');
+    
     window.executePreviewBatchEdit = () => {
         const selIds = Array.from($$('.cb-preview-row:checked')).map(cb => cb.value);
         const off = $('preview-batch-office').value; const cat = $('preview-batch-category').value.trim(); const minT = $('preview-batch-min').value;
@@ -756,7 +905,7 @@
         $('fab-container').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
-    // 單一編輯
+    // ======== ✨ 單一編輯資產 (不包含領用紀錄) ========
     window.openAssetModal = (id = null) => {
         window.currentEditAssetId = id; 
         if (id) { 
@@ -775,6 +924,7 @@
         $('asset-modal-overlay').classList.add('active');
     };
     window.closeAssetModal = () => $('asset-modal-overlay').classList.remove('active');
+    
     window.saveAssetData = async () => {
         const aType = $('asset-main-type').value; const off = $('asset-office-id').value; if(!off) return alert('請選擇辦公室！');
         let data = { office_id: off, assetType: aType };
@@ -783,15 +933,149 @@
         try { if(window.currentEditAssetId) await updateDoc(doc(db, "assets", window.currentEditAssetId), data); else await addDoc(collection(db, "assets"), data); window.closeAssetModal(); window.clearBatchSelection(); } catch(e) { alert('儲存失敗：'+e.message); }
     };
 
-    window.toggleFabMenu = (e) => { 
+    // ======== ✨ 領用登記表單引擎 ========
+    window.openCheckoutModal = () => {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        
+        $('checkout-date').value = now.toISOString().slice(0,16); // 預設現在時間
+        $('checkout-borrower').value = currentUserProfile.name || ''; // 預設登入者
+        $('checkout-qty').value = 1;
+        $('checkout-remarks').value = '';
+        $('checkout-asset-id').value = '';
+        $('checkout-location-id').value = '';
+        $('checkout-location').value = '';
+        $('disp-checkout-asset').innerText = '請搜尋並選擇資產...';
+        $('opt-checkout-asset-input').value = '';
+        window.renderCheckoutAssetList();
+        
+        $('checkout-modal-overlay').classList.add('active');
+    };
+    
+    window.closeCheckoutModal = () => $('checkout-modal-overlay').classList.remove('active');
+
+    window.toggleDropdown = (t, e) => { 
         if(e) e.stopPropagation(); 
-        const c = $('fab-container'); if(c) c.classList.toggle('active'); 
-        const m = $('fab-menu'); if(m) m.classList.toggle('active'); 
-        $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+        $$('.custom-dropdown-panel').forEach(p => { if(p.id !== `${t}-panel`) p.classList.remove('active'); }); 
+        $(`${t}-panel`).classList.toggle('active'); 
+        if($(`${t}-panel`).classList.contains('active')) $(`${t}-input`).focus(); 
     };
 
-    window.addEventListener('click', () => { $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open')); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { $$('.modal-overlay').forEach(m => m.classList.remove('active')); $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open')); } });
+    window.renderCheckoutAssetList = () => {
+        const iv = $('opt-checkout-asset-input').value.toLowerCase().trim();
+        const ld = $('opt-checkout-asset-list'); ld.innerHTML = '';
+        
+        const f = globalAssets.filter(a => (a.item||'').toLowerCase().includes(iv) || (a.sn||'').toLowerCase().includes(iv) || (a.tag||'').toLowerCase().includes(iv));
+        if(f.length === 0) return ld.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到資產</div>';
+        
+        f.slice(0,50).forEach(a => {
+            const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未知辦公室';
+            const ty = a.assetType === 'consumable' ? '📦' : '📌';
+            const d = document.createElement('div'); d.className = 'dropdown-item'; 
+            d.innerHTML = `<span>${ty} ${a.item} <span style="font-size:11px; color:#94a3b8;">(${offName})</span></span>`;
+            d.onclick = (e) => { 
+                e.stopPropagation();
+                $('checkout-asset-id').value = a.id;
+                $('disp-checkout-asset').innerText = `${ty} ${a.item}`;
+                $('checkout-location-id').value = off ? off.id : '';
+                $('checkout-location').value = offName;
+                $('opt-checkout-asset-panel').classList.remove('active');
+                window.autoFillCheckoutRemarks();
+            }; 
+            ld.appendChild(d);
+        });
+    };
+
+    // 智慧帶入備註：3 取 2 條件 (資產、辦公室、人)
+    window.autoFillCheckoutRemarks = () => {
+        const aId = $('checkout-asset-id').value;
+        const oName = $('checkout-location').value;
+        const bName = $('checkout-borrower').value.trim().toLowerCase();
+        
+        if (!aId || !bName) return;
+
+        const past = globalCheckouts.find(c => {
+            let matches = 0;
+            if (c.assetId === aId) matches++;
+            if (c.officeName === oName) matches++;
+            if ((c.borrower||'').toLowerCase() === bName) matches++;
+            return matches >= 2 && c.remarks;
+        });
+
+        if (past && !$('checkout-remarks').value.trim()) {
+            $('checkout-remarks').value = past.remarks;
+        }
+    };
+
+    window.saveCheckout = async () => {
+        const aId = $('checkout-asset-id').value;
+        const qty = parseInt($('checkout-qty').value);
+        const borrower = $('checkout-borrower').value.trim();
+        const dStr = $('checkout-date').value;
+        const rem = $('checkout-remarks').value.trim();
+        const locName = $('checkout-location').value;
+
+        if(!aId || !qty || !borrower || !dStr) return alert('資產、數量、領取人與日期皆為必填！');
+
+        const asset = globalAssets.find(a => a.id === aId);
+        if(!asset) return alert('資產不存在！');
+
+        const checkoutData = {
+            assetId: asset.id,
+            assetName: asset.item || '未命名',
+            assetType: asset.assetType || 'fixed',
+            officeName: locName,
+            quantity: qty,
+            borrower: borrower,
+            checkoutDate: dStr,
+            remarks: rem,
+            createdAt: new Date().toISOString(),
+            creatorName: currentUserProfile.name,
+            creatorEmail: currentUserProfile.email,
+            creatorAvatar: currentUserProfile.avatar,
+            likes: []
+        };
+
+        const btn = document.querySelector('#checkout-modal-overlay .btn-primary');
+        btn.disabled = true; btn.innerText = '登記中...';
+
+        try {
+            const ops = [];
+            // 如果是消耗品，正式扣除庫存
+            if (asset.assetType === 'consumable') {
+                const currentQty = parseInt(asset.quantity) || 0;
+                const newQty = Math.max(0, currentQty - qty);
+                ops.push(updateDoc(doc(db, 'assets', asset.id), { quantity: newQty }));
+            }
+            
+            ops.push(addDoc(collection(db, 'asset_checkouts'), checkoutData));
+            await Promise.all(ops);
+            
+            alert('🎉 領用登記成功！');
+            window.closeCheckoutModal();
+        } catch(e) { alert('登記失敗：' + e.message); } finally { btn.disabled = false; btn.innerText = '確認登記'; }
+    };
+
+    window.deleteSingleRecord = async (rId, e) => {
+        if(e) e.stopPropagation(); if(!confirm('確定刪除此領用紀錄？\n(若為消耗品，扣除的庫存將自動返還)')) return;
+        const r = globalCheckouts.find(x => x.id === rId); if(!r) return;
+        
+        const ops = [];
+        const asset = globalAssets.find(a => a.id === r.assetId);
+        if (asset && asset.assetType === 'consumable') {
+            const newQty = (parseInt(asset.quantity)||0) + (parseInt(r.quantity)||0);
+            ops.push(updateDoc(doc(db, 'assets', asset.id), { quantity: newQty }));
+        }
+        ops.push(deleteDoc(doc(db, "asset_checkouts", rId)));
+        
+        try { await Promise.all(ops); alert('已刪除紀錄並返還庫存！'); } catch(err) { alert('刪除失敗'); }
+    };
+    
+    // 把貼文牆的刪除也指向同一個邏輯
+    window.deleteCheckout = window.deleteSingleRecord;
+
+    window.addEventListener('click', () => { $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open')); $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { $$('.modal-overlay').forEach(m => m.classList.remove('active')); $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open')); $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active'));} });
 </script>
 </body>
 </html>

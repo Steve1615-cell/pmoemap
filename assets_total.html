@@ -334,7 +334,7 @@
     
     window.displayMode = { 'cons': 'qty', 'fixed': 'qty' };
     window.showOnlyShortage = false; 
-    window.pendingImports = []; // 預覽用的陣列
+    window.pendingImports = []; 
 
     const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
     if (isRealEnvironment) { import('./js/firebase-config.js').then(m => { db = m.db; auth = m.auth; initializeApp(); }).catch(e => showError('載入設定檔失敗：' + e.message)); } 
@@ -346,7 +346,7 @@
         onAuthStateChanged(auth, (user) => {
             if (!user) { $('loading-msg').innerHTML = `⛔ 尚未登入，請回首頁登入！`; $('loading-msg').style.color = 'var(--danger)'; return; }
             $('loading-msg').style.display = 'none'; fetchData(); initDragSelect();
-            // 讀取 Tab 記憶
+            
             const savedTab = localStorage.getItem('assets_total_tab') || 'summary';
             window.switchTab(savedTab);
         });
@@ -601,6 +601,7 @@
     // ======== ✨ 匯入預覽系統 ========
     window.toggleSubmenu = (id, e) => { e.stopPropagation(); $$('.fab-submenu').forEach(s => { if(s.id!==id) s.classList.remove('open'); }); $(id).classList.toggle('open'); };
 
+    // ✨ 修復與增強 CSV 匯入辨識能力
     window.handlePreviewImport = async (e) => {
         const file = e.target.files[0]; if (!file) return; e.target.value = '';
         const loader = $('loading-msg'); loader.innerHTML = '⏳ 正在解析表格...'; loader.style.display = 'block';
@@ -608,22 +609,72 @@
         const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
-                const data = new Uint8Array(evt.target.result); const workbook = XLSX.read(data, { type: 'array' });
-                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
-                window.pendingImports = [];
+                const data = new Uint8Array(evt.target.result); 
+                const workbook = XLSX.read(data, { type: 'array' });
                 
+                // 動態取得有效表頭行 (避開大標題)
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                let hi = rawRows.findIndex(row => row.some(cell => typeof cell === 'string' && (cell.includes('名稱') || cell.includes('編號') || cell.includes('item') || cell.includes('品名') || cell.includes('項目'))));
+                if (hi === -1) hi = 0;
+                
+                const headers = rawRows[hi] || [];
+                const rows = rawRows.slice(hi + 1).map(row => {
+                    let obj = {};
+                    headers.forEach((h, i) => { if (h !== undefined) obj[h.toString().trim()] = row[i]; });
+                    return obj;
+                });
+
+                window.pendingImports = [];
+                const seenFixedItems = new Set(); // 用於歷史紀錄去重
+
+                // 擴充比對邏輯
+                const getVal = (r, possibleKeys) => {
+                    for (let pk of possibleKeys) { 
+                        const foundKey = Object.keys(r).find(k => k.toLowerCase().includes(pk.toLowerCase()));
+                        if (foundKey && r[foundKey] !== undefined) return String(r[foundKey]).trim();
+                    }
+                    return '';
+                };
+
                 rows.forEach(r => {
-                    const item = String(r['名稱'] || r['消耗品名稱'] || r['資產名稱'] || r['item'] || r['編號'] || '').trim();
+                    // 加入您附件中的「機台名稱」、「項目」等
+                    const item = getVal(r, ['機台名稱', '設備名稱', '物品名稱', '品名', '名稱', '消耗品名稱', '資產名稱', 'item', '編號', '項目']);
                     if (!item) return;
+
                     const isCons = Object.keys(r).some(k => k.includes('數量') || k.includes('單位') || k.includes('消耗'));
+                    
+                    if (!isCons) {
+                        // ✨ 匯入巡檢紀錄防呆：去除重疊的相機名稱
+                        if (seenFixedItems.has(item)) return;
+                        seenFixedItems.add(item);
+                    }
+
                     const p = { id: 'preview_' + Math.random().toString(36).substr(2, 9), assetType: isCons ? 'consumable' : 'fixed', item: item, office_id: '', createdAt: new Date().toISOString() };
                     
-                    if (isCons) { p.tag = String(r['標籤'] || r['分類'] || ''); p.quantity = parseInt(r['數量'] || r['庫存']) || 0; p.unit = String(r['單位'] || '個'); p.minThreshold = parseInt(r['最低庫存'] || r['不足量']) || 0; } 
-                    else { p.category = String(r['類型'] || r['資產類型'] || '其他'); p.sn = String(r['SN'] || r['資產編號'] || 'N/A'); p.status = String(r['狀態'] || '正常'); }
+                    if (isCons) { 
+                        p.tag = getVal(r, ['標籤', '分類', '類別']); 
+                        p.quantity = parseInt(getVal(r, ['數量', '庫存', 'qty'])) || 0; 
+                        p.unit = getVal(r, ['單位', 'unit']) || '個'; 
+                        p.minThreshold = parseInt(getVal(r, ['最低', '安全', '不足', 'min'])) || 0; 
+                        p.contactPerson = getVal(r, ['聯絡人', '負責人', 'contact']);
+                        p.remarks = getVal(r, ['備註', '說明', 'remark']);
+                    } 
+                    else { 
+                        p.category = getVal(r, ['類型', '分類', '類別', '項目', 'category']) || (item.includes('縮時') ? '縮時相機' : '其他'); 
+                        p.sn = getVal(r, ['SN', '資產編號', '序號', '編號']) || 'N/A'; 
+                        p.status = getVal(r, ['狀態', 'status']) || '正常'; 
+                        p.remarks = getVal(r, ['備註', '說明', 'remark']);
+                    }
                     window.pendingImports.push(p);
                 });
                 
-                if (window.pendingImports.length > 0) { window.renderPreviewModal(); $('import-preview-modal-overlay').classList.add('active'); } else { alert('表格無有效資料'); }
+                if (window.pendingImports.length > 0) { 
+                    window.renderPreviewModal(); 
+                    $('import-preview-modal-overlay').classList.add('active'); 
+                } else { 
+                    alert('表格無有效資料，請確認表格是否包含「名稱」或「編號」相關的欄位標題。'); 
+                }
             } catch(err) { alert('解析失敗：' + err.message); } finally { loader.style.display = 'none'; }
         }; reader.readAsArrayBuffer(file);
         $('fab-container').classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open'));

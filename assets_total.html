@@ -45,9 +45,6 @@
         #floating-batch-bar { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px); background: white; padding: 12px 25px; border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 4000; display: flex; gap: 15px; align-items: center; border: 1px solid #cbd5e1; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         #floating-batch-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
         
-        .fab-submenu { position: absolute; right: 100%; margin-right: 15px; display: flex; gap: 10px; white-space: nowrap; transition: all 0.3s ease; opacity: 0; transform: translateX(20px); pointer-events: none; }
-        .fab-submenu.open { opacity: 1; transform: translateX(0); pointer-events: auto; }
-        
         #import-preview-modal-overlay .modal-content { max-width: 95vw; height: 90vh; display: flex; flex-direction: column; }
         #import-preview-modal-overlay .table-container { flex: 1; overflow: auto; margin-top: 15px; border: 1px solid #e2e8f0; }
 
@@ -169,7 +166,7 @@
     <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>
 </div>
 
-<!-- ✨ FAB 右下角按鈕群 (含更新版匯入與匯出面板) -->
+<!-- ✨ FAB 右下角按鈕群 -->
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 9999;">
     <div class="fab-menu" id="fab-menu">
         <button class="fab-item" onclick="window.openExportModal()">📤 匯出資料中心</button>
@@ -261,9 +258,9 @@
         
         <div class="form-group">
             <label>1. 選擇匯出資料範圍：</label>
-            <select id="export-target-data" style="font-weight: bold; background: #f8fafc; border-color: var(--primary);">
-                <option value="assets">📦 總覽標籤頁 (所有資產與消耗品庫存)</option>
-                <option value="checkouts">📝 登記標籤頁 (物品出入庫與領用紀錄)</option>
+            <select id="export-target-data" style="font-weight: bold; background: #f8fafc; border-color: var(--primary); padding:10px;">
+                <option value="assets">📦 總覽標籤頁 (所有資產與庫存)</option>
+                <option value="checkouts">📝 登記標籤頁 (物品出入與領用紀錄)</option>
             </select>
         </div>
 
@@ -798,6 +795,64 @@
         try { await Promise.all(ops); alert('已刪除紀錄並返還庫存！'); } catch(err) { alert('刪除失敗'); }
     };
 
+    // ======== ✨ 匯出中心 (PDF/CSV/XLSX) ========
+    window.openExportModal = () => { $('export-modal-overlay').classList.add('active'); };
+    window.closeExportModal = () => { $('export-modal-overlay').classList.remove('active'); };
+
+    window.executeExport = (format) => {
+        const target = $('export-target-data').value;
+        let aoa = []; let filename = `PMO_Export_${new Date().toISOString().slice(0,10)}`;
+
+        if (target === 'assets') {
+            filename = `PMO_在列資產總表_${new Date().toISOString().slice(0,10)}`;
+            aoa = [["資產屬性", "類別/標籤", "名稱", "編號/庫存", "單位", "存放辦公室", "狀態", "最低安全庫存", "備註"]];
+            let consQty = 0, fixedCnt = 0, shortCnt = 0;
+            
+            globalAssets.forEach(a => {
+                const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配';
+                if (a.assetType === 'consumable') {
+                    consQty += (parseInt(a.quantity)||0); const m = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; if(m > 0 && (parseInt(a.quantity)||0) < m) shortCnt++;
+                    aoa.push(["消耗品", a.tag||'未分類', a.item, a.quantity||0, a.unit||'個', offName, '-', m, a.remarks||'-']);
+                } else {
+                    fixedCnt++; aoa.push(["固定資產", a.category||'其他', a.item||'未命名', a.sn||'N/A', '-', offName, a.status||'正常', '-', '-']);
+                }
+            });
+
+            if (format === 'pdf') {
+                let html = `<html><head><title>在列資產總表</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;} .summary{margin-top:20px; font-weight:bold; font-size:14px;}</style></head><body><h1>📦 在列資產總表</h1><table>`;
+                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
+                html += `</table><div class="summary"><p>📊 統計總結</p><ul><li>📦 消耗品總庫存：${consQty} 件</li><li>📌 固定資產總數：${fixedCnt} 件</li><li>⚠️ 不足品項數：${shortCnt} 項</li></ul></div></body></html>`;
+                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
+                window.closeExportModal(); return;
+            } else {
+                aoa.push([]); aoa.push(["📊 統計總結"]); aoa.push(["📦 消耗品總庫存", consQty]); aoa.push(["📌 固定資產總數", fixedCnt]); aoa.push(["⚠️ 不足品項數", shortCnt]);
+            }
+        } else if (target === 'checkouts') {
+            filename = `PMO_領用登記紀錄_${new Date().toISOString().slice(0,10)}`;
+            aoa = [["物品名稱", "資產屬性", "出庫數量", "存放辦公室", "領取人", "日期時間", "備註"]];
+            
+            globalCheckouts.forEach(c => {
+                const ty = c.assetType === 'consumable' ? '消耗品' : '固定資產';
+                aoa.push([c.assetName, ty, c.quantity || 1, c.officeName, c.borrower, c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '', c.remarks || '-']);
+            });
+
+            if (format === 'pdf') {
+                let html = `<html><head><title>領用登記紀錄</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;}</style></head><body><h1>📝 領用登記紀錄</h1><table>`;
+                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
+                html += `</table></body></html>`;
+                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
+                window.closeExportModal(); return;
+            }
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "匯出資料");
+        XLSX.writeFile(wb, `${filename}.${format}`);
+        window.closeExportModal();
+        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
+        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open'));
+    };
+
     // ======== ✨ 匯入預覽與防亂碼雙軌解碼系統 ========
     window.toggleSubmenu = (id, e) => { e.stopPropagation(); $$('.fab-submenu').forEach(s => { if(s.id!==id) s.classList.remove('open'); }); $(id).classList.toggle('open'); };
 
@@ -813,10 +868,11 @@
                 let workbook;
                 // ✨ 解決台灣 Excel 匯出 CSV 造成的 Big5 亂碼問題
                 if (fileExt === 'csv') {
-                    const buffer = evt.target.result;
-                    let text = new TextDecoder('utf-8').decode(buffer);
-                    if (text.includes('') || text.match(/[\uFFFD]/)) {
-                        text = new TextDecoder('big5').decode(buffer);
+                    const uint8 = new Uint8Array(evt.target.result);
+                    let text = new TextDecoder('utf-8').decode(uint8);
+                    // 若有亂碼字元，使用 big5 重新解碼
+                    if (text.includes('')) {
+                        text = new TextDecoder('big5').decode(uint8);
                     }
                     workbook = XLSX.read(text, { type: 'string' });
                 } else {
@@ -824,15 +880,35 @@
                     workbook = XLSX.read(data, { type: 'array' });
                 }
 
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                let hi = rawRows.findIndex(row => Array.isArray(row) && row.some(cell => typeof cell === 'string' && (cell.includes('名稱') || cell.includes('編號') || cell.includes('item') || cell.includes('品名') || cell.includes('項目') || cell.includes('規格'))));
-                if (hi === -1) hi = 0;
-                
-                const headers = rawRows[hi] || [];
-                const rows = rawRows.slice(hi + 1).map(row => { let obj = {}; headers.forEach((h, i) => { if (h !== undefined && h !== '') obj[h.toString().trim()] = row[i]; }); return obj; });
+                let targetSheetName = '';
+                let hi = -1;
+                let rawRows = [];
 
-                const isCheckoutFile = headers.some(h => String(h).includes('出庫') || String(h).includes('領取') || String(h).includes('領用'));
+                // ✨ 智慧尋找包含有效標題列的 Sheet
+                for (let sheetName of workbook.SheetNames) {
+                    const sheet = workbook.Sheets[sheetName];
+                    const tempRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    const headerIdx = tempRows.findIndex(row => Array.isArray(row) && row.some(cell => typeof cell === 'string' && (cell.includes('名稱') || cell.includes('編號') || cell.includes('item') || cell.includes('品名') || cell.includes('項目') || cell.includes('規格'))));
+                    
+                    if (headerIdx !== -1) {
+                        targetSheetName = sheetName;
+                        hi = headerIdx;
+                        rawRows = tempRows;
+                        break;
+                    }
+                }
+
+                if (hi === -1) throw new Error("找不到有效的標題列 (需包含名稱或編號等關鍵字)");
+
+                const headers = rawRows[hi] || [];
+                const rows = rawRows.slice(hi + 1).map(row => { 
+                    let obj = {}; 
+                    headers.forEach((h, i) => { if (h !== undefined && h !== '') obj[h.toString().trim()] = row[i]; }); 
+                    return obj; 
+                });
+
+                // 判斷是否為出入庫紀錄
+                const isCheckoutFile = headers.some(h => String(h).includes('出庫') || String(h).includes('領取') || String(h).includes('領用')) || targetSheetName.includes('出入庫') || targetSheetName.includes('領用');
                 $('import-target-type').value = isCheckoutFile ? 'checkouts' : 'assets';
                 
                 window.pendingImports = []; const seenFixedItems = new Set();
@@ -842,7 +918,7 @@
                     const item = getVal(r, ['物品名稱', '機台名稱', '設備名稱', '品名', '名稱', '消耗品名稱', '資產名稱', 'item', '編號', '項目']);
                     if (!item) return;
 
-                    const isCons = Object.keys(r).some(k => k.includes('數量') || k.includes('單位') || k.includes('消耗') || k.includes('庫存'));
+                    const isCons = Object.keys(r).some(k => k.includes('數量') || k.includes('單位') || k.includes('消耗') || k.includes('庫存')) || targetSheetName.includes('消耗') || targetSheetName.includes('庫存');
                     if (!isCons && !isCheckoutFile) { if (seenFixedItems.has(item)) return; seenFixedItems.add(item); }
 
                     const p = { 
@@ -857,16 +933,23 @@
                         checkoutDate: getVal(r, ['日期', '時間', '檢查時間']) || new Date().toISOString().slice(0,16).replace('T',' '),
                         officeName: getVal(r, ['存放位置', '地點', '辦公室', '庫房']) || '未知',
                         
-                        tag: getVal(r, ['標籤', '分類', '類別']), quantity: parseInt(getVal(r, ['庫存數量', '數量', '庫存', '入庫', 'qty'])) || 0, unit: getVal(r, ['單位', 'unit']) || '個', minThreshold: parseInt(getVal(r, ['最低庫存量', '最低', '安全', '不足', 'min'])) || 0, contactPerson: getVal(r, ['聯絡人', '負責人', 'contact']), remarks: getVal(r, ['備註', '說明', 'remark']),
-                        category: getVal(r, ['類型', '分類', '類別', '項目', 'category']) || '其他', sn: getVal(r, ['SN', '資產編號', '序號', '編號']) || 'N/A', status: getVal(r, ['狀態', 'status']) || '正常'
+                        tag: getVal(r, ['標籤', '分類', '類別']), 
+                        quantity: parseInt(getVal(r, ['庫存數量', '數量', '庫存', '入庫', 'qty'])) || 0, 
+                        unit: getVal(r, ['單位', 'unit']) || '個', 
+                        minThreshold: parseInt(getVal(r, ['最低庫存量', '最低庫存', '最低', '安全', '不足', 'min'])) || 0, 
+                        contactPerson: getVal(r, ['聯絡人', '負責人', 'contact']), 
+                        remarks: getVal(r, ['備註', '說明', 'remark']),
+                        category: getVal(r, ['類型', '分類', '類別', '項目', 'category']) || '其他', 
+                        sn: getVal(r, ['SN', '資產編號', '序號', '編號']) || 'N/A', 
+                        status: getVal(r, ['狀態', 'status']) || '正常'
                     };
                     window.pendingImports.push(p);
                 });
                 
-                if (window.pendingImports.length > 0) { window.renderPreviewModal(); $('import-preview-modal-overlay').classList.add('active'); } else { alert('表格無有效資料，請確認標題列是否包含「名稱」或「編號」等關鍵字。'); }
+                if (window.pendingImports.length > 0) { window.renderPreviewModal(); $('import-preview-modal-overlay').classList.add('active'); } else { alert('表格無有效資料'); }
             } catch(err) { alert('解析失敗：' + err.message); } finally { loader.style.display = 'none'; }
         }; 
-        if(fileExt === 'csv') reader.readAsArrayBuffer(file); else reader.readAsArrayBuffer(file);
+        reader.readAsArrayBuffer(file);
         
         const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
         const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
@@ -960,64 +1043,6 @@
                 await Promise.all(ops); alert('🎉 領用紀錄匯入成功！'); window.pendingImports = [];
             } catch(e) { alert('寫入失敗: '+e.message); } finally { loader.style.display = 'none'; }
         }
-    };
-
-    // ======== ✨ 匯出中心 (PDF/CSV/XLSX) ========
-    window.openExportModal = () => { $('export-modal-overlay').classList.add('active'); };
-    window.closeExportModal = () => { $('export-modal-overlay').classList.remove('active'); };
-
-    window.executeExport = (format) => {
-        const target = $('export-target-data').value;
-        let aoa = []; let filename = `PMO_Export_${new Date().toISOString().slice(0,10)}`;
-
-        if (target === 'assets') {
-            filename = `PMO_在列資產總表_${new Date().toISOString().slice(0,10)}`;
-            aoa = [["資產屬性", "類別/標籤", "名稱", "編號/庫存", "單位", "存放辦公室", "狀態", "最低安全庫存", "備註"]];
-            let consQty = 0, fixedCnt = 0, shortCnt = 0;
-            
-            globalAssets.forEach(a => {
-                const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配';
-                if (a.assetType === 'consumable') {
-                    consQty += (parseInt(a.quantity)||0); const m = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; if(m > 0 && (parseInt(a.quantity)||0) < m) shortCnt++;
-                    aoa.push(["消耗品", a.tag||'未分類', a.item, a.quantity||0, a.unit||'個', offName, '-', m, a.remarks||'-']);
-                } else {
-                    fixedCnt++; aoa.push(["固定資產", a.category||'其他', a.item||'未命名', a.sn||'N/A', '-', offName, a.status||'正常', '-', '-']);
-                }
-            });
-
-            if (format === 'pdf') {
-                let html = `<html><head><title>在列資產總表</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;} .summary{margin-top:20px; font-weight:bold; font-size:14px;}</style></head><body><h1>📦 在列資產總表</h1><table>`;
-                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
-                html += `</table><div class="summary"><p>📊 統計總結</p><ul><li>📦 消耗品總庫存：${consQty} 件</li><li>📌 固定資產總數：${fixedCnt} 件</li><li>⚠️ 不足品項數：${shortCnt} 項</li></ul></div></body></html>`;
-                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
-                window.closeExportModal(); return;
-            } else {
-                aoa.push([]); aoa.push(["📊 統計總結"]); aoa.push(["📦 消耗品總庫存", consQty]); aoa.push(["📌 固定資產總數", fixedCnt]); aoa.push(["⚠️ 不足品項數", shortCnt]);
-            }
-        } else if (target === 'checkouts') {
-            filename = `PMO_領用登記紀錄_${new Date().toISOString().slice(0,10)}`;
-            aoa = [["物品名稱", "資產屬性", "出庫數量", "存放辦公室", "領取人", "日期時間", "備註"]];
-            
-            globalCheckouts.forEach(c => {
-                const ty = c.assetType === 'consumable' ? '消耗品' : '固定資產';
-                aoa.push([c.assetName, ty, c.quantity || 1, c.officeName, c.borrower, c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '', c.remarks || '-']);
-            });
-
-            if (format === 'pdf') {
-                let html = `<html><head><title>領用登記紀錄</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;}</style></head><body><h1>📝 領用登記紀錄</h1><table>`;
-                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
-                html += `</table></body></html>`;
-                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
-                window.closeExportModal(); return;
-            }
-        }
-
-        const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "匯出資料");
-        XLSX.writeFile(wb, `${filename}.${format}`);
-        window.closeExportModal();
-        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
-        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
-        $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
     window.openAssetModal = (id = null) => {

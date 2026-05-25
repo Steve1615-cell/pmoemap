@@ -870,8 +870,8 @@
                 if (fileExt === 'csv') {
                     const uint8 = new Uint8Array(evt.target.result);
                     let text = new TextDecoder('utf-8').decode(uint8);
-                    // 若有亂碼字元，使用 big5 重新解碼
-                    if (text.includes('')) {
+                    // 若有 UTF-8 無法解析的替換字元 (U+FFFD)，則改用 big5 重新解碼
+                    if (text.includes('\uFFFD')) {
                         text = new TextDecoder('big5').decode(uint8);
                     }
                     workbook = XLSX.read(text, { type: 'string' });
@@ -884,11 +884,15 @@
                 let hi = -1;
                 let rawRows = [];
 
-                // ✨ 智慧尋找包含有效標題列的 Sheet
+                // ✨ 智慧尋找包含有效標題列的工作表 (Sheet)
                 for (let sheetName of workbook.SheetNames) {
                     const sheet = workbook.Sheets[sheetName];
                     const tempRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                    const headerIdx = tempRows.findIndex(row => Array.isArray(row) && row.some(cell => typeof cell === 'string' && (cell.includes('名稱') || cell.includes('編號') || cell.includes('item') || cell.includes('品名') || cell.includes('項目') || cell.includes('規格'))));
+                    const headerIdx = tempRows.findIndex(row => Array.isArray(row) && row.some(cell => {
+                        if(typeof cell !== 'string') return false;
+                        const s = cell.toLowerCase();
+                        return ['名稱', '編號', 'item', '品名', '項目', '規格', '姓名', '資產', '設備', '船東'].some(k => s.includes(k));
+                    }));
                     
                     if (headerIdx !== -1) {
                         targetSheetName = sheetName;
@@ -898,7 +902,7 @@
                     }
                 }
 
-                if (hi === -1) throw new Error("找不到有效的標題列 (需包含名稱或編號等關鍵字)");
+                if (hi === -1) throw new Error("找不到有效的標題列 (需包含名稱、編號或姓名等關鍵字)");
 
                 const headers = rawRows[hi] || [];
                 const rows = rawRows.slice(hi + 1).map(row => { 
@@ -912,11 +916,21 @@
                 $('import-target-type').value = isCheckoutFile ? 'checkouts' : 'assets';
                 
                 window.pendingImports = []; const seenFixedItems = new Set();
-                const getVal = (r, possibleKeys) => { for (let pk of possibleKeys) { const foundKey = Object.keys(r).find(k => k.toLowerCase().includes(pk.toLowerCase())); if (foundKey && r[foundKey] !== undefined && r[foundKey] !== '') return String(r[foundKey]).trim(); } return ''; };
+                const getVal = (r, possibleKeys) => { 
+                    for (let pk of possibleKeys) { 
+                        const foundKey = Object.keys(r).find(k => k.toLowerCase().includes(pk.toLowerCase())); 
+                        if (foundKey && r[foundKey] !== undefined && r[foundKey] !== '') return String(r[foundKey]).trim(); 
+                    } 
+                    return ''; 
+                };
 
                 rows.forEach(r => {
-                    const item = getVal(r, ['物品名稱', '機台名稱', '設備名稱', '品名', '名稱', '消耗品名稱', '資產名稱', 'item', '編號', '項目']);
-                    if (!item) return;
+                    let item = getVal(r, ['物品名稱', '機台名稱', '設備名稱', '品名', '消耗品名稱', '資產名稱', '船東姓名', '名稱', 'item', '項目']);
+                    if (!item) {
+                        // 退而求其次，尋找編號當作名稱
+                        item = getVal(r, ['編號', 'sn', '序號']);
+                        if (!item) return; 
+                    }
 
                     const isCons = Object.keys(r).some(k => k.includes('數量') || k.includes('單位') || k.includes('消耗') || k.includes('庫存')) || targetSheetName.includes('消耗') || targetSheetName.includes('庫存');
                     if (!isCons && !isCheckoutFile) { if (seenFixedItems.has(item)) return; seenFixedItems.add(item); }
@@ -929,9 +943,9 @@
                         createdAt: new Date().toISOString(),
                         
                         checkoutQty: parseInt(getVal(r, ['出庫數量', '借用數量', '出庫'])) || 1,
-                        borrower: getVal(r, ['領取人', '借用人', '參與人', '使用者']) || currentUserProfile.name,
+                        borrower: getVal(r, ['領取人', '借用人', '參與人', '使用者', '船東姓名']) || currentUserProfile.name,
                         checkoutDate: getVal(r, ['日期', '時間', '檢查時間']) || new Date().toISOString().slice(0,16).replace('T',' '),
-                        officeName: getVal(r, ['存放位置', '地點', '辦公室', '庫房']) || '未知',
+                        officeName: getVal(r, ['存放位置', '資產位置', '地點', '辦公室', '庫房']) || '未知',
                         
                         tag: getVal(r, ['標籤', '分類', '類別']), 
                         quantity: parseInt(getVal(r, ['庫存數量', '數量', '庫存', '入庫', 'qty'])) || 0, 
@@ -940,13 +954,13 @@
                         contactPerson: getVal(r, ['聯絡人', '負責人', 'contact']), 
                         remarks: getVal(r, ['備註', '說明', 'remark']),
                         category: getVal(r, ['類型', '分類', '類別', '項目', 'category']) || '其他', 
-                        sn: getVal(r, ['SN', '資產編號', '序號', '編號']) || 'N/A', 
+                        sn: getVal(r, ['資產編號', 'SN', '序號', '編號']) || 'N/A', 
                         status: getVal(r, ['狀態', 'status']) || '正常'
                     };
                     window.pendingImports.push(p);
                 });
                 
-                if (window.pendingImports.length > 0) { window.renderPreviewModal(); $('import-preview-modal-overlay').classList.add('active'); } else { alert('表格無有效資料'); }
+                if (window.pendingImports.length > 0) { window.renderPreviewModal(); $('import-preview-modal-overlay').classList.add('active'); } else { alert('表格無有效資料，請確認標題列是否包含名稱或編號等關鍵字。'); }
             } catch(err) { alert('解析失敗：' + err.message); } finally { loader.style.display = 'none'; }
         }; 
         reader.readAsArrayBuffer(file);

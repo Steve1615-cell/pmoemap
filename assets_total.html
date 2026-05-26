@@ -207,8 +207,8 @@
     <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>
 </div>
 
-<!-- FAB 右下角按鈕群 -->
-<div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 9999;">
+<!-- ✨ FAB 右下角按鈕群 (絕對最高層，修復無法點擊問題) -->
+<div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 99995 !important;">
     <div class="fab-menu" id="fab-menu">
         <div style="position: relative; display: flex; align-items: center; justify-content: flex-end;">
             <div id="export-submenu" class="fab-submenu">
@@ -478,7 +478,7 @@
         if($('preview-batch-office')) $('preview-batch-office').innerHTML = html;
     }
 
-    // ======== ✨ 拖曳多選與懸浮列 (加入防呆比對提升效能) ========
+    // ======== ✨ 拖曳多選與懸浮列 (加入 DOM 批次渲染防呆比對) ========
     function initDragSelect() {
         let isDragging = false, targetState = false;
         const handleMouseDown = (e) => { const tr = e.target.closest('tr'); if (tr && !e.target.closest('button')) { const cb = tr.querySelector('.batch-checkbox'); if (cb) { isDragging = true; targetState = e.target.classList.contains('batch-checkbox') ? e.target.checked : !cb.checked; cb.checked = targetState; window.updateFloatingBar(); e.preventDefault(); } } };
@@ -582,6 +582,7 @@
         </div>`;
     }
 
+    // ✨ 1. 總覽渲染 (DOM 效能升級)
     window.renderSummary = () => {
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
         const cons = globalAssets.filter(a => a.assetType === 'consumable');
@@ -614,22 +615,27 @@
         drawSvgDonut('chart-fixed', fixedChartData, totalFixedCount, fixedPct, '總件數', 'fixed');
         drawSvgDonut('chart-shortage', shortageChartData, shortagePercent + '%', '', window.showOnlyShortage ? '解除過濾' : '不足率', null);
 
-        const tb = $('consumable-tbody'); tb.innerHTML = '';
+        const tb = $('consumable-tbody'); 
         if($('cb-select-all-cons')) $('cb-select-all-cons').checked = false;
 
         let filteredCons = cons.filter(a => (a.item||'').toLowerCase().includes(keyword) || (a.tag||'').toLowerCase().includes(keyword));
         if (window.showOnlyShortage) { filteredCons = filteredCons.filter(a => { const minT = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; return minT > 0 && (parseInt(a.quantity) || 0) < minT; }); }
-        if (filteredCons.length === 0) return tb.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的消耗品。</td></tr>';
+        
+        if (filteredCons.length === 0) {
+            tb.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的消耗品。</td></tr>';
+            return;
+        }
 
         const sortBy = $('asset-sort-select').value;
         filteredCons.sort((a, b) => {
-            if (sortBy === 'time') return (b.createdAt||'').localeCompare(a.createdAt||'');
-            if (sortBy === 'name') return (a.item||'').localeCompare(b.item||'');
+            if (sortBy === 'time') return String(b.createdAt||'').localeCompare(String(a.createdAt||''));
+            if (sortBy === 'name') return String(a.item||'').localeCompare(String(b.item||''));
             if (sortBy === 'qty') return (b.quantity||0) - (a.quantity||0);
             const offA = globalOffices.find(o => o.id === a.office_id)?.name || ''; const offB = globalOffices.find(o => o.id === b.office_id)?.name || '';
             return offA.localeCompare(offB);
         });
 
+        let htmlStr = '';
         filteredCons.forEach(a => {
             const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? `[${off.floor||'?'}] ${off.name}` : '未分配';
             const qty = parseInt(a.quantity) || 0; const minT = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10;
@@ -638,20 +644,20 @@
             let qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--primary);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span>`;
             if (isLow) { qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--danger);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span><div style="color:var(--danger); font-size:11px; font-weight:bold; margin-top:4px;">⚠️ 需補 ${minT - qty}</div>`; }
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-consumable-row batch-checkbox" value="${a.id}"></td><td><span class="badge tag">${a.tag || '未分類'}</span></td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;" title="點擊編輯">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td>${a.contactPerson || '-'}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td>`;
-            tb.appendChild(tr);
+            htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-consumable-row batch-checkbox" value="${a.id}"></td><td><span class="badge tag">${a.tag || '未分類'}</span></td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;" title="點擊編輯">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td>${a.contactPerson || '-'}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td></tr>`;
         });
+        tb.innerHTML = htmlStr;
         window.updateFloatingBar();
     };
 
+    // ✨ 2. 登記：領用紀錄表格渲染 (DOM 效能升級)
     window.toggleCheckoutSort = () => { window.registrySortOrder = window.registrySortOrder === 'desc' ? 'asc' : 'desc'; $('checkout-sort-icon').innerText = window.registrySortOrder === 'desc' ? '⬇' : '⬆'; window.renderCheckouts(); };
 
     window.renderCheckouts = () => {
         const srContainer = $('stats-dashboard-registry');
         if (srContainer) srContainer.innerHTML = renderStatsDashboardHtml('registry');
 
-        const tb = $('checkout-tbody'); tb.innerHTML = '';
+        const tb = $('checkout-tbody');
         if($('cb-select-all-checkout')) $('cb-select-all-checkout').checked = false;
         
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
@@ -662,16 +668,19 @@
             (c.remarks||'').toLowerCase().includes(keyword)
         );
 
-        if (filtered.length === 0) return tb.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的紀錄。</td></tr>';
+        if (filtered.length === 0) {
+            tb.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的紀錄。</td></tr>';
+            return;
+        }
 
         filtered.sort((a, b) => {
             const res = String(a.checkoutDate||'').localeCompare(String(b.checkoutDate||''));
             return window.registrySortOrder === 'desc' ? -res : res;
         });
 
+        let htmlStr = '';
         filtered.forEach(c => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
+            htmlStr += `<tr>
                 <td style="text-align:center;"><input type="checkbox" class="cb-checkout-row batch-checkbox" value="${c.id}" onchange="window.updateFloatingBar()"></td>
                 <td><b style="font-size:15px; color:var(--primary);">${c.assetName}</b></td>
                 <td><span style="font-weight:bold; color:var(--text-main);">${c.officeName}</span></td>
@@ -680,9 +689,9 @@
                 <td style="font-family:monospace; color:var(--text-muted);">${c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '-'}</td>
                 <td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.remarks || '-'}</td>
                 <td><button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteSingleRecord('${c.id}', event)">🗑️</button></td>
-            `;
-            tb.appendChild(tr);
+            </tr>`;
         });
+        tb.innerHTML = htmlStr;
         
         window.renderCheckoutStats(); 
         window.updateFloatingBar();
@@ -719,31 +728,27 @@
             const maxCount = sortedItems.length > 0 ? sortedItems[0].count : 1;
             const topContainer = $(`${prefix}-stats-top-items`);
             if (topContainer) {
-                topContainer.innerHTML = '';
-                if (sortedItems.length === 0) { topContainer.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">此期間無領用紀錄</div>'; }
+                let htmlStr = '';
+                if (sortedItems.length === 0) { htmlStr = '<div style="color:#94a3b8; font-size:13px; text-align:center;">此期間無領用紀錄</div>'; }
                 else {
                     sortedItems.forEach((item, i) => {
                         const pct = Math.max(5, (item.count / maxCount) * 100);
                         const color = chartPalette[i % chartPalette.length];
-                        topContainer.innerHTML += `
-                            <div class="bar-chart-row">
-                                <div class="bar-chart-label" title="${item.name}">${item.name}</div>
-                                <div class="bar-chart-track"><div class="bar-chart-fill" style="width:${pct}%; background:${color};"></div></div>
-                                <div class="bar-chart-val">${item.count}次</div>
-                            </div>
-                        `;
+                        htmlStr += `<div class="bar-chart-row"><div class="bar-chart-label" title="${item.name}">${item.name}</div><div class="bar-chart-track"><div class="bar-chart-fill" style="width:${pct}%; background:${color};"></div></div><div class="bar-chart-val">${item.count}次</div></div>`;
                     });
                 }
+                topContainer.innerHTML = htmlStr;
             }
         });
     };
 
+    // ✨ 3. 渲染：貼文動態牆 (DOM 效能升級)
     window.renderFeed = () => {
         const sfContainer = $('stats-dashboard-feed');
         if (sfContainer) sfContainer.innerHTML = renderStatsDashboardHtml('feed');
         window.renderCheckoutStats();
 
-        const bd = $('feed-board'); bd.innerHTML = '';
+        const bd = $('feed-board');
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
         const dateFilter = $('feed-date-filter') ? $('feed-date-filter').value : '';
         const sortMode = $('feed-sort-select') ? $('feed-sort-select').value : 'desc';
@@ -756,16 +761,20 @@
             (!dateFilter || (c.checkoutDate||'').startsWith(dateFilter))
         );
 
-        if(filtered.length === 0) return bd.innerHTML = '<div style="width:100%; text-align:center; color:#94a3b8; padding:30px;">尚無符合條件的領用動態</div>';
+        if(filtered.length === 0) {
+            bd.innerHTML = '<div style="width:100%; text-align:center; color:#94a3b8; padding:30px;">尚無符合條件的領用動態</div>';
+            return;
+        }
 
         filtered.sort((a,b) => {
             const res = String(b.checkoutDate||b.createdAt||'').localeCompare(String(a.checkoutDate||a.createdAt||''));
             return sortMode === 'desc' ? res : -res;
         });
         
+        let htmlStr = '';
         filtered.forEach(rec => {
             const liked = rec.likes && rec.likes.includes(currentUserProfile.email);
-            bd.innerHTML += `
+            htmlStr += `
                 <div class="feed-card" style="width: 320px;">
                     <div class="feed-header">
                         <img src="${rec.creatorAvatar}" class="feed-avatar">
@@ -785,7 +794,8 @@
                         <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteSingleRecord('${rec.id}', event)">🗑️ 刪除紀錄</button>
                     </div>
                 </div>`;
-        }); 
+        });
+        bd.innerHTML = htmlStr;
     };
 
     window.toggleCheckoutLike = async (rId) => { 
@@ -794,7 +804,7 @@
         await setDoc(doc(db, "asset_checkouts", rId), { likes: lk }, { merge: true }); 
     };
 
-    // ======== ✨ 主系統操作 ========
+    // ======== ✨ 主系統操作 (批次處理) ========
     window.openBatchMoveModal = () => { $('batch-move-modal-overlay').classList.add('active'); };
     window.closeBatchMoveModal = () => $('batch-move-modal-overlay').classList.remove('active');
     window.executeBatchMove = async () => {
@@ -971,36 +981,39 @@
         $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
+    // ✨ 匯入預覽表格 (DOM 效能升級)
     window.renderPreviewModal = () => {
-        const tb = $('preview-tbody'); tb.innerHTML = ''; $('cb-preview-all').checked = false;
+        const tb = $('preview-tbody'); 
+        if($('cb-preview-all')) $('cb-preview-all').checked = false;
         const thead = $('preview-thead');
         const targetType = $('import-target-type').value;
+
+        let htmlStr = '';
 
         if (targetType === 'assets') {
             $('import-deduct-wrapper').style.display = 'none';
             $('btn-preview-batch-edit').style.display = 'inline-block';
             thead.innerHTML = `<tr><th style="width:40px;"><input type="checkbox" id="cb-preview-all" class="batch-checkbox" onchange="window.toggleAllPreview(this)"></th><th>類型</th><th>名稱</th><th>庫存/SN</th><th>目標辦公室 (需編輯指定)</th><th>標籤/類別</th></tr>`;
+            
             window.pendingImports.forEach(p => {
                 const off = globalOffices.find(o => o.id === p.office_id); const offName = off ? off.name : '⚠️未分配(編輯)';
                 const ty = p.assetType === 'consumable' ? '📦 消耗品' : '📌 固定資產';
                 const qs = p.assetType === 'consumable' ? `${p.quantity} ${p.unit}` : p.sn;
                 const tc = p.assetType === 'consumable' ? p.tag : p.category;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-preview-row batch-checkbox" value="${p.id}"></td><td><span class="badge ${p.assetType==='consumable'?'danger':'tag'}">${ty}</span></td><td><b>${p.item}</b></td><td>${qs}</td><td><span style="color:${off?'var(--text-main)':'var(--danger)'};">${offName}</span></td><td>${tc||'-'}</td>`;
-                tb.appendChild(tr);
+                htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-preview-row batch-checkbox" value="${p.id}"></td><td><span class="badge ${p.assetType==='consumable'?'danger':'tag'}">${ty}</span></td><td><b>${p.item}</b></td><td>${qs}</td><td><span style="color:${off?'var(--text-main)':'var(--danger)'};">${offName}</span></td><td>${tc||'-'}</td></tr>`;
             });
         } else {
             $('import-deduct-wrapper').style.display = 'inline-flex';
             $('btn-preview-batch-edit').style.display = 'none';
             thead.innerHTML = `<tr><th style="width:40px;"><input type="checkbox" id="cb-preview-all" class="batch-checkbox" onchange="window.toggleAllPreview(this)"></th><th>名稱 (系統比對)</th><th>存放辦公室</th><th>出庫數量</th><th>領取人</th><th>日期</th></tr>`;
+            
             window.pendingImports.forEach(p => {
                 const matchAsset = globalAssets.find(a => a.item === p.item);
                 const matchStatus = matchAsset ? `<span style="color:var(--success);">✅ 找到相符資產</span>` : `<span style="color:var(--warning);">⚠️ 找不到資產 (僅純紀錄)</span>`;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="cb-preview-row batch-checkbox" value="${p.id}"></td><td><b style="color:var(--primary);">${p.item}</b><br><span style="font-size:11px;">${matchStatus}</span></td><td>${p.officeName}</td><td><b style="color:var(--danger);">${p.checkoutQty}</b></td><td>${p.borrower}</td><td>${p.checkoutDate}</td>`;
-                tb.appendChild(tr);
+                htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-preview-row batch-checkbox" value="${p.id}"></td><td><b style="color:var(--primary);">${p.item}</b><br><span style="font-size:11px;">${matchStatus}</span></td><td>${p.officeName}</td><td><b style="color:var(--danger);">${p.checkoutQty}</b></td><td>${p.borrower}</td><td>${p.checkoutDate}</td></tr>`;
             });
         }
+        tb.innerHTML = htmlStr;
     };
 
     window.closeImportPreviewModal = () => { if(confirm('確定要捨棄這些尚未匯入的資料？')) { window.pendingImports = []; $('import-preview-modal-overlay').classList.remove('active'); } };
@@ -1060,7 +1073,7 @@
         }
     };
 
-    // ======== ✨ 匯出中心 ========
+    // ======== ✨ 匯出中心 (PDF/CSV/XLSX) ========
     window.openExportModal = () => { $('export-modal-overlay').classList.add('active'); };
     window.closeExportModal = () => { $('export-modal-overlay').classList.remove('active'); };
 
@@ -1183,6 +1196,20 @@
         } catch(e) { alert('登記失敗：' + e.message); } finally { btn.disabled = false; btn.innerText = '確認登記'; }
     };
 
+    window.toggleFabMenu = (e) => { 
+        if(e) e.stopPropagation(); 
+        const c = $('fab-container'); if(c) c.classList.toggle('active'); 
+        const m = $('fab-menu'); if(m) m.classList.toggle('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+    };
+
+    window.addEventListener('click', () => { 
+        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
+        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+        $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
+    });
+    
     // ======== ✨ 教學系統 ========
     window.startTutorial = () => {
         window.currentTutorialStep = 0;
@@ -1192,7 +1219,12 @@
         window.renderTutorialStep();
     };
 
-    window.exitTutorial = () => { window.endTutorial(); };
+    window.exitTutorial = () => {
+        if(confirm('確定離開教學？')) {
+            window.endTutorial();
+        }
+    };
+
     window.endTutorial = () => {
         $('tutorial-overlay-mask').style.display = 'none';
         $('tutorial-ring-container').style.display = 'none';
@@ -1205,7 +1237,9 @@
         if (window.currentTutorialStep >= tutorialData.length) {
             alert('🎉 恭喜您完成教學！您可以隨時點擊頁面最上方標題重新觀看。');
             window.endTutorial();
-        } else { window.renderTutorialStep(); }
+        } else {
+            window.renderTutorialStep();
+        }
     };
 
     window.clearTutorialHighlights = () => {
@@ -1239,16 +1273,9 @@
                     $('tutorial-ring-container').appendChild(ring);
                 }
             });
-        }, 250); // 延長到 250ms 確保 DOM 排版完成
+        }, 150);
     };
 
-    window.addEventListener('click', () => { 
-        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
-        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
-        $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
-        $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
-    });
-    
     window.addEventListener('keydown', (e) => { 
         if (e.key === 'Escape') { 
             $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
@@ -1256,6 +1283,7 @@
             const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
             const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
             $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+            // 離開教學判斷
             if($('tutorial-dialog').style.display === 'flex') { window.exitTutorial(); }
         } 
     });

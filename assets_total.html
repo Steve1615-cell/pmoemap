@@ -1165,6 +1165,20 @@
     };
     window.closeCheckoutModal = () => $('checkout-modal-overlay').classList.remove('active');
 
+    // ✨ 補回遺失的下拉選單控制引擎
+    window.toggleDropdown = (t, e) => { 
+        if(e) e.stopPropagation(); 
+        $$('.custom-dropdown-panel').forEach(p => { if(p.id !== `${t}-panel`) p.classList.remove('active'); }); 
+        const panel = $(`${t}-panel`);
+        if(panel) {
+            panel.classList.toggle('active'); 
+            if(panel.classList.contains('active')) {
+                const inp = $(`${t}-input`);
+                if(inp) inp.focus();
+            }
+        }
+    };
+
     window.renderCheckoutAssetList = () => {
         const iv = $('opt-checkout-asset-input').value.toLowerCase().trim(); const ld = $('opt-checkout-asset-list'); ld.innerHTML = '';
         const f = globalAssets.filter(a => (a.item||'').toLowerCase().includes(iv) || (a.sn||'').toLowerCase().includes(iv) || (a.tag||'').toLowerCase().includes(iv));

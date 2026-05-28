@@ -166,17 +166,17 @@
     <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>
 </div>
 
-<!-- ✨ FAB 右下角按鈕群 (完美修復) -->
+<!-- ✨ FAB 右下角按鈕群 (完美修復事件冒泡攔截) -->
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 99995 !important;">
     <div class="fab-menu" id="fab-menu">
-        <button class="fab-item" onclick="window.openExportModal()">📤 匯出資料中心</button>
+        <button class="fab-item" onclick="event.stopPropagation(); window.openExportModal(); window.toggleFabMenu(event);">📤 匯出資料中心</button>
         <div style="position: relative; display: flex; align-items: center; justify-content: flex-end;">
             <div id="import-submenu" class="fab-submenu">
-                <button class="fab-item" onclick="document.getElementById('file-upload').click()">📥 選擇表格 (CSV/XLSX)</button>
+                <button class="fab-item" onclick="event.stopPropagation(); document.getElementById('file-upload').click(); window.toggleFabMenu(event);">📥 選擇表格 (CSV/XLSX)</button>
             </div>
             <button class="fab-item" onclick="window.toggleSubmenu('import-submenu', event)">📥 匯入預覽 ◀</button>
         </div>
-        <button class="fab-item" onclick="window.openAssetModal()">➕ 新增實體資產</button>
+        <button class="fab-item" onclick="event.stopPropagation(); window.openAssetModal(); window.toggleFabMenu(event);">➕ 新增實體資產</button>
     </div>
     <button class="fab-btn" onclick="window.toggleFabMenu(event)">＋</button>
 </div>
@@ -621,17 +621,22 @@
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
         const cons = globalAssets.filter(a => a.assetType === 'consumable');
         const fixed = globalAssets.filter(a => a.assetType !== 'consumable');
-        const totalAssetsCnt = globalAssets.length;
 
-        const consTagMap = {}; let totalConsQty = 0;
-        cons.forEach(c => { const t = c.tag || '未分類'; const q = parseInt(c.quantity) || 0; consTagMap[t] = (consTagMap[t]||0) + q; totalConsQty += q; });
+        // ✨ 圖表數據計算 (使用佔比計算)
+        const totalConsQty = cons.reduce((sum, c) => sum + (parseInt(c.quantity) || 0), 0);
+        const totalFixedCount = fixed.length;
+        const totalItemsQty = totalConsQty + totalFixedCount;
+
+        const consTagMap = {};
+        cons.forEach(c => { const t = c.tag || '未分類'; const q = parseInt(c.quantity) || 0; consTagMap[t] = (consTagMap[t]||0) + q; });
         const consChartData = Object.keys(consTagMap).map(k => ({ label: k, value: consTagMap[k] }));
-        const consPct = totalAssetsCnt === 0 ? '0%' : Math.round((cons.length / totalAssetsCnt) * 100) + '%';
-
-        const fixedCatMap = {}; let totalFixedCount = fixed.length;
+        
+        const fixedCatMap = {};
         fixed.forEach(c => { const t = c.category || '其他'; fixedCatMap[t] = (fixedCatMap[t]||0) + 1; });
         const fixedChartData = Object.keys(fixedCatMap).map(k => ({ label: k, value: fixedCatMap[k] }));
-        const fixedPct = totalAssetsCnt === 0 ? '0%' : Math.round((fixed.length / totalAssetsCnt) * 100) + '%';
+        
+        const consPctStr = totalItemsQty === 0 ? '0%' : Math.round((totalConsQty / totalItemsQty) * 100) + '%';
+        const fixedPctStr = totalItemsQty === 0 ? '0%' : Math.round((totalFixedCount / totalItemsQty) * 100) + '%';
 
         let groupedConsMap = {};
         cons.forEach(c => {
@@ -645,9 +650,9 @@
         let shortagePercent = (shortageKinds + normalKinds) === 0 ? 0 : Math.round((shortageKinds / (shortageKinds + normalKinds)) * 100);
         const shortageChartData = [{ label: '庫存不足', value: shortageKinds, color: '#ef4444' }, { label: '安全', value: normalKinds, color: '#10b981' }];
 
-        // ✨ 百分比切換功能：顯示該類別項目佔總項目之比例
-        drawSvgDonut('chart-cons', consChartData, totalConsQty, consPct, '總數量', `佔總資產 (${cons.length}/${totalAssetsCnt})`, 'cons');
-        drawSvgDonut('chart-fixed', fixedChartData, totalFixedCount, fixedPct, '總件數', `佔總資產 (${fixed.length}/${totalAssetsCnt})`, 'fixed');
+        // ✨ 繪製新版佔比圓環
+        drawSvgDonut('chart-cons', consChartData, totalConsQty, consPctStr, '總數量', `消耗品 / 所有資產`, 'cons');
+        drawSvgDonut('chart-fixed', fixedChartData, totalFixedCount, fixedPctStr, '總件數', `固定資產 / 所有資產`, 'fixed');
         drawSvgDonut('chart-shortage', shortageChartData, shortagePercent + '%', '', window.showOnlyShortage ? '解除過濾' : '不足率', null, null);
 
         // 動態生成表頭
@@ -1189,30 +1194,8 @@
         $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
-    // ======== ✨ 新增實體資產與切換邏輯 ========
-    window.switchAssetMainType = (type) => {
-        const typeInput = document.getElementById('asset-main-type');
-        if (typeInput) typeInput.value = type;
-
-        const btnFixed = document.getElementById('btn-type-fixed');
-        const btnConsumable = document.getElementById('btn-type-consumable');
-        const fixedFields = document.getElementById('fixed-asset-fields');
-        const consumableFields = document.getElementById('consumable-asset-fields');
-
-        if (type === 'fixed') {
-            if(btnFixed) { btnFixed.style.background = 'var(--primary)'; btnFixed.style.color = 'white'; }
-            if(btnConsumable) { btnConsumable.style.background = 'white'; btnConsumable.style.color = 'var(--text-main)'; }
-            if(fixedFields) fixedFields.style.display = 'block';
-            if(consumableFields) consumableFields.style.display = 'none';
-        } else {
-            if(btnConsumable) { btnConsumable.style.background = 'var(--primary)'; btnConsumable.style.color = 'white'; }
-            if(btnFixed) { btnFixed.style.background = 'white'; btnFixed.style.color = 'var(--text-main)'; }
-            if(fixedFields) fixedFields.style.display = 'none';
-            if(consumableFields) consumableFields.style.display = 'block';
-        }
-    };
-
     window.openAssetModal = (id = null) => {
+        if (typeof id !== 'string') id = null; 
         window.currentEditAssetId = id; 
         if (id) { 
             $('asset-modal-title').innerText = '📦 編輯資產'; 
@@ -1298,18 +1281,21 @@
         $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
     };
 
-    // ✨ 點擊畫面空白處自動收起懸浮過濾選單
+    // ✨ 點擊畫面空白處自動收起所有懸浮選單與防護事件冒泡
     window.addEventListener('click', (e) => { 
         const panel = $('col-filter-panel');
         if (panel && panel.style.display === 'flex') {
-            if (!panel.contains(e.target) && !e.target.classList.contains('th-filter-btn')) {
+            if (!panel.contains(e.target) && !e.target.closest('.th-filter-btn')) {
                 panel.style.display = 'none';
             }
         }
         
-        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
-        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
-        $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+        if (!e.target.closest('#fab-container')) {
+            const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
+            const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
+            $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+        }
+        
         $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
     });
     

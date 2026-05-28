@@ -26,6 +26,17 @@
         .notion-table td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; color: var(--text-main); }
         .notion-table tr:hover { background: #f8fafc; }
         
+        /* ✨ 增強版表頭樣式 */
+        .th-content { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+        .th-sort { cursor: pointer; flex: 1; transition: color 0.2s; white-space: nowrap; display:flex; align-items:center; }
+        .th-sort:hover { color: var(--primary); }
+        .th-filter-btn { cursor: pointer; padding: 2px 8px; border-radius: 6px; color: var(--text-muted); background: #f1f5f9; font-size: 14px; font-weight: bold; border: 1px solid #cbd5e1; transition: all 0.2s; }
+        .th-filter-btn:hover { background: #e2e8f0; color: var(--text-main); }
+        .th-filter-btn.active-filter { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        #col-filter-panel { position: fixed; background: white; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 15px; z-index: 9999; max-height: 350px; display: none; flex-direction: column; gap: 8px; min-width: 220px; }
+        #filter-cb-list { overflow-y: auto; max-height: 220px; display: flex; flex-direction: column; gap: 5px; padding-right: 5px; }
+
         .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block; white-space: nowrap; }
         .badge.tag { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
 
@@ -59,7 +70,6 @@
         .bar-chart-val { font-size: 11px; font-weight: bold; width: 30px; color: var(--text-muted); }
         .checkout-stats-wrapper { display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap; }
 
-        /* ✨ 新手教學專屬樣式 */
         #tutorial-overlay-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 99990; display: none; }
         #tutorial-ring-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99992; pointer-events: none; display: none; }
         .tutorial-on-top { z-index: 99991 !important; position: relative; background: white; border-radius: 12px; }
@@ -70,6 +80,9 @@
     </style>
 </head>
 <body>
+
+<!-- 表頭過濾彈出面板 -->
+<div id="col-filter-panel"></div>
 
 <!-- 教學遮罩與互動層 -->
 <div id="tutorial-overlay-mask"></div>
@@ -96,24 +109,11 @@
         <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋資產名稱、編號、標籤或辦公室..." oninput="window.summaryCurrentPage = 1; window.renderCurrentView()">
     </div>
     
-    <!-- ✨ 移除貼文標籤 -->
     <div class="tabs">
         <button id="tab-btn-summary" class="tab-btn" onclick="window.switchTab('summary')">📊 總覽</button>
         <button id="tab-btn-registry" class="tab-btn" onclick="window.switchTab('registry')">📝 登記</button>
     </div>
     
-    <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-        <div id="asset-sort-wrapper" style="display: flex; align-items: center; gap: 8px;">
-            <label style="font-size: 14px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
-            <select id="asset-sort-select" onchange="window.summaryCurrentPage = 1; window.renderCurrentView()" style="border: none; outline: none; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
-                <option value="time">🕒 依登錄時間</option>
-                <option value="name">📌 依名稱</option>
-                <option value="office">🏢 依所屬辦公室</option>
-                <option value="qty">🔢 依庫存數量 (高至低)</option>
-            </select>
-        </div>
-    </div>
-
     <div id="loading-msg" style="text-align: center; color: var(--text-muted); padding: 50px; font-size: 18px;">⏳ 資料讀取與連線中...</div>
 
     <!-- ================= 視圖 1：總覽 ================= -->
@@ -136,17 +136,13 @@
             </div>
         </div>
         
-        <div style="font-size: 13px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">💡 提示：按住滑鼠左鍵並拖曳表格的列，可快速多重選取打勾。</div>
+        <div style="font-size: 13px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">💡 提示：點選表頭文字即可排序。點選文字右方的「⋯」可進行條件篩選。按住滑鼠左鍵可拖曳勾選！</div>
         
         <div class="table-container" style="display:flex; flex-direction:column;">
             <div style="overflow-x: auto;">
                 <table class="notion-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-summary" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-summary-row', this)"></th>
-                            <th>🏷️ 標籤/類型</th><th>Aa 名稱</th><th>🔢 數量/狀態</th><th>🏢 存放辦公室</th><th>👤 聯絡/使用者</th><th>📝 備註</th>
-                        </tr>
-                    </thead>
+                    <!-- 動態表頭將在此生成 -->
+                    <thead id="summary-table-thead"></thead>
                     <tbody id="summary-table-tbody"></tbody>
                 </table>
             </div>
@@ -157,16 +153,11 @@
     <!-- ================= 視圖 2：登記 (領用紀錄表) ================= -->
     <div id="view-registry" class="view">
         <div id="stats-dashboard-registry"></div>
+        <div style="font-size: 13px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">💡 提示：點選表頭文字即可排序。點選文字右方的「⋯」可進行條件篩選。按住滑鼠左鍵可拖曳勾選！</div>
         <div class="table-container">
             <table class="notion-table">
-                <thead>
-                    <tr>
-                        <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-checkout" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-checkout-row', this)"></th>
-                        <th>Aa 名稱</th><th>🏢 存放辦公室</th><th>🔢 出庫數量</th><th>👤 領取人</th>
-                        <th style="cursor:pointer; color:var(--primary); transition:0.2s;" onclick="window.toggleCheckoutSort()" title="點擊切換新舊排序">📅 日期 <span id="checkout-sort-icon">⬇</span></th>
-                        <th>📝 備註</th><th>🗑️ 刪除</th>
-                    </tr>
-                </thead>
+                <!-- 動態表頭將在此生成 -->
+                <thead id="registry-table-thead"></thead>
                 <tbody id="checkout-tbody"></tbody>
             </table>
         </div>
@@ -383,23 +374,23 @@
     let db, auth;
     let globalAssets = [], globalOffices = [], globalMembers = [], globalCheckouts = [];
     
-    // ✨ 分頁系統全域變數
+    // ✨ 排序與過濾系統全域變數
     window.summaryCurrentPage = 1;
     window.summaryItemsPerPage = 50;
+    window.tableSort = { col: 'time', dir: 'desc' };
+    window.tableFilters = { summary: {}, registry: {} };
 
     window.displayMode = { 'cons': 'qty', 'fixed': 'qty' };
     window.showOnlyShortage = false; 
     window.pendingImports = []; 
     window.currentEditAssetId = null;
-    window.registrySortOrder = 'desc'; 
 
     // 教學系統變數與防護鎖
     window.currentTutorialStep = 0;
     let tutorialTimer = null; 
 
-    // ✨ 教學內容移除第三步貼文
     const tutorialData = [
-        { title: "1. 介紹總覽標籤頁", text: "「總覽」提供三大環形儀表板，點擊可切換顯示數量或百分比。下方表格包含固定資產與消耗品，支援滑鼠按住拖曳進行多重選取，右下角「＋」可叫出專屬的匯入與匯出資料中心。", tab: "summary", targets: ['#tutorial-target-stats', '#fab-container'] },
+        { title: "1. 介紹總覽標籤頁", text: "「總覽」提供三大環形儀表板，點擊可切換顯示數量或百分比。下方表格表頭支援點擊排序與「⋯」多重篩選過濾，右下角「＋」可叫出專屬的匯入與匯出資料中心。", tab: "summary", targets: ['#tutorial-target-stats', '#fab-container'] },
         { title: "2. 介紹登記標籤頁", text: "「登記」標籤頁提供領用紀錄與柱狀圖即時統計，右下角匯入表單支援同步扣除消耗品庫存。點擊上方「領用登記」按鈕即可快速紀錄出入庫狀態！", tab: "registry", targets: ['#stats-dashboard-registry', '#fab-container'] }
     ];
 
@@ -424,7 +415,7 @@
                 initDragSelect();
                 
                 const savedTab = localStorage.getItem('assets_total_tab') || 'summary';
-                window.switchTab(savedTab === 'feed' ? 'summary' : savedTab); // 避免讀到已移除的 feed
+                window.switchTab(savedTab === 'feed' ? 'summary' : savedTab);
 
                 if(!localStorage.getItem('pmo_tutorial_seen')) {
                     setTimeout(() => window.startTutorial(), 1000);
@@ -509,12 +500,94 @@
     window.hoverSvgDonut = (el, cid) => { el.setAttribute('stroke-width', '40'); const v = $(cid+'-val'), l = $(cid+'-lbl'); if(v) { v.textContent = el.dataset.val; v.setAttribute('fill', el.dataset.color); } if(l) l.textContent = el.dataset.lbl; };
     window.outSvgDonut = (el, cid) => { el.setAttribute('stroke-width', '30'); const c = $(cid), v = $(cid+'-val'), l = $(cid+'-lbl'); if(v && c) { v.textContent = c.dataset.origVal; v.setAttribute('fill', 'var(--text-main)'); } if(l && c) l.textContent = c.dataset.origLbl; };
 
+    // ======== ✨ 統一排序與過濾引擎 ========
+    window.getSortIcon = (col) => {
+        if (window.tableSort.col === col) {
+            return window.tableSort.dir === 'desc' ? '<span style="color:var(--danger); font-size:12px; margin-left:4px;">⬇</span>' : '<span style="color:var(--success); font-size:12px; margin-left:4px;">⬆</span>';
+        }
+        return '';
+    };
+
+    window.isFiltered = (tab, col) => { return window.tableFilters[tab][col] !== undefined; };
+
+    window.handleSort = (col) => {
+        if (window.tableSort.col === col) window.tableSort.dir = window.tableSort.dir === 'desc' ? 'asc' : 'desc';
+        else { window.tableSort.col = col; window.tableSort.dir = 'desc'; }
+        if (window.currentTab === 'summary') window.summaryCurrentPage = 1;
+        window.renderCurrentView();
+    };
+
+    window.getMappedSummaryData = () => {
+        return globalAssets.map(a => {
+            let off = globalOffices.find(o => o.id === a.office_id);
+            let offName = off ? `[${off.floor||'?'}] ${off.name}` : '未分配';
+            let tag = a.assetType === 'consumable' ? (a.tag || '未分類') : (a.category || '其他');
+            let contact = a.assetType === 'consumable' ? (a.contactPerson || '-') : (a.owner_id ? (globalMembers.find(m=>m.id===a.owner_id)?.name || '💻 公用設備') : '💻 公用設備');
+            let qty = parseInt(a.quantity) || 0;
+            return { ...a, _offName: offName, _tag: tag, _contact: contact, _qty: qty };
+        });
+    };
+
+    window.getMappedRegistryData = () => {
+        return globalCheckouts.map(c => ({
+            ...c, _name: c.assetName || '-', _office: c.officeName || '-', _qty: parseInt(c.quantity) || 1, _borrower: c.borrower || '-', _date: c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '-'
+        }));
+    };
+
+    window.openFilter = (e, tab, colKey, colName) => {
+        e.stopPropagation();
+        let data = tab === 'summary' ? window.getMappedSummaryData() : window.getMappedRegistryData();
+        
+        // 取得該欄位的所有獨特值
+        let uniqueVals = [...new Set(data.map(d => String(d[colKey] !== undefined ? d[colKey] : '')))].sort();
+
+        let activeFilters = window.tableFilters[tab][colKey];
+        if (!activeFilters) activeFilters = uniqueVals;
+
+        let html = `
+            <div style="font-weight:bold; margin-bottom:5px; color:var(--primary); font-size:15px;">篩選：${colName}</div>
+            <div style="display:flex; gap:10px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed #cbd5e1;">
+                <button class="btn-secondary" onclick="window.selectAllFilter(true)" style="padding:4px 8px; font-size:12px; flex:1;">全選</button>
+                <button class="btn-secondary" onclick="window.selectAllFilter(false)" style="padding:4px 8px; font-size:12px; flex:1;">全不選</button>
+            </div>
+            <div id="filter-cb-list">
+        `;
+        uniqueVals.forEach(v => {
+            let checked = activeFilters.includes(v) ? 'checked' : '';
+            let dispV = v === '' ? '(空白)' : v;
+            html += `<label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; padding:4px 0; color:var(--text-main);"><input type="checkbox" class="col-filter-cb" value="${v}" ${checked} style="width:16px; height:16px; cursor:pointer;"> ${dispV}</label>`;
+        });
+        html += `
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:15px; border-top:1px solid #e2e8f0; padding-top:10px;">
+                <button class="btn-danger" onclick="window.clearColFilter('${tab}', '${colKey}')" style="padding:6px 12px; font-size:12px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5;">清除條件</button>
+                <button class="btn-primary" onclick="window.applyColFilter('${tab}', '${colKey}')" style="padding:6px 16px; font-size:12px;">套用篩選</button>
+            </div>
+        `;
+        
+        const panel = $('col-filter-panel');
+        panel.innerHTML = html; panel.style.display = 'flex';
+        
+        const rect = e.target.getBoundingClientRect();
+        let left = rect.left; if (left + 220 > window.innerWidth) left = window.innerWidth - 240;
+        panel.style.top = (rect.bottom + 5) + 'px'; panel.style.left = left + 'px';
+    };
+
+    window.selectAllFilter = (check) => { $$('.col-filter-cb').forEach(cb => cb.checked = check); };
+    window.clearColFilter = (tab, col) => { delete window.tableFilters[tab][col]; $('col-filter-panel').style.display='none'; if(tab==='summary') window.summaryCurrentPage=1; window.renderCurrentView(); };
+    window.applyColFilter = (tab, col) => { 
+        let cbs = Array.from($$('.col-filter-cb:checked')).map(cb => cb.value);
+        window.tableFilters[tab][col] = cbs; 
+        $('col-filter-panel').style.display='none'; 
+        if(tab==='summary') window.summaryCurrentPage=1; 
+        window.renderCurrentView(); 
+    };
+
     // ======== 視圖切換與渲染 ========
     window.switchTab = (tab) => {
         window.currentTab = tab; localStorage.setItem('assets_total_tab', tab);
         $$('.tab-btn').forEach(b => b.classList.remove('active')); $(`tab-btn-${tab}`).classList.add('active');
         $$('.view').forEach(v => v.classList.remove('active')); $(`view-${tab}`).classList.add('active');
-        $('shared-toolbar').style.display = (tab === 'summary') ? 'flex' : 'none';
         
         window.clearBatchSelection(); window.renderCurrentView();
     };
@@ -550,12 +623,8 @@
         </div>`;
     }
 
-    // ✨ 1. 總覽渲染：合併固定資產與消耗品，並加入分頁系統
-    window.changeSummaryPage = (delta) => {
-        window.summaryCurrentPage += delta;
-        window.clearBatchSelection(); 
-        window.renderSummary();
-    };
+    // ✨ 1. 總覽渲染：合併動態表頭與分頁
+    window.changeSummaryPage = (delta) => { window.summaryCurrentPage += delta; window.clearBatchSelection(); window.renderSummary(); };
 
     window.renderSummary = () => {
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
@@ -590,38 +659,61 @@
         drawSvgDonut('chart-fixed', fixedChartData, totalFixedCount, fixedPct, '總件數', 'fixed');
         drawSvgDonut('chart-shortage', shortageChartData, shortagePercent + '%', '', window.showOnlyShortage ? '解除過濾' : '不足率', null);
 
-        // 表格渲染：大融合與分頁
+        // 動態生成表頭
+        const thead = $('summary-table-thead'); 
+        thead.innerHTML = `<tr>
+            <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-summary" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-summary-row', this)"></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_tag')">🏷️ 標籤/類型 ${window.getSortIcon('_tag')}</span><span class="th-filter-btn ${window.isFiltered('summary','_tag')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_tag', '標籤/類型')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('item')">Aa 名稱 ${window.getSortIcon('item')}</span><span class="th-filter-btn ${window.isFiltered('summary','item')?'active-filter':''}" onclick="window.openFilter(event, 'summary', 'item', '名稱')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_qty')">🔢 數量/狀態 ${window.getSortIcon('_qty')}</span><span class="th-filter-btn ${window.isFiltered('summary','_qty')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_qty', '數量/狀態')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_offName')">🏢 存放辦公室 ${window.getSortIcon('_offName')}</span><span class="th-filter-btn ${window.isFiltered('summary','_offName')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_offName', '存放辦公室')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_contact')">👤 聯絡/使用者 ${window.getSortIcon('_contact')}</span><span class="th-filter-btn ${window.isFiltered('summary','_contact')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_contact', '聯絡/使用者')">⋯</span></div></th>
+            <th>📝 備註</th>
+        </tr>`;
+
         const tb = $('summary-table-tbody'); 
         if($('cb-select-all-summary')) $('cb-select-all-summary').checked = false;
 
-        let allFiltered = globalAssets.filter(a => {
-            const matchKw = (a.item||'').toLowerCase().includes(keyword) || 
-                            (a.tag||'').toLowerCase().includes(keyword) || 
-                            (a.category||'').toLowerCase().includes(keyword) ||
-                            (a.sn||'').toLowerCase().includes(keyword) ||
-                            (a.contactPerson||'').toLowerCase().includes(keyword) ||
-                            (a.remarks||'').toLowerCase().includes(keyword);
+        let allMapped = window.getMappedSummaryData();
+
+        let allFiltered = allMapped.filter(a => {
+            const matchKw = (a.item||'').toLowerCase().includes(keyword) || (a._tag||'').toLowerCase().includes(keyword) || (a.category||'').toLowerCase().includes(keyword) || (a.sn||'').toLowerCase().includes(keyword) || (a._contact||'').toLowerCase().includes(keyword) || (a.remarks||'').toLowerCase().includes(keyword);
             if (!matchKw) return false;
             
             if (window.showOnlyShortage) {
                 if (a.assetType !== 'consumable') return false;
                 const minT = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10;
-                return minT > 0 && (parseInt(a.quantity) || 0) < minT;
+                return minT > 0 && a._qty < minT;
             }
-            return true;
+
+            let passFilter = true;
+            Object.keys(window.tableFilters.summary).forEach(colKey => {
+                let checkedVals = window.tableFilters.summary[colKey];
+                if (checkedVals && checkedVals.length > 0) {
+                    if (!checkedVals.includes(String(a[colKey] !== undefined ? a[colKey] : ''))) passFilter = false;
+                } else if (window.tableFilters.summary[colKey] !== undefined) {
+                    passFilter = false; // Empty array means nothing passes
+                }
+            });
+            return passFilter;
         });
 
-        const sortBy = $('asset-sort-select').value;
+        // 統一排序
         allFiltered.sort((a, b) => {
-            if (sortBy === 'time') return String(b.createdAt||'').localeCompare(String(a.createdAt||''));
-            if (sortBy === 'name') return String(a.item||'').localeCompare(String(b.item||''));
-            if (sortBy === 'qty') return (parseInt(b.quantity)||0) - (parseInt(a.quantity)||0);
-            const offA = globalOffices.find(o => o.id === a.office_id)?.name || ''; 
-            const offB = globalOffices.find(o => o.id === b.office_id)?.name || '';
-            return offA.localeCompare(offB);
+            let col = window.tableSort.col;
+            let dir = window.tableSort.dir;
+            let va = a[col] !== undefined ? a[col] : (a.createdAt||'');
+            let vb = b[col] !== undefined ? b[col] : (b.createdAt||'');
+            
+            let cmp = 0;
+            if ((col === 'qty' || col === '_qty') && typeof va === 'number' && typeof vb === 'number') {
+                cmp = va - vb;
+            } else {
+                cmp = String(va).localeCompare(String(vb), 'zh-TW', {numeric:true});
+            }
+            return dir === 'desc' ? -cmp : cmp;
         });
 
-        // ✨ 分頁邏輯
         const totalItems = allFiltered.length;
         const totalPages = Math.ceil(totalItems / window.summaryItemsPerPage) || 1;
         if (window.summaryCurrentPage > totalPages) window.summaryCurrentPage = totalPages;
@@ -631,92 +723,100 @@
 
         let htmlStr = '';
         pageData.forEach(a => {
-            const off = globalOffices.find(o => o.id === a.office_id); 
-            const offName = off ? `[${off.floor||'?'}] ${off.name}` : '未分配';
-            
-            let tagHtml = '', qtyHtml = '', contactHtml = '';
+            let tagHtml = '', qtyHtml = '', contactHtml = a._contact;
             
             if (a.assetType === 'consumable') {
-                tagHtml = `<span class="badge tag">${a.tag || '未分類'}</span>`;
-                const qty = parseInt(a.quantity) || 0; 
+                tagHtml = `<span class="badge tag">${a._tag}</span>`;
                 const minT = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10;
-                const isLow = minT > 0 && qty < minT;
-                
-                if (isLow) { 
-                    qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--danger);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span><div style="color:var(--danger); font-size:11px; font-weight:bold; margin-top:4px;">⚠️ 需補 ${minT - qty}</div>`; 
-                } else {
-                    qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--primary);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span>`;
-                }
-                contactHtml = a.contactPerson || '-';
+                const isLow = minT > 0 && a._qty < minT;
+                if (isLow) qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--danger);">${a._qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span><div style="color:var(--danger); font-size:11px; font-weight:bold; margin-top:4px;">⚠️ 需補 ${minT - a._qty}</div>`; 
+                else qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--primary);">${a._qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span>`;
             } else {
-                tagHtml = `<span class="badge tag" style="background:#e0e7ff; color:#4f46e5;">${a.category || '其他'}</span>`;
+                tagHtml = `<span class="badge tag" style="background:#e0e7ff; color:#4f46e5;">${a._tag}</span>`;
                 let si = a.status === '正常' ? '🟢 正常' : a.status === '待修' ? '🔴 待修' : a.status === '報廢' ? '⚫ 報廢' : a.status === '碳粉不足' ? '🟡 碳粉不足' : '⚪ 其他';
                 qtyHtml = `<div style="font-family:monospace; font-weight:bold; color:var(--danger); margin-bottom:4px;">SN: ${a.sn || 'N/A'}</div><div style="font-size:12px; font-weight:bold; color:var(--text-main);">${si}</div>`;
-                
-                let oName = '💻 公用設備'; 
-                if (a.category === '電腦' && a.owner_id) { 
-                    const owner = globalMembers.find(m => m.id === a.owner_id); 
-                    if (owner) oName = `👤 ${owner.name}`; 
-                }
-                contactHtml = oName;
             }
 
-            htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-summary-row batch-checkbox" value="${a.id}"></td><td>${tagHtml}</td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;" title="點擊編輯">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td>${contactHtml}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td></tr>`;
+            htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-summary-row batch-checkbox" value="${a.id}"></td><td>${tagHtml}</td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;" title="點擊編輯">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${a._offName}</span></td><td>${contactHtml}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td></tr>`;
         });
         
-        if (allFiltered.length === 0) {
-            htmlStr = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的資產或消耗品。</td></tr>';
-        }
+        if (allFiltered.length === 0) htmlStr = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的資產或消耗品。</td></tr>';
         tb.innerHTML = htmlStr;
 
-        // 渲染分頁 UI
-        let pageHtml = `
-            <button class="btn-secondary" onclick="window.changeSummaryPage(-1)" ${window.summaryCurrentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>◀ 上一頁</button>
-            <span style="font-weight:bold; color:var(--text-main); font-size:14px;">第 ${window.summaryCurrentPage} / ${totalPages} 頁 (共 ${totalItems} 項)</span>
-            <button class="btn-secondary" onclick="window.changeSummaryPage(1)" ${window.summaryCurrentPage === totalPages || totalPages === 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>下一頁 ▶</button>
-        `;
+        let pageHtml = `<button class="btn-secondary" onclick="window.changeSummaryPage(-1)" ${window.summaryCurrentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>◀ 上一頁</button><span style="font-weight:bold; color:var(--text-main); font-size:14px;">第 ${window.summaryCurrentPage} / ${totalPages} 頁 (共 ${totalItems} 項)</span><button class="btn-secondary" onclick="window.changeSummaryPage(1)" ${window.summaryCurrentPage === totalPages || totalPages === 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>下一頁 ▶</button>`;
         $('summary-pagination').innerHTML = totalItems > 0 ? pageHtml : '';
-        
         window.updateFloatingBar();
     };
 
-    // ✨ 2. 登記：領用紀錄表格渲染
-    window.toggleCheckoutSort = () => { window.registrySortOrder = window.registrySortOrder === 'desc' ? 'asc' : 'desc'; $('checkout-sort-icon').innerText = window.registrySortOrder === 'desc' ? '⬇' : '⬆'; window.renderCheckouts(); };
-
+    // ✨ 2. 登記：領用紀錄表格渲染 (動態表頭與篩選)
     window.renderCheckouts = () => {
         const srContainer = $('stats-dashboard-registry');
         if (srContainer) srContainer.innerHTML = renderStatsDashboardHtml('registry');
+
+        const thead = $('registry-table-thead');
+        thead.innerHTML = `<tr>
+            <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-checkout" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-checkout-row', this)"></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_name')">Aa 名稱 ${window.getSortIcon('_name')}</span><span class="th-filter-btn ${window.isFiltered('registry','_name')?'active-filter':''}" onclick="window.openFilter(event, 'registry', '_name', '名稱')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_office')">🏢 存放辦公室 ${window.getSortIcon('_office')}</span><span class="th-filter-btn ${window.isFiltered('registry','_office')?'active-filter':''}" onclick="window.openFilter(event, 'registry', '_office', '存放辦公室')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_qty')">🔢 出庫數量 ${window.getSortIcon('_qty')}</span><span class="th-filter-btn ${window.isFiltered('registry','_qty')?'active-filter':''}" onclick="window.openFilter(event, 'registry', '_qty', '出庫數量')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_borrower')">👤 領取人 ${window.getSortIcon('_borrower')}</span><span class="th-filter-btn ${window.isFiltered('registry','_borrower')?'active-filter':''}" onclick="window.openFilter(event, 'registry', '_borrower', '領取人')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_date')">📅 日期 ${window.getSortIcon('_date')}</span><span class="th-filter-btn ${window.isFiltered('registry','_date')?'active-filter':''}" onclick="window.openFilter(event, 'registry', '_date', '日期')">⋯</span></div></th>
+            <th>📝 備註</th>
+            <th>🗑️ 刪除</th>
+        </tr>`;
 
         const tb = $('checkout-tbody');
         if($('cb-select-all-checkout')) $('cb-select-all-checkout').checked = false;
         
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
-        let filtered = globalCheckouts.filter(c => 
-            (c.assetName||'').toLowerCase().includes(keyword) || 
-            (c.borrower||'').toLowerCase().includes(keyword) || 
-            (c.officeName||'').toLowerCase().includes(keyword) ||
-            (c.remarks||'').toLowerCase().includes(keyword)
-        );
+        let allMapped = window.getMappedRegistryData();
+
+        let filtered = allMapped.filter(c => {
+            const matchKw = (c._name).toLowerCase().includes(keyword) || (c._borrower).toLowerCase().includes(keyword) || (c._office).toLowerCase().includes(keyword) || (c.remarks||'').toLowerCase().includes(keyword);
+            if (!matchKw) return false;
+
+            let passFilter = true;
+            Object.keys(window.tableFilters.registry).forEach(colKey => {
+                let checkedVals = window.tableFilters.registry[colKey];
+                if (checkedVals && checkedVals.length > 0) {
+                    if (!checkedVals.includes(String(c[colKey] !== undefined ? c[colKey] : ''))) passFilter = false;
+                } else if (window.tableFilters.registry[colKey] !== undefined) {
+                    passFilter = false; 
+                }
+            });
+            return passFilter;
+        });
 
         if (filtered.length === 0) {
             tb.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的紀錄。</td></tr>';
+            window.renderCheckoutStats(); 
             return;
         }
 
         filtered.sort((a, b) => {
-            const res = String(a.checkoutDate||'').localeCompare(String(b.checkoutDate||''));
-            return window.registrySortOrder === 'desc' ? -res : res;
+            let col = window.tableSort.col;
+            let dir = window.tableSort.dir;
+            let va = a[col] !== undefined ? a[col] : (a._date||'');
+            let vb = b[col] !== undefined ? b[col] : (b._date||'');
+            
+            let cmp = 0;
+            if ((col === 'qty' || col === '_qty') && typeof va === 'number' && typeof vb === 'number') {
+                cmp = va - vb;
+            } else {
+                cmp = String(va).localeCompare(String(vb), 'zh-TW', {numeric:true});
+            }
+            return dir === 'desc' ? -cmp : cmp;
         });
 
         let htmlStr = '';
         filtered.forEach(c => {
             htmlStr += `<tr>
                 <td style="text-align:center;"><input type="checkbox" class="cb-checkout-row batch-checkbox" value="${c.id}" onchange="window.updateFloatingBar()"></td>
-                <td><b style="font-size:15px; color:var(--primary);">${c.assetName}</b></td>
-                <td><span style="font-weight:bold; color:var(--text-main);">${c.officeName}</span></td>
-                <td><span style="font-size:18px; font-weight:bold; color:var(--danger);">${c.quantity || 1}</span></td>
-                <td><span style="font-weight:bold;">${c.borrower}</span></td>
-                <td style="font-family:monospace; color:var(--text-muted);">${c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '-'}</td>
+                <td><b style="font-size:15px; color:var(--primary);">${c._name}</b></td>
+                <td><span style="font-weight:bold; color:var(--text-main);">${c._office}</span></td>
+                <td><span style="font-size:18px; font-weight:bold; color:var(--danger);">${c._qty}</span></td>
+                <td><span style="font-weight:bold;">${c._borrower}</span></td>
+                <td style="font-family:monospace; color:var(--text-muted);">${c._date}</td>
                 <td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.remarks || '-'}</td>
                 <td><button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteSingleRecord('${c.id}', event)">🗑️</button></td>
             </tr>`;
@@ -1040,7 +1140,7 @@
         }
     };
 
-    // ======== ✨ 匯出中心 ========
+    // ======== ✨ 匯出中心 (PDF/CSV/XLSX) ========
     window.openExportModal = () => { $('export-modal-overlay').classList.add('active'); };
     window.closeExportModal = () => { $('export-modal-overlay').classList.remove('active'); };
 
@@ -1184,14 +1284,23 @@
         $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
     };
 
-    window.addEventListener('click', () => { 
+    // ✨ 點擊畫面空白處自動收起懸浮過濾選單
+    window.addEventListener('click', (e) => { 
+        const panel = $('col-filter-panel');
+        if (panel && panel.style.display === 'flex') {
+            // 如果點擊的位置不在篩選面板內，也不在篩選按鈕上，則關閉面板
+            if (!panel.contains(e.target) && !e.target.classList.contains('th-filter-btn')) {
+                panel.style.display = 'none';
+            }
+        }
+        
         const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
         const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
         $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
         $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
     });
     
-    // ======== ✨ 教學系統 (修復防護鎖) ========
+    // ======== ✨ 教學系統 ========
     window.startTutorial = () => {
         window.currentTutorialStep = 0;
         $('tutorial-overlay-mask').style.display = 'block';
@@ -1263,6 +1372,9 @@
 
     window.addEventListener('keydown', (e) => { 
         if (e.key === 'Escape') { 
+            const panel = $('col-filter-panel');
+            if (panel && panel.style.display === 'flex') panel.style.display = 'none';
+
             $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
             $$('.modal-overlay').forEach(m => m.classList.remove('active')); 
             const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 

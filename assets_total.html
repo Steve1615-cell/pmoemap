@@ -33,6 +33,7 @@
         .batch-checkbox:checked { background: var(--primary); border-color: var(--primary); }
         .batch-checkbox:checked::after { content: '✔'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: bold; }
 
+        /* 滿版圓環儀表板 */
         .stats-row { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 30px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; width: 100%; }
         .stat-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 250px; border: 2px solid transparent; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; cursor: pointer; }
         .stat-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 8px 25px rgba(37,99,235,0.1); }
@@ -41,6 +42,7 @@
         .stat-title { font-size: 18px; font-weight: bold; color: var(--text-main); text-align: center; }
         .stat-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
 
+        /* 懸浮批次操作列 */
         #floating-batch-bar { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px); background: white; padding: 12px 25px; border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 4000; display: flex; gap: 15px; align-items: center; border: 1px solid #cbd5e1; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         #floating-batch-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
         
@@ -50,8 +52,6 @@
         #import-preview-modal-overlay .modal-content { max-width: 95vw; height: 90vh; display: flex; flex-direction: column; }
         #import-preview-modal-overlay .table-container { flex: 1; overflow: auto; margin-top: 15px; border: 1px solid #e2e8f0; }
 
-        #feed-unread-badge { position: absolute; top: -5px; right: -5px; width: 14px; height: 14px; background-color: var(--danger); border-radius: 50%; border: 2px solid white; display: none; }
-        
         .bar-chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
         .bar-chart-label { width: 80px; font-size: 11px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
         .bar-chart-track { flex: 1; background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden; }
@@ -59,6 +59,7 @@
         .bar-chart-val { font-size: 11px; font-weight: bold; width: 30px; color: var(--text-muted); }
         .checkout-stats-wrapper { display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap; }
 
+        /* ✨ 新手教學專屬樣式 */
         #tutorial-overlay-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 99990; display: none; }
         #tutorial-ring-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99992; pointer-events: none; display: none; }
         .tutorial-on-top { z-index: 99991 !important; position: relative; background: white; border-radius: 12px; }
@@ -80,7 +81,7 @@
     </div>
     <div id="tutorial-text" style="font-size: 14px; line-height: 1.7; color: var(--text-main);"></div>
     <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-        <span id="tutorial-step-indicator" style="font-size:12px; font-weight:bold; color:var(--text-muted);">1 / 3</span>
+        <span id="tutorial-step-indicator" style="font-size:12px; font-weight:bold; color:var(--text-muted);">1 / 2</span>
         <button id="tutorial-btn-next" onclick="window.nextTutorialStep()" class="btn-primary" style="background:var(--danger); box-shadow:0 4px 10px rgba(225,29,72,0.3);">下一步 ➔</button>
     </div>
 </div>
@@ -95,10 +96,10 @@
         <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋資產名稱、編號、標籤或辦公室..." oninput="window.summaryCurrentPage = 1; window.renderCurrentView()">
     </div>
     
+    <!-- ✨ 移除貼文標籤 -->
     <div class="tabs">
         <button id="tab-btn-summary" class="tab-btn" onclick="window.switchTab('summary')">📊 總覽</button>
         <button id="tab-btn-registry" class="tab-btn" onclick="window.switchTab('registry')">📝 登記</button>
-        <button id="tab-btn-feed" class="tab-btn" onclick="window.switchTab('feed')">💬 貼文 <span id="feed-unread-badge"></span></button>
     </div>
     
     <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
@@ -137,7 +138,6 @@
         
         <div style="font-size: 13px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">💡 提示：按住滑鼠左鍵並拖曳表格的列，可快速多重選取打勾。</div>
         
-        <!-- ✨ 總覽表格容器 (包含分頁 UI) -->
         <div class="table-container" style="display:flex; flex-direction:column;">
             <div style="overflow-x: auto;">
                 <table class="notion-table">
@@ -150,7 +150,6 @@
                     <tbody id="summary-table-tbody"></tbody>
                 </table>
             </div>
-            <!-- 分頁按鈕區塊 -->
             <div id="summary-pagination" style="display:flex; justify-content:center; align-items:center; padding: 15px; gap: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; margin-top: auto;"></div>
         </div>
     </div>
@@ -171,23 +170,6 @@
                 <tbody id="checkout-tbody"></tbody>
             </table>
         </div>
-    </div>
-
-    <!-- ================= 視圖 3：貼文 ================= -->
-    <div id="view-feed" class="view">
-        <div id="stats-dashboard-feed"></div>
-        
-        <div id="feed-filter-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; background:white; padding:10px 20px; border-radius:12px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-            <div style="font-weight:bold; color:var(--text-main);">💬 領用動態牆過濾</div>
-            <div style="display:flex; gap:10px; align-items:center;">
-                <input type="date" id="feed-date-filter" onchange="window.renderFeed()" style="padding:6px 12px; border:1px solid #cbd5e1; border-radius:6px; font-family:monospace;">
-                <select id="feed-sort-select" onchange="window.renderFeed()" style="padding:6px 12px; border:1px solid #cbd5e1; border-radius:6px; font-weight:bold; color:var(--primary);">
-                    <option value="desc">📅 最新至最舊</option>
-                    <option value="asc">📅 最舊至最新</option>
-                </select>
-            </div>
-        </div>
-        <div class="board-container" id="feed-board" style="flex-wrap: wrap; justify-content:center;"></div>
     </div>
 </div>
 
@@ -401,7 +383,7 @@
     let db, auth;
     let globalAssets = [], globalOffices = [], globalMembers = [], globalCheckouts = [];
     
-    // ✨ 總覽分頁系統全域變數
+    // ✨ 分頁系統全域變數
     window.summaryCurrentPage = 1;
     window.summaryItemsPerPage = 50;
 
@@ -410,16 +392,15 @@
     window.pendingImports = []; 
     window.currentEditAssetId = null;
     window.registrySortOrder = 'desc'; 
-    window.lastFeedTime = parseInt(localStorage.getItem('pmo_last_feed_time') || '0');
 
     // 教學系統變數與防護鎖
     window.currentTutorialStep = 0;
     let tutorialTimer = null; 
 
+    // ✨ 教學內容移除第三步貼文
     const tutorialData = [
         { title: "1. 介紹總覽標籤頁", text: "「總覽」提供三大環形儀表板，點擊可切換顯示數量或百分比。下方表格包含固定資產與消耗品，支援滑鼠按住拖曳進行多重選取，右下角「＋」可叫出專屬的匯入與匯出資料中心。", tab: "summary", targets: ['#tutorial-target-stats', '#fab-container'] },
-        { title: "2. 介紹登記標籤頁", text: "「登記」標籤頁提供領用紀錄與柱狀圖即時統計，右下角匯入表單支援同步扣除消耗品庫存。此外，所有紀錄變更都會無縫連動至貼文動態牆。", tab: "registry", targets: ['#stats-dashboard-registry', '#fab-container'] },
-        { title: "3. 介紹貼文動態牆與互動", text: "在「貼文」標籤上會顯示最新未讀紅點計數！這裡可以為每筆領用動態按讚，刪除貼文時系統會自動把庫存返還。上方區塊可快速過濾時間與人名排序。", tab: "feed", targets: ['#tab-btn-feed', '#feed-filter-bar'] }
+        { title: "2. 介紹登記標籤頁", text: "「登記」標籤頁提供領用紀錄與柱狀圖即時統計，右下角匯入表單支援同步扣除消耗品庫存。點擊上方「領用登記」按鈕即可快速紀錄出入庫狀態！", tab: "registry", targets: ['#stats-dashboard-registry', '#fab-container'] }
     ];
 
     const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
@@ -443,7 +424,7 @@
                 initDragSelect();
                 
                 const savedTab = localStorage.getItem('assets_total_tab') || 'summary';
-                window.switchTab(savedTab);
+                window.switchTab(savedTab === 'feed' ? 'summary' : savedTab); // 避免讀到已移除的 feed
 
                 if(!localStorage.getItem('pmo_tutorial_seen')) {
                     setTimeout(() => window.startTutorial(), 1000);
@@ -459,9 +440,7 @@
         onSnapshot(collection(db, "assets"), (s) => { globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); window.renderCurrentView(); });
         onSnapshot(collection(db, "asset_checkouts"), (s) => { 
             globalCheckouts = s.docs.map(d => ({ id: d.id, ...d.data() })); 
-            const latestTime = Math.max(...globalCheckouts.map(r => new Date(r.createdAt).getTime()), 0);
-            if (latestTime > window.lastFeedTime && window.currentTab !== 'feed') { const b = $('feed-unread-badge'); if(b) b.style.display = 'block'; }
-            if(window.currentTab === 'registry' || window.currentTab === 'feed') window.renderCurrentView(); 
+            if(window.currentTab === 'registry') window.renderCurrentView(); 
         });
     }
 
@@ -489,7 +468,7 @@
 
     window.updateFloatingBar = () => {
         let sel = [];
-        if (window.currentTab === 'summary') sel = Array.from($$('.cb-summary-row:checked')).map(cb => cb.value); // ✨ 改為 cb-summary-row
+        if (window.currentTab === 'summary') sel = Array.from($$('.cb-summary-row:checked')).map(cb => cb.value);
         if (window.currentTab === 'registry') sel = Array.from($$('.cb-checkout-row:checked')).map(cb => cb.value);
 
         const bar = $('floating-batch-bar'); const countSpan = $('batch-sel-count');
@@ -537,18 +516,12 @@
         $$('.view').forEach(v => v.classList.remove('active')); $(`view-${tab}`).classList.add('active');
         $('shared-toolbar').style.display = (tab === 'summary') ? 'flex' : 'none';
         
-        if (tab === 'feed') {
-            window.lastFeedTime = Date.now();
-            localStorage.setItem('pmo_last_feed_time', window.lastFeedTime.toString());
-            const b = $('feed-unread-badge'); if(b) b.style.display = 'none';
-        }
         window.clearBatchSelection(); window.renderCurrentView();
     };
 
     window.renderCurrentView = () => { 
         if (window.currentTab === 'summary') window.renderSummary(); 
         else if (window.currentTab === 'registry') window.renderCheckouts(); 
-        else if (window.currentTab === 'feed') window.renderFeed();
     };
 
     window.toggleShortageFilter = () => { window.showOnlyShortage = !window.showOnlyShortage; window.summaryCurrentPage = 1; const card = $('card-shortage'); if(window.showOnlyShortage) { card.classList.add('active-filter'); } else { card.classList.remove('active-filter'); } window.renderSummary(); };
@@ -590,7 +563,7 @@
         const fixed = globalAssets.filter(a => a.assetType !== 'consumable');
         const totalAssetsCnt = globalAssets.length;
 
-        // 圖表數據計算 (維持現有邏輯)
+        // 圖表數據計算
         const consTagMap = {}; let totalConsQty = 0;
         cons.forEach(c => { const t = c.tag || '未分類'; const q = parseInt(c.quantity) || 0; consTagMap[t] = (consTagMap[t]||0) + q; totalConsQty += q; });
         const consChartData = Object.keys(consTagMap).map(k => ({ label: k, value: consTagMap[k] }));
@@ -696,7 +669,7 @@
         }
         tb.innerHTML = htmlStr;
 
-        // ✨ 渲染分頁 UI
+        // 渲染分頁 UI
         let pageHtml = `
             <button class="btn-secondary" onclick="window.changeSummaryPage(-1)" ${window.summaryCurrentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>◀ 上一頁</button>
             <span style="font-weight:bold; color:var(--text-main); font-size:14px;">第 ${window.summaryCurrentPage} / ${totalPages} 頁 (共 ${totalItems} 項)</span>
@@ -755,186 +728,49 @@
     };
 
     window.renderCheckoutStats = () => {
-        ['registry', 'feed'].forEach(prefix => {
-            const rangeSelect = $(`${prefix}-stats-range`);
-            const range = rangeSelect ? rangeSelect.value : 'month';
-            let targetRecords = [];
-            const now = new Date();
-            
-            if (range === 'day') {
-                const todayStr = now.toISOString().split('T')[0];
-                targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'').startsWith(todayStr));
-                if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = '今日領用總數';
-            } else if (range === 'week') {
-                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-                targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'') >= weekAgo);
-                if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = '近7日領用總數';
-            } else {
-                const monthStr = now.toISOString().slice(0, 7); 
-                targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'').startsWith(monthStr));
-                if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = '本月領用總數';
-            }
-
-            const totalQty = targetRecords.reduce((sum, r) => sum + (parseInt(r.quantity)||1), 0);
-            if($(`${prefix}-stats-total-qty`)) $(`${prefix}-stats-total-qty`).innerText = totalQty;
-
-            const countMap = {};
-            targetRecords.forEach(r => { countMap[r.assetName] = (countMap[r.assetName]||0) + 1; }); 
-            const sortedItems = Object.keys(countMap).map(k => ({ name: k, count: countMap[k] })).sort((a,b) => b.count - a.count).slice(0, 5);
-
-            const maxCount = sortedItems.length > 0 ? sortedItems[0].count : 1;
-            const topContainer = $(`${prefix}-stats-top-items`);
-            if (topContainer) {
-                let htmlStr = '';
-                if (sortedItems.length === 0) { htmlStr = '<div style="color:#94a3b8; font-size:13px; text-align:center;">此期間無領用紀錄</div>'; }
-                else {
-                    sortedItems.forEach((item, i) => {
-                        const pct = Math.max(5, (item.count / maxCount) * 100);
-                        const color = chartPalette[i % chartPalette.length];
-                        htmlStr += `<div class="bar-chart-row"><div class="bar-chart-label" title="${item.name}">${item.name}</div><div class="bar-chart-track"><div class="bar-chart-fill" style="width:${pct}%; background:${color};"></div></div><div class="bar-chart-val">${item.count}次</div></div>`;
-                    });
-                }
-                topContainer.innerHTML = htmlStr;
-            }
-        });
-    };
-
-    window.changeFeedPage = (delta) => {
-        window.feedCurrentPage += delta;
-        window.renderFeed();
-    };
-
-    // ✨ 3. 渲染：貼文動態牆 (按週分頁、按日橫列排版)
-    window.renderFeed = () => {
-        const sfContainer = $('stats-dashboard-feed');
-        if (sfContainer) sfContainer.innerHTML = renderStatsDashboardHtml('feed');
-        window.renderCheckoutStats();
-
-        const bd = $('feed-board'); 
-        if (!bd) return;
-        bd.innerHTML = '';
-        const pg = $('feed-pagination');
-
-        const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
-        const dateFilter = $('feed-date-filter') ? $('feed-date-filter').value : '';
-        const sortMode = $('feed-sort-select') ? $('feed-sort-select').value : 'desc';
+        const prefix = 'registry';
+        const rangeSelect = $(`${prefix}-stats-range`);
+        const range = rangeSelect ? rangeSelect.value : 'month';
+        let targetRecords = [];
+        const now = new Date();
         
-        let filtered = globalCheckouts.filter(c => 
-            ((c.assetName||'').toLowerCase().includes(keyword) || 
-            (c.borrower||'').toLowerCase().includes(keyword) || 
-            (c.officeName||'').toLowerCase().includes(keyword) ||
-            (c.remarks||'').toLowerCase().includes(keyword)) &&
-            (!dateFilter || (c.checkoutDate||'').startsWith(dateFilter))
-        );
-
-        if(filtered.length === 0) {
-            bd.innerHTML = '<div style="width:100%; text-align:center; color:#94a3b8; padding:30px; background:white; border-radius:12px; border:1px dashed #cbd5e1;">尚無符合條件的領用動態</div>';
-            if (pg) pg.innerHTML = '';
-            return;
+        if (range === 'day') {
+            const todayStr = now.toISOString().split('T')[0];
+            targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'').startsWith(todayStr));
+            if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = '今日領用總數';
+        } else if (range === 'week') {
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'') >= weekAgo);
+            if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = '近7日領用總數';
+        } else {
+            const monthStr = now.toISOString().slice(0, 7); 
+            targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'').startsWith(monthStr));
+            if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = '本月領用總數';
         }
 
-        // 1. 全域先依照日期排序
-        filtered.sort((a,b) => {
-            const res = String(b.checkoutDate||b.createdAt||'').localeCompare(String(a.checkoutDate||a.createdAt||''));
-            return sortMode === 'desc' ? res : -res;
-        });
+        const totalQty = targetRecords.reduce((sum, r) => sum + (parseInt(r.quantity)||1), 0);
+        if($(`${prefix}-stats-total-qty`)) $(`${prefix}-stats-total-qty`).innerText = totalQty;
 
-        // 2. 依照「週次」進行分組 (ISO週演算法)
-        const getWeekKey = (dateStr) => {
-            const d = new Date(dateStr.split('T')[0] || dateStr.split(' ')[0]);
-            if (isNaN(d.getTime())) return '未知時間';
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-            const monday = new Date(d.setDate(diff));
-            const sunday = new Date(d.setDate(diff + 6));
-            return `${monday.toISOString().split('T')[0]} ~ ${sunday.toISOString().split('T')[0]}`;
-        };
+        const countMap = {};
+        targetRecords.forEach(r => { countMap[r.assetName] = (countMap[r.assetName]||0) + 1; }); 
+        const sortedItems = Object.keys(countMap).map(k => ({ name: k, count: countMap[k] })).sort((a,b) => b.count - a.count).slice(0, 5);
 
-        const weekGroups = {}; 
-        const weekKeysInOrder = []; 
-
-        filtered.forEach(rec => {
-            const dateStr = (rec.checkoutDate || rec.createdAt).split('T')[0].split(' ')[0];
-            const weekKey = getWeekKey(dateStr);
-            if (!weekGroups[weekKey]) {
-                weekGroups[weekKey] = { key: weekKey, dateMap: {} };
-                weekKeysInOrder.push(weekKey);
+        const maxCount = sortedItems.length > 0 ? sortedItems[0].count : 1;
+        const topContainer = $(`${prefix}-stats-top-items`);
+        if (topContainer) {
+            let htmlStr = '';
+            if (sortedItems.length === 0) { htmlStr = '<div style="color:#94a3b8; font-size:13px; text-align:center;">此期間無領用紀錄</div>'; }
+            else {
+                sortedItems.forEach((item, i) => {
+                    const pct = Math.max(5, (item.count / maxCount) * 100);
+                    const color = chartPalette[i % chartPalette.length];
+                    htmlStr += `<div class="bar-chart-row"><div class="bar-chart-label" title="${item.name}">${item.name}</div><div class="bar-chart-track"><div class="bar-chart-fill" style="width:${pct}%; background:${color};"></div></div><div class="bar-chart-val">${item.count}次</div></div>`;
+                });
             }
-            if (!weekGroups[weekKey].dateMap[dateStr]) {
-                weekGroups[weekKey].dateMap[dateStr] = [];
-            }
-            weekGroups[weekKey].dateMap[dateStr].push(rec);
-        });
-
-        const uniqueWeekKeys = [...new Set(weekKeysInOrder)];
-        const totalPages = uniqueWeekKeys.length;
-        
-        if (window.feedCurrentPage > totalPages) window.feedCurrentPage = totalPages;
-        if (window.feedCurrentPage < 1) window.feedCurrentPage = 1;
-
-        const currentWeekKey = uniqueWeekKeys[window.feedCurrentPage - 1];
-        const currentWeekData = weekGroups[currentWeekKey];
-
-        let htmlStr = '';
-        
-        if (currentWeekKey !== '未知時間') {
-            htmlStr += `<div style="width: 100%; text-align: center; margin-bottom: 20px;"><span style="background: #e0e7ff; color: #4f46e5; padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 14px;">📅 貼文週次區間：${currentWeekKey}</span></div>`;
-        }
-
-        const datesInWeek = Object.keys(currentWeekData.dateMap).sort((a, b) => sortMode === 'desc' ? b.localeCompare(a) : a.localeCompare(b));
-
-        datesInWeek.forEach(date => {
-            let dayStr = '';
-            if (date && !isNaN(new Date(date).getTime())) {
-                dayStr = ['日', '一', '二', '三', '四', '五', '六'][new Date(date).getDay()];
-            }
-            htmlStr += `<div class="feed-day-group">
-                <h3 class="feed-day-header">📌 ${date} (${dayStr})</h3>
-                <div class="feed-horizontal-scroll">`;
-
-            currentWeekData.dateMap[date].forEach(rec => {
-                const liked = rec.likes && rec.likes.includes(currentUserProfile.email);
-                htmlStr += `
-                    <div class="feed-card">
-                        <div class="feed-header">
-                            <img src="${rec.creatorAvatar}" class="feed-avatar">
-                            <div class="feed-meta"><b>${rec.creatorName}</b> 登記<br>${(rec.checkoutDate||rec.createdAt).replace('T', ' ')}</div>
-                        </div>
-                        <div class="feed-content">
-                            <p style="font-weight:bold; color:var(--primary); margin:0 0 5px 0;">📦 借出：${rec.assetName}</p>
-                            <p style="margin:0 0 5px 0;">🏢 存放地：${rec.officeName}</p>
-                            <p style="margin:0 0 5px 0;">🔢 數量：<span style="color:var(--danger); font-weight:bold;">${rec.quantity || 1}</span></p>
-                            <p style="margin:0 0 5px 0;">👤 領取人：${rec.borrower}</p>
-                            ${rec.remarks ? `<div style="background:#f8fafc; padding:8px; border-radius:6px; margin-top:8px; font-size:12px; color:var(--text-main);">${rec.remarks}</div>` : ''}
-                        </div>
-                        <div class="feed-footer">
-                            <button class="btn-like ${liked ? 'liked' : ''}" onclick="window.toggleCheckoutLike('${rec.id}')">
-                                ${liked ? '❤️' : '🤍'} ${rec.likes ? rec.likes.length : 0}
-                            </button>
-                            <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="window.deleteSingleRecord('${rec.id}', event)">🗑️ 刪除紀錄</button>
-                        </div>
-                    </div>`;
-            });
-            htmlStr += `</div></div>`;
-        });
-        bd.innerHTML = htmlStr;
-
-        // 4. 渲染分頁控制鈕
-        if(pg) {
-            let pageHtml = `
-                <button class="btn-secondary" onclick="window.changeFeedPage(-1)" ${window.feedCurrentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>◀ 上一週</button>
-                <span style="font-weight:bold; color:var(--text-main); font-size:14px;">第 ${window.feedCurrentPage} / ${totalPages} 週</span>
-                <button class="btn-secondary" onclick="window.changeFeedPage(1)" ${window.feedCurrentPage === totalPages || totalPages === 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>下一週 ▶</button>
-            `;
-            pg.innerHTML = totalPages > 0 ? pageHtml : '';
+            topContainer.innerHTML = htmlStr;
         }
     };
 
-    window.toggleCheckoutLike = async (rId) => { 
-        const r = globalCheckouts.find(x => x.id === rId); if(!r) return; 
-        let lk = r.likes || []; if(lk.includes(currentUserProfile.email)) lk = lk.filter(e => e !== currentUserProfile.email); else lk.push(currentUserProfile.email); 
-        await setDoc(doc(db, "asset_checkouts", rId), { likes: lk }, { merge: true }); 
-    };
 
     // ======== ✨ 主系統操作 (批次處理) ========
     window.openBatchMoveModal = () => { $('batch-move-modal-overlay').classList.add('active'); };
@@ -1001,65 +837,7 @@
         try { await Promise.all(ops); alert('已刪除紀錄並返還庫存！'); } catch(err) { alert('刪除失敗'); }
     };
 
-    // ======== ✨ 匯出中心 ========
-    window.openExportModal = () => { $('export-modal-overlay').classList.add('active'); };
-    window.closeExportModal = () => { $('export-modal-overlay').classList.remove('active'); };
-
-    window.executeExport = (format) => {
-        const target = $('export-target-data').value;
-        let aoa = []; let filename = `PMO_Export_${new Date().toISOString().slice(0,10)}`;
-
-        if (target === 'assets') {
-            filename = `PMO_在列資產總表_${new Date().toISOString().slice(0,10)}`;
-            aoa = [["資產屬性", "類別/標籤", "名稱", "編號/庫存", "單位", "存放辦公室", "狀態", "最低安全庫存", "備註"]];
-            let consQty = 0, fixedCnt = 0, shortCnt = 0;
-            
-            globalAssets.forEach(a => {
-                const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配';
-                if (a.assetType === 'consumable') {
-                    consQty += (parseInt(a.quantity)||0); const m = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; if(m > 0 && (parseInt(a.quantity)||0) < m) shortCnt++;
-                    aoa.push(["消耗品", a.tag||'未分類', a.item, a.quantity||0, a.unit||'個', offName, '-', m, a.remarks||'-']);
-                } else {
-                    fixedCnt++; aoa.push(["固定資產", a.category||'其他', a.item||'未命名', a.sn||'N/A', '-', offName, a.status||'正常', '-', '-']);
-                }
-            });
-
-            if (format === 'pdf') {
-                let html = `<html><head><title>在列資產總表</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;} .summary{margin-top:20px; font-weight:bold; font-size:14px;}</style></head><body><h1>📦 在列資產總表</h1><table>`;
-                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
-                html += `</table><div class="summary"><p>📊 統計總結</p><ul><li>📦 消耗品總庫存：${consQty} 件</li><li>📌 固定資產總數：${fixedCnt} 件</li><li>⚠️ 不足品項數：${shortCnt} 項</li></ul></div></body></html>`;
-                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
-                window.closeExportModal(); return;
-            } else {
-                aoa.push([]); aoa.push(["📊 統計總結"]); aoa.push(["📦 消耗品總庫存", consQty]); aoa.push(["📌 固定資產總數", fixedCnt]); aoa.push(["⚠️ 不足品項數", shortCnt]);
-            }
-        } else if (target === 'checkouts') {
-            filename = `PMO_領用登記紀錄_${new Date().toISOString().slice(0,10)}`;
-            aoa = [["物品名稱", "資產屬性", "出庫數量", "存放辦公室", "領取人", "日期時間", "備註"]];
-            
-            globalCheckouts.forEach(c => {
-                const ty = c.assetType === 'consumable' ? '消耗品' : '固定資產';
-                aoa.push([c.assetName, ty, c.quantity || 1, c.officeName, c.borrower, c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '', c.remarks || '-']);
-            });
-
-            if (format === 'pdf') {
-                let html = `<html><head><title>領用登記紀錄</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;}</style></head><body><h1>📝 領用登記紀錄</h1><table>`;
-                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
-                html += `</table></body></html>`;
-                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
-                window.closeExportModal(); return;
-            }
-        }
-
-        const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "匯出資料");
-        XLSX.writeFile(wb, `${filename}.${format}`);
-        window.closeExportModal();
-        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
-        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
-        $$('.fab-submenu').forEach(s => s.classList.remove('open'));
-    };
-
-    // ======== ✨ 匯入預覽系統 ========
+    // ======== ✨ 匯入預覽與防亂碼雙軌解碼系統 ========
     window.toggleSubmenu = (id, e) => { e.stopPropagation(); $$('.fab-submenu').forEach(s => { if(s.id!==id) s.classList.remove('open'); }); $(id).classList.toggle('open'); };
 
     window.handlePreviewImport = async (e) => {
@@ -1260,6 +1038,64 @@
                 await Promise.all(ops); alert('🎉 領用紀錄匯入成功！'); window.pendingImports = [];
             } catch(e) { alert('寫入失敗: '+e.message); } finally { loader.style.display = 'none'; }
         }
+    };
+
+    // ======== ✨ 匯出中心 ========
+    window.openExportModal = () => { $('export-modal-overlay').classList.add('active'); };
+    window.closeExportModal = () => { $('export-modal-overlay').classList.remove('active'); };
+
+    window.executeExport = (format) => {
+        const target = $('export-target-data').value;
+        let aoa = []; let filename = `PMO_Export_${new Date().toISOString().slice(0,10)}`;
+
+        if (target === 'assets') {
+            filename = `PMO_在列資產總表_${new Date().toISOString().slice(0,10)}`;
+            aoa = [["資產屬性", "類別/標籤", "名稱", "編號/庫存", "單位", "存放辦公室", "狀態", "最低安全庫存", "備註"]];
+            let consQty = 0, fixedCnt = 0, shortCnt = 0;
+            
+            globalAssets.forEach(a => {
+                const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配';
+                if (a.assetType === 'consumable') {
+                    consQty += (parseInt(a.quantity)||0); const m = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; if(m > 0 && (parseInt(a.quantity)||0) < m) shortCnt++;
+                    aoa.push(["消耗品", a.tag||'未分類', a.item, a.quantity||0, a.unit||'個', offName, '-', m, a.remarks||'-']);
+                } else {
+                    fixedCnt++; aoa.push(["固定資產", a.category||'其他', a.item||'未命名', a.sn||'N/A', '-', offName, a.status||'正常', '-', '-']);
+                }
+            });
+
+            if (format === 'pdf') {
+                let html = `<html><head><title>在列資產總表</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;} .summary{margin-top:20px; font-weight:bold; font-size:14px;}</style></head><body><h1>📦 在列資產總表</h1><table>`;
+                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
+                html += `</table><div class="summary"><p>📊 統計總結</p><ul><li>📦 消耗品總庫存：${consQty} 件</li><li>📌 固定資產總數：${fixedCnt} 件</li><li>⚠️ 不足品項數：${shortCnt} 項</li></ul></div></body></html>`;
+                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
+                window.closeExportModal(); return;
+            } else {
+                aoa.push([]); aoa.push(["📊 統計總結"]); aoa.push(["📦 消耗品總庫存", consQty]); aoa.push(["📌 固定資產總數", fixedCnt]); aoa.push(["⚠️ 不足品項數", shortCnt]);
+            }
+        } else if (target === 'checkouts') {
+            filename = `PMO_領用登記紀錄_${new Date().toISOString().slice(0,10)}`;
+            aoa = [["物品名稱", "資產屬性", "出庫數量", "存放辦公室", "領取人", "日期時間", "備註"]];
+            
+            globalCheckouts.forEach(c => {
+                const ty = c.assetType === 'consumable' ? '消耗品' : '固定資產';
+                aoa.push([c.assetName, ty, c.quantity || 1, c.officeName, c.borrower, c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '', c.remarks || '-']);
+            });
+
+            if (format === 'pdf') {
+                let html = `<html><head><title>領用登記紀錄</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;}</style></head><body><h1>📝 領用登記紀錄</h1><table>`;
+                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
+                html += `</table></body></html>`;
+                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
+                window.closeExportModal(); return;
+            }
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "匯出資料");
+        XLSX.writeFile(wb, `${filename}.${format}`);
+        window.closeExportModal();
+        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
+        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
     window.openAssetModal = (id = null) => {

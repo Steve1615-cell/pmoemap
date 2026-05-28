@@ -20,9 +20,9 @@
         .tab-btn { position: relative; padding: 10px 30px; background: white; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; color: var(--text-muted); }
         .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
         
-        .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .table-container { width: 100%; display: flex; flex-direction: column; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden; }
         .notion-table { width: 100%; border-collapse: collapse; min-width: 1000px; text-align: left; font-size: 14px; user-select: none; -webkit-user-select: none; }
-        .notion-table th { background: #f8fafc; color: var(--text-muted); font-weight: bold; padding: 12px 15px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+        .notion-table th { background: #f8fafc; color: var(--text-muted); font-weight: bold; padding: 12px 15px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
         .notion-table td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; color: var(--text-main); }
         .notion-table tr:hover { background: #f8fafc; }
         
@@ -33,7 +33,6 @@
         .batch-checkbox:checked { background: var(--primary); border-color: var(--primary); }
         .batch-checkbox:checked::after { content: '✔'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: bold; }
 
-        /* 滿版圓環儀表板 */
         .stats-row { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 30px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; width: 100%; }
         .stat-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 250px; border: 2px solid transparent; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; cursor: pointer; }
         .stat-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 8px 25px rgba(37,99,235,0.1); }
@@ -42,7 +41,6 @@
         .stat-title { font-size: 18px; font-weight: bold; color: var(--text-main); text-align: center; }
         .stat-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
 
-        /* 懸浮批次操作列 */
         #floating-batch-bar { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px); background: white; padding: 12px 25px; border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 4000; display: flex; gap: 15px; align-items: center; border: 1px solid #cbd5e1; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         #floating-batch-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
         
@@ -61,25 +59,13 @@
         .bar-chart-val { font-size: 11px; font-weight: bold; width: 30px; color: var(--text-muted); }
         .checkout-stats-wrapper { display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap; }
 
-        /* ✨ 新手教學專屬樣式 */
         #tutorial-overlay-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 99990; display: none; }
         #tutorial-ring-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99992; pointer-events: none; display: none; }
         .tutorial-on-top { z-index: 99991 !important; position: relative; background: white; border-radius: 12px; }
-        #fab-container.tutorial-on-top { position: fixed !important; }
-        .tutorial-ring {
-            position: absolute; border: 4px solid var(--danger); border-radius: 20px; pointer-events: none;
-            animation: pulse-ring 2s infinite; box-sizing: border-box;
-        }
-        @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4); }
-            70% { box-shadow: 0 0 0 15px rgba(225, 29, 72, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
-        }
-        #tutorial-dialog {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 99999;
-            background: white; padding: 25px; border-radius: 16px; width: 90%; max-width: 450px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4); display: none; flex-direction: column; gap: 15px; border-top: 5px solid var(--danger);
-        }
+        #fab-container.tutorial-on-top { position: fixed !important; background: transparent; }
+        .tutorial-ring { position: absolute; border: 4px solid var(--danger); border-radius: 20px; pointer-events: none; animation: pulse-ring 2s infinite; box-sizing: border-box; }
+        @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(225, 29, 72, 0); } 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); } }
+        #tutorial-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 99999; background: white; padding: 25px; border-radius: 16px; width: 90%; max-width: 450px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); display: none; flex-direction: column; gap: 15px; border-top: 5px solid var(--danger); }
     </style>
 </head>
 <body>
@@ -105,7 +91,8 @@
     </div>
     
     <div class="search-container">
-        <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋資產名稱、編號、標籤或辦公室..." oninput="window.renderCurrentView()">
+        <!-- 搜尋時回到第一頁 -->
+        <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋資產名稱、編號、標籤或辦公室..." oninput="window.summaryCurrentPage = 1; window.renderCurrentView()">
     </div>
     
     <div class="tabs">
@@ -117,7 +104,7 @@
     <div id="shared-toolbar" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
         <div id="asset-sort-wrapper" style="display: flex; align-items: center; gap: 8px;">
             <label style="font-size: 14px; font-weight: bold; color: var(--text-muted); margin:0;">排序：</label>
-            <select id="asset-sort-select" onchange="window.renderCurrentView()" style="border: none; outline: none; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
+            <select id="asset-sort-select" onchange="window.summaryCurrentPage = 1; window.renderCurrentView()" style="border: none; outline: none; font-size: 15px; font-weight: bold; color: var(--primary); cursor: pointer; background: transparent;">
                 <option value="time">🕒 依登錄時間</option>
                 <option value="name">📌 依名稱</option>
                 <option value="office">🏢 依所屬辦公室</option>
@@ -149,16 +136,22 @@
         </div>
         
         <div style="font-size: 13px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">💡 提示：按住滑鼠左鍵並拖曳表格的列，可快速多重選取打勾。</div>
-        <div class="table-container">
-            <table class="notion-table">
-                <thead>
-                    <tr>
-                        <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-cons" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-consumable-row', this)"></th>
-                        <th>🏷️ 標籤</th><th>Aa 名稱</th><th>🔢 數量狀態</th><th>🏢 存放辦公室</th><th>📞 聯絡人</th><th>📝 備註</th>
-                    </tr>
-                </thead>
-                <tbody id="consumable-tbody"></tbody>
-            </table>
+        
+        <!-- ✨ 總覽表格容器 (包含分頁 UI) -->
+        <div class="table-container" style="display:flex; flex-direction:column;">
+            <div style="overflow-x: auto;">
+                <table class="notion-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-summary" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-summary-row', this)"></th>
+                            <th>🏷️ 標籤/類型</th><th>Aa 名稱</th><th>🔢 數量/狀態</th><th>🏢 存放辦公室</th><th>👤 聯絡/使用者</th><th>📝 備註</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-table-tbody"></tbody>
+                </table>
+            </div>
+            <!-- 分頁按鈕區塊 -->
+            <div id="summary-pagination" style="display:flex; justify-content:center; align-items:center; padding: 15px; gap: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; margin-top: auto;"></div>
         </div>
     </div>
     
@@ -203,11 +196,11 @@
     <button onclick="window.clearBatchSelection()" style="background:none; border:none; color:#64748b; font-weight:bold; cursor:pointer; text-decoration:underline; margin-right:10px;">❌ 取消多選</button>
     <span id="batch-sel-count" style="font-size:15px; font-weight:bold; color:var(--primary); margin-right:15px; border-right:2px solid #e2e8f0; padding-right:15px;">0 項</span>
     <button class="btn-primary" style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe;" onclick="window.openBatchMoveModal()">🔄 轉移</button>
-    <button class="btn-primary" style="background:#fefce8; color:#854d0e; border:1px solid #fef08a;" onclick="window.openBatchEditModal()">✏️ 編輯</button>
+    <button class="btn-primary" style="background:#fefce8; color:#854d0e; border:1px solid #fef08a;" onclick="window.openBatchEditModal()">✏️ 編輯屬性</button>
     <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>
 </div>
 
-<!-- ✨ FAB 右下角按鈕群 (絕對最高層，修復無法點擊問題) -->
+<!-- FAB 右下角按鈕群 -->
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 99995 !important;">
     <div class="fab-menu" id="fab-menu">
         <div style="position: relative; display: flex; align-items: center; justify-content: flex-end;">
@@ -261,7 +254,7 @@
     </div>
 </div>
 
-<!-- ================= Modal: 匯入預覽所 (全螢幕) ================= -->
+<!-- ================= Modal: 匯入預覽所 ================= -->
 <div id="import-preview-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeImportPreviewModal()">
     <div class="modal-content">
         <div class="modal-header">
@@ -307,7 +300,6 @@
 <div id="export-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeExportModal()">
     <div class="modal-content">
         <div class="modal-header"><span>📤 匯出資料中心</span><button class="btn-close" onclick="window.closeExportModal()">×</button></div>
-        
         <div class="form-group">
             <label>1. 選擇匯出資料範圍：</label>
             <select id="export-target-data" style="font-weight: bold; background: #f8fafc; border-color: var(--primary); padding:10px;">
@@ -315,7 +307,6 @@
                 <option value="checkouts">📝 登記標籤頁 (物品出入與領用紀錄)</option>
             </select>
         </div>
-
         <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
             <label style="display:block; font-size:13px; color:var(--text-muted); margin-bottom:10px; font-weight:bold;">2. 選擇匯出檔案格式：</label>
             <div style="display:flex; flex-direction:column; gap:10px;">
@@ -324,12 +315,11 @@
                 <button class="btn-primary" onclick="window.executeExport('csv')" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;">📝 匯出純文字表格 (.csv)</button>
             </div>
         </div>
-
         <div class="modal-footer"><button class="btn-secondary" onclick="window.closeExportModal()">關閉</button></div>
     </div>
 </div>
 
-<!-- ================= Modal: 批次轉移辦公室 (主系統) ================= -->
+<!-- ================= Modal: 批次轉移辦公室 ================= -->
 <div id="batch-move-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeBatchMoveModal()">
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header"><span>🔄 批次轉移資產</span><button class="btn-close" onclick="window.closeBatchMoveModal()">×</button></div>
@@ -339,7 +329,7 @@
     </div>
 </div>
 
-<!-- ================= Modal: 批次編輯屬性 (主系統) ================= -->
+<!-- ================= Modal: 批次編輯屬性 ================= -->
 <div id="batch-edit-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeBatchEditModal()">
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header"><span>✏️ 批次編輯屬性</span><button class="btn-close" onclick="window.closeBatchEditModal()">×</button></div>
@@ -411,6 +401,10 @@
     let db, auth;
     let globalAssets = [], globalOffices = [], globalMembers = [], globalCheckouts = [];
     
+    // ✨ 總覽分頁系統全域變數
+    window.summaryCurrentPage = 1;
+    window.summaryItemsPerPage = 50;
+
     window.displayMode = { 'cons': 'qty', 'fixed': 'qty' };
     window.showOnlyShortage = false; 
     window.pendingImports = []; 
@@ -418,10 +412,12 @@
     window.registrySortOrder = 'desc'; 
     window.lastFeedTime = parseInt(localStorage.getItem('pmo_last_feed_time') || '0');
 
-    // ✨ 教學系統變數
+    // 教學系統變數與防護鎖
     window.currentTutorialStep = 0;
+    let tutorialTimer = null; 
+
     const tutorialData = [
-        { title: "1. 介紹總覽標籤頁", text: "「總覽」提供三大環形儀表板，點擊可切換顯示數量或百分比。下方表格支援滑鼠按住拖曳進行多重選取，右下角「＋」可叫出專屬的匯入與匯出資料中心。", tab: "summary", targets: ['#tutorial-target-stats', '#fab-container'] },
+        { title: "1. 介紹總覽標籤頁", text: "「總覽」提供三大環形儀表板，點擊可切換顯示數量或百分比。下方表格包含固定資產與消耗品，支援滑鼠按住拖曳進行多重選取，右下角「＋」可叫出專屬的匯入與匯出資料中心。", tab: "summary", targets: ['#tutorial-target-stats', '#fab-container'] },
         { title: "2. 介紹登記標籤頁", text: "「登記」標籤頁提供領用紀錄與柱狀圖即時統計，右下角匯入表單支援同步扣除消耗品庫存。此外，所有紀錄變更都會無縫連動至貼文動態牆。", tab: "registry", targets: ['#stats-dashboard-registry', '#fab-container'] },
         { title: "3. 介紹貼文動態牆與互動", text: "在「貼文」標籤上會顯示最新未讀紅點計數！這裡可以為每筆領用動態按讚，刪除貼文時系統會自動把庫存返還。上方區塊可快速過濾時間與人名排序。", tab: "feed", targets: ['#tab-btn-feed', '#feed-filter-bar'] }
     ];
@@ -433,7 +429,7 @@
     function showError(msg) { if($('loading-msg')) { $('loading-msg').innerHTML = msg; $('loading-msg').style.color = 'var(--danger)'; } }
 
     let currentUserProfile = {};
-    let isAppInitialized = false; // ✨ 防護鎖：防止多次綁定與無限重新渲染卡頓
+    let isAppInitialized = false; 
 
     function initializeApp() {
         onAuthStateChanged(auth, (user) => {
@@ -441,7 +437,6 @@
             $('loading-msg').style.display = 'none'; 
             currentUserProfile = { name: user.displayName || '訪客', email: user.email || 'anonymous', avatar: user.photoURL || 'https://via.placeholder.com/32' };
             
-            // ✨ 防護鎖生效：確保系統事件一生只綁定一次，不會因為 Firebase 狀態更新而堆疊卡頓
             if (!isAppInitialized) {
                 isAppInitialized = true;
                 fetchData(); 
@@ -478,7 +473,7 @@
         if($('preview-batch-office')) $('preview-batch-office').innerHTML = html;
     }
 
-    // ======== ✨ 拖曳多選與懸浮列 (加入 DOM 批次渲染防呆比對) ========
+    // ======== ✨ 拖曳多選與懸浮列 ========
     function initDragSelect() {
         let isDragging = false, targetState = false;
         const handleMouseDown = (e) => { const tr = e.target.closest('tr'); if (tr && !e.target.closest('button')) { const cb = tr.querySelector('.batch-checkbox'); if (cb) { isDragging = true; targetState = e.target.classList.contains('batch-checkbox') ? e.target.checked : !cb.checked; cb.checked = targetState; window.updateFloatingBar(); e.preventDefault(); } } };
@@ -494,7 +489,7 @@
 
     window.updateFloatingBar = () => {
         let sel = [];
-        if (window.currentTab === 'summary') sel = Array.from($$('.cb-consumable-row:checked')).map(cb => cb.value);
+        if (window.currentTab === 'summary') sel = Array.from($$('.cb-summary-row:checked')).map(cb => cb.value); // ✨ 改為 cb-summary-row
         if (window.currentTab === 'registry') sel = Array.from($$('.cb-checkout-row:checked')).map(cb => cb.value);
 
         const bar = $('floating-batch-bar'); const countSpan = $('batch-sel-count');
@@ -509,7 +504,7 @@
         } else { bar.classList.remove('show'); }
     };
 
-    function getSelectedIds() { return window.currentTab === 'summary' ? Array.from($$('.cb-consumable-row:checked')).map(cb => cb.value) : []; }
+    function getSelectedIds() { return window.currentTab === 'summary' ? Array.from($$('.cb-summary-row:checked')).map(cb => cb.value) : []; }
 
     // ======== ✨ 滿版圓環圖引擎 ========
     window.toggleDataDisplay = (type) => { window.displayMode[type] = window.displayMode[type] === 'qty' ? 'percent' : 'qty'; window.renderSummary(); };
@@ -556,7 +551,7 @@
         else if (window.currentTab === 'feed') window.renderFeed();
     };
 
-    window.toggleShortageFilter = () => { window.showOnlyShortage = !window.showOnlyShortage; const card = $('card-shortage'); if(window.showOnlyShortage) { card.classList.add('active-filter'); } else { card.classList.remove('active-filter'); } window.renderSummary(); };
+    window.toggleShortageFilter = () => { window.showOnlyShortage = !window.showOnlyShortage; window.summaryCurrentPage = 1; const card = $('card-shortage'); if(window.showOnlyShortage) { card.classList.add('active-filter'); } else { card.classList.remove('active-filter'); } window.renderSummary(); };
 
     function renderStatsDashboardHtml(prefix) {
         return `
@@ -582,13 +577,20 @@
         </div>`;
     }
 
-    // ✨ 1. 總覽渲染 (DOM 效能升級)
+    // ✨ 1. 總覽渲染：合併固定資產與消耗品，並加入分頁系統
+    window.changeSummaryPage = (delta) => {
+        window.summaryCurrentPage += delta;
+        window.clearBatchSelection(); 
+        window.renderSummary();
+    };
+
     window.renderSummary = () => {
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
         const cons = globalAssets.filter(a => a.assetType === 'consumable');
         const fixed = globalAssets.filter(a => a.assetType !== 'consumable');
         const totalAssetsCnt = globalAssets.length;
 
+        // 圖表數據計算 (維持現有邏輯)
         const consTagMap = {}; let totalConsQty = 0;
         cons.forEach(c => { const t = c.tag || '未分類'; const q = parseInt(c.quantity) || 0; consTagMap[t] = (consTagMap[t]||0) + q; totalConsQty += q; });
         const consChartData = Object.keys(consTagMap).map(k => ({ label: k, value: consTagMap[k] }));
@@ -615,42 +617,97 @@
         drawSvgDonut('chart-fixed', fixedChartData, totalFixedCount, fixedPct, '總件數', 'fixed');
         drawSvgDonut('chart-shortage', shortageChartData, shortagePercent + '%', '', window.showOnlyShortage ? '解除過濾' : '不足率', null);
 
-        const tb = $('consumable-tbody'); 
-        if($('cb-select-all-cons')) $('cb-select-all-cons').checked = false;
+        // 表格渲染：大融合與分頁
+        const tb = $('summary-table-tbody'); 
+        if($('cb-select-all-summary')) $('cb-select-all-summary').checked = false;
 
-        let filteredCons = cons.filter(a => (a.item||'').toLowerCase().includes(keyword) || (a.tag||'').toLowerCase().includes(keyword));
-        if (window.showOnlyShortage) { filteredCons = filteredCons.filter(a => { const minT = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; return minT > 0 && (parseInt(a.quantity) || 0) < minT; }); }
-        
-        if (filteredCons.length === 0) {
-            tb.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的消耗品。</td></tr>';
-            return;
-        }
+        let allFiltered = globalAssets.filter(a => {
+            const matchKw = (a.item||'').toLowerCase().includes(keyword) || 
+                            (a.tag||'').toLowerCase().includes(keyword) || 
+                            (a.category||'').toLowerCase().includes(keyword) ||
+                            (a.sn||'').toLowerCase().includes(keyword) ||
+                            (a.contactPerson||'').toLowerCase().includes(keyword) ||
+                            (a.remarks||'').toLowerCase().includes(keyword);
+            if (!matchKw) return false;
+            
+            if (window.showOnlyShortage) {
+                if (a.assetType !== 'consumable') return false;
+                const minT = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10;
+                return minT > 0 && (parseInt(a.quantity) || 0) < minT;
+            }
+            return true;
+        });
 
         const sortBy = $('asset-sort-select').value;
-        filteredCons.sort((a, b) => {
+        allFiltered.sort((a, b) => {
             if (sortBy === 'time') return String(b.createdAt||'').localeCompare(String(a.createdAt||''));
             if (sortBy === 'name') return String(a.item||'').localeCompare(String(b.item||''));
-            if (sortBy === 'qty') return (b.quantity||0) - (a.quantity||0);
-            const offA = globalOffices.find(o => o.id === a.office_id)?.name || ''; const offB = globalOffices.find(o => o.id === b.office_id)?.name || '';
+            if (sortBy === 'qty') return (parseInt(b.quantity)||0) - (parseInt(a.quantity)||0);
+            const offA = globalOffices.find(o => o.id === a.office_id)?.name || ''; 
+            const offB = globalOffices.find(o => o.id === b.office_id)?.name || '';
             return offA.localeCompare(offB);
         });
 
-        let htmlStr = '';
-        filteredCons.forEach(a => {
-            const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? `[${off.floor||'?'}] ${off.name}` : '未分配';
-            const qty = parseInt(a.quantity) || 0; const minT = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10;
-            const isLow = minT > 0 && qty < minT;
-            
-            let qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--primary);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span>`;
-            if (isLow) { qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--danger);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span><div style="color:var(--danger); font-size:11px; font-weight:bold; margin-top:4px;">⚠️ 需補 ${minT - qty}</div>`; }
+        // ✨ 分頁邏輯
+        const totalItems = allFiltered.length;
+        const totalPages = Math.ceil(totalItems / window.summaryItemsPerPage) || 1;
+        if (window.summaryCurrentPage > totalPages) window.summaryCurrentPage = totalPages;
+        
+        const startIdx = (window.summaryCurrentPage - 1) * window.summaryItemsPerPage;
+        const pageData = allFiltered.slice(startIdx, startIdx + window.summaryItemsPerPage);
 
-            htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-consumable-row batch-checkbox" value="${a.id}"></td><td><span class="badge tag">${a.tag || '未分類'}</span></td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;" title="點擊編輯">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td>${a.contactPerson || '-'}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td></tr>`;
+        let htmlStr = '';
+        pageData.forEach(a => {
+            const off = globalOffices.find(o => o.id === a.office_id); 
+            const offName = off ? `[${off.floor||'?'}] ${off.name}` : '未分配';
+            
+            let tagHtml = '', qtyHtml = '', contactHtml = '';
+            
+            if (a.assetType === 'consumable') {
+                tagHtml = `<span class="badge tag">${a.tag || '未分類'}</span>`;
+                const qty = parseInt(a.quantity) || 0; 
+                const minT = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10;
+                const isLow = minT > 0 && qty < minT;
+                
+                if (isLow) { 
+                    qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--danger);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span><div style="color:var(--danger); font-size:11px; font-weight:bold; margin-top:4px;">⚠️ 需補 ${minT - qty}</div>`; 
+                } else {
+                    qtyHtml = `<span style="font-size:18px; font-weight:bold; color:var(--primary);">${qty}</span> <span style="font-size:13px;">${a.unit || '個'}</span>`;
+                }
+                contactHtml = a.contactPerson || '-';
+            } else {
+                tagHtml = `<span class="badge tag" style="background:#e0e7ff; color:#4f46e5;">${a.category || '其他'}</span>`;
+                let si = a.status === '正常' ? '🟢 正常' : a.status === '待修' ? '🔴 待修' : a.status === '報廢' ? '⚫ 報廢' : a.status === '碳粉不足' ? '🟡 碳粉不足' : '⚪ 其他';
+                qtyHtml = `<div style="font-family:monospace; font-weight:bold; color:var(--danger); margin-bottom:4px;">SN: ${a.sn || 'N/A'}</div><div style="font-size:12px; font-weight:bold; color:var(--text-main);">${si}</div>`;
+                
+                let oName = '💻 公用設備'; 
+                if (a.category === '電腦' && a.owner_id) { 
+                    const owner = globalMembers.find(m => m.id === a.owner_id); 
+                    if (owner) oName = `👤 ${owner.name}`; 
+                }
+                contactHtml = oName;
+            }
+
+            htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-summary-row batch-checkbox" value="${a.id}"></td><td>${tagHtml}</td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;" title="點擊編輯">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${offName}</span></td><td>${contactHtml}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td></tr>`;
         });
+        
+        if (allFiltered.length === 0) {
+            htmlStr = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的資產或消耗品。</td></tr>';
+        }
         tb.innerHTML = htmlStr;
+
+        // ✨ 渲染分頁 UI
+        let pageHtml = `
+            <button class="btn-secondary" onclick="window.changeSummaryPage(-1)" ${window.summaryCurrentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>◀ 上一頁</button>
+            <span style="font-weight:bold; color:var(--text-main); font-size:14px;">第 ${window.summaryCurrentPage} / ${totalPages} 頁 (共 ${totalItems} 項)</span>
+            <button class="btn-secondary" onclick="window.changeSummaryPage(1)" ${window.summaryCurrentPage === totalPages || totalPages === 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>下一頁 ▶</button>
+        `;
+        $('summary-pagination').innerHTML = totalItems > 0 ? pageHtml : '';
+        
         window.updateFloatingBar();
     };
 
-    // ✨ 2. 登記：領用紀錄表格渲染 (DOM 效能升級)
+    // ✨ 2. 登記：領用紀錄表格渲染
     window.toggleCheckoutSort = () => { window.registrySortOrder = window.registrySortOrder === 'desc' ? 'asc' : 'desc'; $('checkout-sort-icon').innerText = window.registrySortOrder === 'desc' ? '⬇' : '⬆'; window.renderCheckouts(); };
 
     window.renderCheckouts = () => {
@@ -742,7 +799,7 @@
         });
     };
 
-    // ✨ 3. 渲染：貼文動態牆 (DOM 效能升級)
+    // ✨ 3. 渲染：貼文動態牆 
     window.renderFeed = () => {
         const sfContainer = $('stats-dashboard-feed');
         if (sfContainer) sfContainer.innerHTML = renderStatsDashboardHtml('feed');
@@ -869,6 +926,64 @@
         try { await Promise.all(ops); alert('已刪除紀錄並返還庫存！'); } catch(err) { alert('刪除失敗'); }
     };
 
+    // ======== ✨ 匯出中心 ========
+    window.openExportModal = () => { $('export-modal-overlay').classList.add('active'); };
+    window.closeExportModal = () => { $('export-modal-overlay').classList.remove('active'); };
+
+    window.executeExport = (format) => {
+        const target = $('export-target-data').value;
+        let aoa = []; let filename = `PMO_Export_${new Date().toISOString().slice(0,10)}`;
+
+        if (target === 'assets') {
+            filename = `PMO_在列資產總表_${new Date().toISOString().slice(0,10)}`;
+            aoa = [["資產屬性", "類別/標籤", "名稱", "編號/庫存", "單位", "存放辦公室", "狀態", "最低安全庫存", "備註"]];
+            let consQty = 0, fixedCnt = 0, shortCnt = 0;
+            
+            globalAssets.forEach(a => {
+                const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配';
+                if (a.assetType === 'consumable') {
+                    consQty += (parseInt(a.quantity)||0); const m = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; if(m > 0 && (parseInt(a.quantity)||0) < m) shortCnt++;
+                    aoa.push(["消耗品", a.tag||'未分類', a.item, a.quantity||0, a.unit||'個', offName, '-', m, a.remarks||'-']);
+                } else {
+                    fixedCnt++; aoa.push(["固定資產", a.category||'其他', a.item||'未命名', a.sn||'N/A', '-', offName, a.status||'正常', '-', '-']);
+                }
+            });
+
+            if (format === 'pdf') {
+                let html = `<html><head><title>在列資產總表</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;} .summary{margin-top:20px; font-weight:bold; font-size:14px;}</style></head><body><h1>📦 在列資產總表</h1><table>`;
+                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
+                html += `</table><div class="summary"><p>📊 統計總結</p><ul><li>📦 消耗品總庫存：${consQty} 件</li><li>📌 固定資產總數：${fixedCnt} 件</li><li>⚠️ 不足品項數：${shortCnt} 項</li></ul></div></body></html>`;
+                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
+                window.closeExportModal(); return;
+            } else {
+                aoa.push([]); aoa.push(["📊 統計總結"]); aoa.push(["📦 消耗品總庫存", consQty]); aoa.push(["📌 固定資產總數", fixedCnt]); aoa.push(["⚠️ 不足品項數", shortCnt]);
+            }
+        } else if (target === 'checkouts') {
+            filename = `PMO_領用登記紀錄_${new Date().toISOString().slice(0,10)}`;
+            aoa = [["物品名稱", "資產屬性", "出庫數量", "存放辦公室", "領取人", "日期時間", "備註"]];
+            
+            globalCheckouts.forEach(c => {
+                const ty = c.assetType === 'consumable' ? '消耗品' : '固定資產';
+                aoa.push([c.assetName, ty, c.quantity || 1, c.officeName, c.borrower, c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '', c.remarks || '-']);
+            });
+
+            if (format === 'pdf') {
+                let html = `<html><head><title>領用登記紀錄</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;}</style></head><body><h1>📝 領用登記紀錄</h1><table>`;
+                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
+                html += `</table></body></html>`;
+                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
+                window.closeExportModal(); return;
+            }
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "匯出資料");
+        XLSX.writeFile(wb, `${filename}.${format}`);
+        window.closeExportModal();
+        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
+        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open'));
+    };
+
     // ======== ✨ 匯入預覽系統 ========
     window.toggleSubmenu = (id, e) => { e.stopPropagation(); $$('.fab-submenu').forEach(s => { if(s.id!==id) s.classList.remove('open'); }); $(id).classList.toggle('open'); };
 
@@ -981,7 +1096,6 @@
         $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
-    // ✨ 匯入預覽表格 (DOM 效能升級)
     window.renderPreviewModal = () => {
         const tb = $('preview-tbody'); 
         if($('cb-preview-all')) $('cb-preview-all').checked = false;
@@ -1073,64 +1187,6 @@
         }
     };
 
-    // ======== ✨ 匯出中心 (PDF/CSV/XLSX) ========
-    window.openExportModal = () => { $('export-modal-overlay').classList.add('active'); };
-    window.closeExportModal = () => { $('export-modal-overlay').classList.remove('active'); };
-
-    window.executeExport = (format) => {
-        const target = $('export-target-data').value;
-        let aoa = []; let filename = `PMO_Export_${new Date().toISOString().slice(0,10)}`;
-
-        if (target === 'assets') {
-            filename = `PMO_在列資產總表_${new Date().toISOString().slice(0,10)}`;
-            aoa = [["資產屬性", "類別/標籤", "名稱", "編號/庫存", "單位", "存放辦公室", "狀態", "最低安全庫存", "備註"]];
-            let consQty = 0, fixedCnt = 0, shortCnt = 0;
-            
-            globalAssets.forEach(a => {
-                const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配';
-                if (a.assetType === 'consumable') {
-                    consQty += (parseInt(a.quantity)||0); const m = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; if(m > 0 && (parseInt(a.quantity)||0) < m) shortCnt++;
-                    aoa.push(["消耗品", a.tag||'未分類', a.item, a.quantity||0, a.unit||'個', offName, '-', m, a.remarks||'-']);
-                } else {
-                    fixedCnt++; aoa.push(["固定資產", a.category||'其他', a.item||'未命名', a.sn||'N/A', '-', offName, a.status||'正常', '-', '-']);
-                }
-            });
-
-            if (format === 'pdf') {
-                let html = `<html><head><title>在列資產總表</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;} .summary{margin-top:20px; font-weight:bold; font-size:14px;}</style></head><body><h1>📦 在列資產總表</h1><table>`;
-                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
-                html += `</table><div class="summary"><p>📊 統計總結</p><ul><li>📦 消耗品總庫存：${consQty} 件</li><li>📌 固定資產總數：${fixedCnt} 件</li><li>⚠️ 不足品項數：${shortCnt} 項</li></ul></div></body></html>`;
-                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
-                window.closeExportModal(); return;
-            } else {
-                aoa.push([]); aoa.push(["📊 統計總結"]); aoa.push(["📦 消耗品總庫存", consQty]); aoa.push(["📌 固定資產總數", fixedCnt]); aoa.push(["⚠️ 不足品項數", shortCnt]);
-            }
-        } else if (target === 'checkouts') {
-            filename = `PMO_領用登記紀錄_${new Date().toISOString().slice(0,10)}`;
-            aoa = [["物品名稱", "資產屬性", "出庫數量", "存放辦公室", "領取人", "日期時間", "備註"]];
-            
-            globalCheckouts.forEach(c => {
-                const ty = c.assetType === 'consumable' ? '消耗品' : '固定資產';
-                aoa.push([c.assetName, ty, c.quantity || 1, c.officeName, c.borrower, c.checkoutDate ? c.checkoutDate.replace('T', ' ') : '', c.remarks || '-']);
-            });
-
-            if (format === 'pdf') {
-                let html = `<html><head><title>領用登記紀錄</title><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{border:1px solid #333; padding:6px; text-align:left;} th{background:#eee;} h1{text-align:center;}</style></head><body><h1>📝 領用登記紀錄</h1><table>`;
-                aoa.forEach((r, i) => { html += `<tr>${r.map(c => i===0 ? `<th>${c}</th>` : `<td>${c}</td>`).join('')}</tr>`; });
-                html += `</table></body></html>`;
-                const win = window.open('', '_blank'); win.document.write(html); win.document.close(); setTimeout(() => { win.print(); }, 500);
-                window.closeExportModal(); return;
-            }
-        }
-
-        const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "匯出資料");
-        XLSX.writeFile(wb, `${filename}.${format}`);
-        window.closeExportModal();
-        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
-        const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
-        $$('.fab-submenu').forEach(s => s.classList.remove('open'));
-    };
-
     window.openAssetModal = (id = null) => {
         window.currentEditAssetId = id; 
         if (id) { 
@@ -1165,7 +1221,7 @@
     };
     window.closeCheckoutModal = () => $('checkout-modal-overlay').classList.remove('active');
 
-    // ✨ 補回遺失的下拉選單控制引擎
+    // ✨ 補回下拉選單控制引擎
     window.toggleDropdown = (t, e) => { 
         if(e) e.stopPropagation(); 
         $$('.custom-dropdown-panel').forEach(p => { if(p.id !== `${t}-panel`) p.classList.remove('active'); }); 
@@ -1224,7 +1280,7 @@
         $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
     });
     
-    // ======== ✨ 教學系統 ========
+    // ======== ✨ 教學系統 (修復防護鎖) ========
     window.startTutorial = () => {
         window.currentTutorialStep = 0;
         $('tutorial-overlay-mask').style.display = 'block';
@@ -1244,6 +1300,7 @@
         $('tutorial-ring-container').style.display = 'none';
         $('tutorial-dialog').style.display = 'none';
         window.clearTutorialHighlights();
+        if(tutorialTimer) clearTimeout(tutorialTimer);
     };
 
     window.nextTutorialStep = () => {
@@ -1271,7 +1328,10 @@
         $('tutorial-step-indicator').innerText = `${window.currentTutorialStep + 1} / ${tutorialData.length}`;
         $('tutorial-btn-next').innerText = window.currentTutorialStep === tutorialData.length - 1 ? '完成教學 ✔' : '下一步 ➔';
 
-        setTimeout(() => {
+        if (tutorialTimer) clearTimeout(tutorialTimer);
+        tutorialTimer = setTimeout(() => {
+            if ($('tutorial-overlay-mask').style.display === 'none') return;
+
             step.targets.forEach(sel => {
                 const el = document.querySelector(sel);
                 if(el) {
@@ -1297,7 +1357,6 @@
             const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
             const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
             $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
-            // 離開教學判斷
             if($('tutorial-dialog').style.display === 'flex') { window.exitTutorial(); }
         } 
     });

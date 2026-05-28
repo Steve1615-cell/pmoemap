@@ -64,6 +64,11 @@
         #import-preview-modal-overlay .table-container { flex: 1; overflow: auto; margin-top: 15px; border: 1px solid #e2e8f0; }
 
         .checkout-stats-wrapper { display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap; }
+        .bar-chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; width: 100%; }
+        .bar-chart-label { width: 90px; font-size: 11px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+        .bar-chart-track { flex: 1; background: #f1f5f9; height: 10px; border-radius: 4px; overflow: hidden; }
+        .bar-chart-fill { background: var(--primary); height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+        .bar-chart-val { font-size: 11px; font-weight: bold; width: 35px; color: var(--text-muted); }
 
         /* 新手教學專屬樣式 */
         #tutorial-overlay-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 99990; display: none; }
@@ -372,6 +377,8 @@
     window.pendingImports = []; 
     window.currentEditAssetId = null;
 
+    window.checkoutStatsRange = 'all'; // ✨ 預設切換為「全部歷史」
+
     // 教學系統變數與防護鎖
     window.currentTutorialStep = 0;
     let tutorialTimer = null; 
@@ -591,6 +598,7 @@
     window.toggleShortageFilter = () => { window.showOnlyShortage = !window.showOnlyShortage; window.summaryCurrentPage = 1; const card = $('card-shortage'); if(window.showOnlyShortage) { card.classList.add('active-filter'); } else { card.classList.remove('active-filter'); } window.renderSummary(); };
 
     function renderStatsDashboardHtml(prefix) {
+        window.checkoutStatsRange = window.checkoutStatsRange || 'all'; // ✨ 確保預設區間不跑掉
         return `
         <div class="checkout-stats-wrapper">
             <div style="text-align:center;">
@@ -599,13 +607,16 @@
             <div style="flex:1; border-left:2px dashed #cbd5e1; padding-left:20px; min-width:300px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <div style="font-weight:bold; color:var(--text-main); font-size:16px;">📊 借用狀態統計</div>
-                    <select id="${prefix}-stats-range" onchange="window.renderCheckoutStats()" style="border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; font-size:13px; outline:none; font-weight:bold; color:var(--primary); cursor:pointer;">
-                        <option value="month">本月</option><option value="week">當週</option><option value="day">今日</option>
+                    <select id="${prefix}-stats-range" onchange="window.checkoutStatsRange = this.value; window.renderCheckoutStats()" style="border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; font-size:13px; outline:none; font-weight:bold; color:var(--primary); cursor:pointer;">
+                        <option value="all" ${window.checkoutStatsRange === 'all' ? 'selected' : ''}>全部歷史</option>
+                        <option value="month" ${window.checkoutStatsRange === 'month' ? 'selected' : ''}>本月</option>
+                        <option value="week" ${window.checkoutStatsRange === 'week' ? 'selected' : ''}>當週</option>
+                        <option value="day" ${window.checkoutStatsRange === 'day' ? 'selected' : ''}>今日</option>
                     </select>
                 </div>
                 <div style="display:flex; gap:25px; align-items:center;">
                     <div style="text-align:center; padding-right:25px; border-right:1px solid #e2e8f0;">
-                        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;" id="${prefix}-lbl-stats-total">本月領用總數</div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;" id="${prefix}-lbl-stats-total">全部歷史領用總數</div>
                         <div id="${prefix}-stats-total-qty" style="font-size:32px; font-weight:bold; color:var(--primary); line-height:1;">0</div>
                     </div>
                     <div id="${prefix}-stats-top-items" style="flex:1; display:flex; flex-direction:column; gap:6px;"></div>
@@ -745,9 +756,13 @@
     };
 
     // ✨ 2. 登記：領用紀錄表格渲染 (動態表頭與篩選)
+    window.toggleCheckoutSort = () => { window.registrySortOrder = window.registrySortOrder === 'desc' ? 'asc' : 'desc'; $('checkout-sort-icon').innerText = window.registrySortOrder === 'desc' ? '⬇' : '⬆'; window.renderCheckouts(); };
+
     window.renderCheckouts = () => {
         const srContainer = $('stats-dashboard-registry');
-        if (srContainer) srContainer.innerHTML = renderStatsDashboardHtml('registry');
+        if (srContainer && !srContainer.innerHTML) {
+            srContainer.innerHTML = renderStatsDashboardHtml('registry');
+        }
 
         const thead = $('registry-table-thead');
         thead.innerHTML = `<tr>
@@ -823,44 +838,55 @@
         window.updateFloatingBar();
     };
 
+    // ✨ 領用統計長條圖 (修復匯入歷史資料後不顯示的問題)
     window.renderCheckoutStats = () => {
         const prefix = 'registry';
         const rangeSelect = $(`${prefix}-stats-range`);
-        const range = rangeSelect ? rangeSelect.value : 'month';
+        const range = rangeSelect ? rangeSelect.value : (window.checkoutStatsRange || 'all');
         let targetRecords = [];
         const now = new Date();
+        let labelText = '總領用數';
         
         if (range === 'day') {
             const todayStr = now.toISOString().split('T')[0];
             targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'').startsWith(todayStr));
-            if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = '今日領用總數';
+            labelText = '今日領用總數';
         } else if (range === 'week') {
             const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
             targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'') >= weekAgo);
-            if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = '近7日領用總數';
-        } else {
+            labelText = '近7日領用總數';
+        } else if (range === 'month') {
             const monthStr = now.toISOString().slice(0, 7); 
             targetRecords = globalCheckouts.filter(c => (c.checkoutDate||'').startsWith(monthStr));
-            if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = '本月領用總數';
+            labelText = '本月領用總數';
+        } else {
+            targetRecords = globalCheckouts;
+            labelText = '全部歷史領用總數';
         }
 
+        // ✨ 長條圖計算改為出庫數量累加，而非次數
         const totalQty = targetRecords.reduce((sum, r) => sum + (parseInt(r.quantity)||1), 0);
+        if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = labelText;
         if($(`${prefix}-stats-total-qty`)) $(`${prefix}-stats-total-qty`).innerText = totalQty;
 
         const countMap = {};
-        targetRecords.forEach(r => { countMap[r.assetName] = (countMap[r.assetName]||0) + 1; }); 
+        targetRecords.forEach(r => { 
+            const qty = parseInt(r.quantity) || 1;
+            countMap[r.assetName] = (countMap[r.assetName]||0) + qty; 
+        }); 
         const sortedItems = Object.keys(countMap).map(k => ({ name: k, count: countMap[k] })).sort((a,b) => b.count - a.count).slice(0, 5);
 
         const maxCount = sortedItems.length > 0 ? sortedItems[0].count : 1;
         const topContainer = $(`${prefix}-stats-top-items`);
         if (topContainer) {
             let htmlStr = '';
-            if (sortedItems.length === 0) { htmlStr = '<div style="color:#94a3b8; font-size:13px; text-align:center;">此期間無領用紀錄</div>'; }
-            else {
+            if (sortedItems.length === 0) { 
+                htmlStr = '<div style="color:#94a3b8; font-size:13px; text-align:center;">此期間無領用紀錄</div>'; 
+            } else {
                 sortedItems.forEach((item, i) => {
                     const pct = Math.max(5, (item.count / maxCount) * 100);
                     const color = chartPalette[i % chartPalette.length];
-                    htmlStr += `<div class="bar-chart-row"><div class="bar-chart-label" title="${item.name}">${item.name}</div><div class="bar-chart-track"><div class="bar-chart-fill" style="width:${pct}%; background:${color};"></div></div><div class="bar-chart-val">${item.count}次</div></div>`;
+                    htmlStr += `<div class="bar-chart-row"><div class="bar-chart-label" title="${item.name}">${item.name}</div><div class="bar-chart-track"><div class="bar-chart-fill" style="width:${pct}%; background:${color};"></div></div><div class="bar-chart-val">${item.count}件</div></div>`;
                 });
             }
             topContainer.innerHTML = htmlStr;
@@ -1136,7 +1162,7 @@
         }
     };
 
-    // ======== ✨ 匯出中心 ========
+    // ======== ✨ 匯出中心 (PDF/CSV/XLSX) ========
     window.openExportModal = () => { $('export-modal-overlay').classList.add('active'); };
     window.closeExportModal = () => { $('export-modal-overlay').classList.remove('active'); };
 

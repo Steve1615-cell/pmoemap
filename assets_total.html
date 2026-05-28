@@ -825,32 +825,32 @@
 
         if(filtered.length === 0) {
             bd.innerHTML = '<div style="width:100%; text-align:center; color:#94a3b8; padding:30px;">尚無符合條件的領用動態</div>';
-            const paginationContainer = $('feed-pagination');
-            if(paginationContainer) paginationContainer.innerHTML = '';
+            $('feed-pagination').innerHTML = '';
             return;
         }
 
         // 1. 全域先依照日期排序
         filtered.sort((a,b) => {
-            const res = String(a.checkoutDate||a.createdAt||'').localeCompare(String(b.checkoutDate||b.createdAt||''));
-            return sortMode === 'desc' ? -res : res;
+            const res = String(b.checkoutDate||b.createdAt||'').localeCompare(String(a.checkoutDate||a.createdAt||''));
+            return sortMode === 'desc' ? res : -res;
         });
 
         // 2. 依照「週次」進行分組 (ISO週演算法)
         const getWeekKey = (dateStr) => {
-            const d = new Date(dateStr.split('T')[0]);
-            d.setHours(0,0,0,0);
-            d.setDate(d.getDate() + 4 - (d.getDay()||7)); // 調整至該週週四，用來計算 ISO 週
-            const yearStart = new Date(d.getFullYear(),0,1);
-            const weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
-            return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+            const d = new Date(dateStr.split('T')[0] || dateStr.split(' ')[0]);
+            if (isNaN(d.getTime())) return '未知時間';
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            const monday = new Date(d.setDate(diff));
+            const sunday = new Date(d.setDate(diff + 6));
+            return `${monday.toISOString().split('T')[0]} ~ ${sunday.toISOString().split('T')[0]}`;
         };
 
         const weekGroups = {}; 
         const weekKeysInOrder = []; 
 
         filtered.forEach(rec => {
-            const dateStr = (rec.checkoutDate || rec.createdAt).split('T')[0];
+            const dateStr = (rec.checkoutDate || rec.createdAt).split('T')[0].split(' ')[0];
             const weekKey = getWeekKey(dateStr);
             if (!weekGroups[weekKey]) {
                 weekGroups[weekKey] = { key: weekKey, dateMap: {} };
@@ -862,7 +862,6 @@
             weekGroups[weekKey].dateMap[dateStr].push(rec);
         });
 
-        // 移除因順序被重複推入的 key
         const uniqueWeekKeys = [...new Set(weekKeysInOrder)];
         const totalPages = uniqueWeekKeys.length;
         
@@ -872,20 +871,27 @@
         const currentWeekKey = uniqueWeekKeys[window.feedCurrentPage - 1];
         const currentWeekData = weekGroups[currentWeekKey];
 
-        // 3. 渲染目前選定週次的資料，並以「天」為單位橫向展示
         let htmlStr = '';
+        
+        if (currentWeekKey !== '未知時間') {
+            htmlStr += `<div style="width: 100%; text-align: center; margin-bottom: 20px;"><span style="background: #e0e7ff; color: #4f46e5; padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 14px;">📅 貼文週次區間：${currentWeekKey}</span></div>`;
+        }
+
         const datesInWeek = Object.keys(currentWeekData.dateMap).sort((a, b) => sortMode === 'desc' ? b.localeCompare(a) : a.localeCompare(b));
 
         datesInWeek.forEach(date => {
-            const dayStr = ['日', '一', '二', '三', '四', '五', '六'][new Date(date).getDay()];
-            htmlStr += `<div style="margin-bottom: 25px;">
-                <h3 style="font-size: 16px; color: var(--text-main); margin-bottom: 10px; border-bottom: 2px solid var(--primary); padding-bottom: 5px;">📅 ${date} (${dayStr})</h3>
-                <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; width: 100%;">`;
+            let dayStr = '';
+            if (date && !isNaN(new Date(date).getTime())) {
+                dayStr = ['日', '一', '二', '三', '四', '五', '六'][new Date(date).getDay()];
+            }
+            htmlStr += `<div style="margin-bottom: 25px; width: 100%;">
+                <h3 style="font-size: 16px; color: var(--text-main); margin-bottom: 10px; border-bottom: 2px solid var(--primary); padding-bottom: 5px; display: inline-block;">📌 ${date} (${dayStr})</h3>
+                <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; width: 100%; scroll-snap-type: x mandatory;">`;
 
             currentWeekData.dateMap[date].forEach(rec => {
                 const liked = rec.likes && rec.likes.includes(currentUserProfile.email);
                 htmlStr += `
-                    <div class="feed-card" style="flex: 0 0 320px; background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; display:flex; flex-direction:column;">
+                    <div class="feed-card" style="flex: 0 0 320px; scroll-snap-align: start; background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; display:flex; flex-direction:column;">
                         <div class="feed-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 10px;">
                             <img src="${rec.creatorAvatar}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
                             <div class="feed-meta" style="font-size: 12px; color: var(--text-muted); line-height: 1.4;"><b>${rec.creatorName}</b> 登記<br>${(rec.checkoutDate||rec.createdAt).replace('T', ' ')}</div>
@@ -915,8 +921,7 @@
             <span style="font-weight:bold; color:var(--text-main); font-size:14px;">第 ${window.feedCurrentPage} / ${totalPages} 週</span>
             <button class="btn-secondary" onclick="window.changeFeedPage(1)" ${window.feedCurrentPage === totalPages || totalPages === 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>下一週 ▶</button>
         `;
-        const paginationContainer = $('feed-pagination');
-        if(paginationContainer) paginationContainer.innerHTML = totalPages > 0 ? pageHtml : '';
+        $('feed-pagination').innerHTML = totalPages > 0 ? pageHtml : '';
     };
 
     window.toggleCheckoutLike = async (rId) => { 

@@ -16,7 +16,7 @@
         .search-box { padding: 15px 25px; border: 2px solid #cbd5e1; border-radius: 40px; width: 100%; box-sizing: border-box; font-size: 35px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: border-color 0.2s; outline: none; }
         .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.2); }
 
-        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; display: none; }
         .tab-btn { position: relative; padding: 10px 30px; background: white; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; color: var(--text-muted); }
         .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
         
@@ -26,7 +26,7 @@
         .notion-table td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; color: var(--text-main); }
         .notion-table tr:hover { background: #f8fafc; }
 
-        /* ✨ 外調車輛專屬色底 (#FC8F8F 加點透明度讓黑字好辨識) */
+        /* ✨ 外調車輛專屬色底 */
         .row-external { background-color: rgba(252, 143, 143, 0.25) !important; }
         .row-external:hover { background-color: rgba(252, 143, 143, 0.4) !important; }
         
@@ -48,6 +48,7 @@
         .batch-checkbox:checked { background: var(--primary); border-color: var(--primary); }
         .batch-checkbox:checked::after { content: '✔'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: bold; }
 
+        /* 滿版圓環儀表板 */
         .stats-row { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 20px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; width: 100%; }
         .stat-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 250px; border: 2px solid transparent; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; cursor: pointer; }
         .stat-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 8px 25px rgba(37,99,235,0.1); }
@@ -55,6 +56,7 @@
         .stat-title { font-size: 18px; font-weight: bold; color: var(--text-main); text-align: center; }
         .stat-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
 
+        /* 懸浮批次操作列 */
         #floating-batch-bar { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px); background: white; padding: 12px 25px; border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 4000; display: flex; gap: 15px; align-items: center; border: 1px solid #cbd5e1; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         #floating-batch-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
         
@@ -198,7 +200,7 @@
         </div>
         <div class="form-group">
             <label>2. 選擇機車車號</label>
-            <select id="record-asset-id" style="font-weight:bold; font-size:16px;"></select>
+            <select id="record-asset-id" style="font-weight:bold; font-size:16px; width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;"></select>
         </div>
         <div class="form-group" id="group-target-unit">
             <label>3. 目標單位 / 修車廠</label>
@@ -294,12 +296,12 @@
     const chartPalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#eab308'];
 
     let db, auth;
-    let globalAssets = [], globalMotoRecords = [];
+    let globalAssets = [], globalOffices = [], globalMembers = [], globalMotoRecords = [];
     
     // ✨ 全域變數
     window.summaryCurrentPage = 1;
     window.summaryItemsPerPage = 50;
-    window.tableSort = { col: 'plate', dir: 'asc' };
+    window.tableSort = { col: '_plate', dir: 'asc' };
     window.tableFilters = { summary: {} };
 
     window.displayMode = { 'total': 'qty', 'inhouse': 'qty', 'out': 'qty' };
@@ -348,16 +350,25 @@
     }
 
     function fetchData() {
-        // 只抓取 category 為公務車或公務機車的資產
+        // ✨ 補回辦公室與人員的連線
+        onSnapshot(collection(db, "offices"), (s) => { globalOffices = s.docs.map(d => ({ id: d.id, ...d.data() })); });
+        onSnapshot(collection(db, "members"), (s) => { globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); });
+
+        // ✨ 擴大抓取條件：只要資產類型包含「車」或「機車」都能抓到，避免人為手誤漏抓
         onSnapshot(collection(db, "assets"), (s) => { 
-            globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.category === '公務車' || a.category === '公務機車'); 
+            const validCats = ['公務車', '公務機車', '機車', '汽車', '車輛', '車'];
+            globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => {
+                if (!a.category) return false;
+                const cat = a.category.toLowerCase();
+                return validCats.some(v => cat.includes(v));
+            }); 
             window.renderCurrentView(); 
         });
-        // 抓取機車的借還歷史紀錄
+        
+        // ✨ 抓取機車的借還歷史紀錄
         onSnapshot(collection(db, "motorcycle_records"), (s) => { 
             globalMotoRecords = s.docs.map(d => ({ id: d.id, ...d.data() })); 
             window.renderCurrentView(); 
-            // 如果歷史紀錄彈窗開著，即時更新
             if ($('history-modal-overlay').classList.contains('active') && window.currentHistoryCamId) {
                 window.renderHistoryModal(window.currentHistoryCamId);
             }
@@ -449,16 +460,16 @@
 
             recs.forEach(r => {
                 if (r.type === 'borrow') {
-                    if (r.unit.includes('修車') || r.unit.includes('維修')) {
+                    if ((r.unit || '').includes('修車') || (r.unit || '').includes('維修')) {
                         currentUnit = '維修中';
                         latestMaint = `${r.date} ${r.remarks ? '('+r.remarks+')' : ''}`;
                         isReturnedToOrg = false;
                     } else {
-                        currentUnit = r.unit;
+                        currentUnit = r.unit || '未知';
                         isReturnedToOrg = false;
                     }
                 } else if (r.type === 'return') {
-                    if (r.unit.includes('原單位') || r.unit === orgUnit) {
+                    if ((r.unit || '').includes('原單位') || r.unit === orgUnit) {
                         currentUnit = orgUnit;
                         latestReturn = r.date;
                         isReturnedToOrg = true;
@@ -475,11 +486,11 @@
 
             return { 
                 ...a, 
-                _plate: a.item, 
+                _plate: a.item || '未命名', 
                 _isExtStr: isExt ? '是' : '否', 
-                _currentUnit: currentUnit, 
-                _returnDate: latestReturn, 
-                _maintenance: latestMaint,
+                _currentUnit: currentUnit || '', 
+                _returnDate: latestReturn || '', 
+                _maintenance: latestMaint || '',
                 _isReturnedToOrg: isReturnedToOrg
             };
         });
@@ -663,10 +674,10 @@
         
         const sel = $('record-asset-id'); sel.innerHTML = '';
         globalAssets.sort((a,b) => String(a.item).localeCompare(String(b.item))).forEach(a => {
-            sel.innerHTML += `<option value="${a.id}">${a.item} ${a.isExternal === 'true' ? '(外調)' : ''}</option>`;
+            sel.innerHTML += `<option value="${a.id}">${a.item} ${a.isExternal === 'true' || a.isExternal === true ? '(外調)' : ''}</option>`;
         });
         
-        if (presetCamId) sel.value = presetCamId;
+        if (presetCamId && typeof presetCamId === 'string') sel.value = presetCamId;
         
         const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         $('record-date').value = now.toISOString().slice(0,10); 
@@ -784,18 +795,45 @@
         const file = e.target.files[0]; if (!file) return; e.target.value = '';
         const loader = $('loading-msg'); loader.innerHTML = '⏳ 正在解析表格...'; loader.style.display = 'block';
         
+        const fileExt = file.name.split('.').pop().toLowerCase();
         const reader = new FileReader();
+
+        const getVal = (r, possibleKeys) => { 
+            for (let pk of possibleKeys) { 
+                const foundKey = Object.keys(r).find(k => String(k).toLowerCase().includes(pk.toLowerCase())); 
+                if (foundKey && r[foundKey] !== undefined && r[foundKey] !== '') return String(r[foundKey]).trim(); 
+            } 
+            return ''; 
+        };
+
         reader.onload = async (evt) => {
             try {
-                const data = new Uint8Array(evt.target.result); 
-                const workbook = XLSX.read(data, { type: 'array' });
-                
+                let workbook;
+                if (fileExt === 'csv') {
+                    const uint8 = new Uint8Array(evt.target.result);
+                    let text = new TextDecoder('utf-8').decode(uint8);
+                    if (text.includes('\uFFFD')) {
+                        text = new TextDecoder('big5').decode(uint8);
+                    }
+                    workbook = XLSX.read(text, { type: 'string' });
+                } else {
+                    const data = new Uint8Array(evt.target.result); 
+                    workbook = XLSX.read(data, { type: 'array' });
+                }
+
+                let targetSheetName = '';
+                let hi = -1;
                 let rawRows = [];
+
                 for (let sheetName of workbook.SheetNames) {
                     const sheet = workbook.Sheets[sheetName];
                     const tempRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                    const headerIdx = tempRows.findIndex(row => Array.isArray(row) && row.some(cell => typeof cell === 'string' && (cell.includes('車號') || cell.includes('編號') || cell.includes('機車'))));
-                    if (headerIdx !== -1) { rawRows = tempRows.slice(headerIdx); break; }
+                    const headerIdx = tempRows.findIndex(row => Array.isArray(row) && row.some(cell => {
+                        if(typeof cell !== 'string') return false;
+                        const s = cell.toLowerCase();
+                        return s.includes('車號') || s.includes('編號') || s.includes('機車');
+                    }));
+                    if (headerIdx !== -1) { targetSheetName = sheetName; hi = headerIdx; rawRows = tempRows.slice(headerIdx); break; }
                 }
 
                 if (rawRows.length === 0) throw new Error("找不到有效的標題列 (需包含「車號」等關鍵字)");
@@ -805,9 +843,8 @@
 
                 window.pendingImports = [];
                 rows.forEach(r => {
-                    // 根據 Excel 範例：車號, 資產單位, 歸還原單位, 歸還日期, 使用單位1, 歸還PMO日期1...
-                    let item = r['車號'] || r['機車'] || r['編號']; if (!item) return;
-                    let assetUnit = r['資產單位'] || 'PMO';
+                    let item = getVal(r, ['車號', '機車', '編號']); if (!item) return;
+                    let assetUnit = getVal(r, ['資產單位', '原屬單位']) || 'PMO';
                     let isExt = assetUnit !== 'PMO';
                     
                     window.pendingImports.push({ 
@@ -834,7 +871,7 @@
         
         let htmlStr = '';
         window.pendingImports.forEach(p => {
-            const matchAsset = globalAssets.find(a => a.item === p.item);
+            const matchAsset = globalAssets.find(a => String(a.item).trim() === p.item);
             const matchStatus = matchAsset ? `<span style="color:var(--warning);">⚠️ 車輛已存在 (將覆蓋屬性並寫入紀錄)</span>` : `<span style="color:var(--success);">✅ 全新車輛建立</span>`;
             htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-preview-row batch-checkbox" value="${p.id}"></td><td><b style="color:var(--primary); font-size:16px;">${p.item}</b></td><td><span style="font-weight:bold; color:${p.isExternal?'#991b1b':'var(--text-muted)'};">${p.isExternal?'是':'否'}</span></td><td>${p.originalUnit}</td><td>${matchStatus}</td></tr>`;
         });
@@ -851,7 +888,7 @@
             const ops = [];
             for (const p of window.pendingImports) {
                 let assetId = '';
-                const match = globalAssets.find(a => a.item === p.item);
+                const match = globalAssets.find(a => String(a.item).trim() === p.item);
                 if (match) {
                     assetId = match.id;
                     ops.push(updateDoc(doc(db, 'assets', match.id), { isExternal: p.isExternal, originalUnit: p.originalUnit }));
@@ -861,21 +898,21 @@
                     ops.push(setDoc(newDocRef, { type: 'public', category: '公務機車', assetType: 'fixed', item: p.item, isExternal: p.isExternal, originalUnit: p.originalUnit, createdAt: new Date().toISOString() }));
                 }
 
-                // 拆解 Excel 的歷史時間軸 (使用單位1, 歸還PMO日期1, ...)
+                // 拆解 Excel 的歷史時間軸
                 const rr = p.rawRow;
                 for (let i = 1; i <= 6; i++) {
                     const unitKey = `使用單位${i}`; const dateKey = `歸還PMO日期${i}`;
-                    const u = rr[unitKey]; const d = rr[dateKey];
+                    const u = rr[unitKey] || (Object.keys(rr).find(k=>k.includes(`使用單位${i}`) && rr[k]) ? rr[Object.keys(rr).find(k=>k.includes(`使用單位${i}`))] : null);
+                    const d = rr[dateKey] || (Object.keys(rr).find(k=>k.includes(`歸還PMO日期${i}`) && rr[k]) ? rr[Object.keys(rr).find(k=>k.includes(`歸還PMO日期${i}`))] : null);
+                    
                     if (u) {
-                        // 推算借出時間 (這裡 Excel 沒有借出時間，只記錄順序，我們模擬假時間確保排序正確)
                         const fakeBorrowDate = d ? new Date(new Date(d).getTime() - 86400000).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
-                        ops.push(addDoc(collection(db, 'motorcycle_records'), { motorcycleId: assetId, type: 'borrow', unit: u, date: fakeBorrowDate, remarks: `Excel歷史匯入 (階段${i})`, createdAt: new Date().toISOString() }));
+                        ops.push(addDoc(collection(db, 'motorcycle_records'), { motorcycleId: assetId, type: 'borrow', unit: u, date: fakeBorrowDate, remarks: `歷史匯入 (階段${i})`, createdAt: new Date().toISOString() }));
                     }
                     if (d) {
-                        ops.push(addDoc(collection(db, 'motorcycle_records'), { motorcycleId: assetId, type: 'return', unit: 'PMO', date: d, remarks: `Excel歷史歸還 (階段${i})`, createdAt: new Date().toISOString() }));
+                        ops.push(addDoc(collection(db, 'motorcycle_records'), { motorcycleId: assetId, type: 'return', unit: 'PMO', date: d, remarks: `歷史歸還 (階段${i})`, createdAt: new Date().toISOString() }));
                     }
                 }
-                // 檢查最後的歸還原單位
                 if (rr['歸還原單位'] && rr['歸還日期']) {
                     ops.push(addDoc(collection(db, 'motorcycle_records'), { motorcycleId: assetId, type: 'return', unit: '原單位', date: rr['歸還日期'], remarks: '歸還原資產單位', createdAt: new Date().toISOString() }));
                 }

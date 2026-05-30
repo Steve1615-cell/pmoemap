@@ -170,8 +170,14 @@
         </div>
         
         <div class="menu-item disabled tooltip-container" data-tooltip="機車管理系統開發中！">
-            <div style="display:flex; align-items:center;">🛵 公務機車總表 <svg style="margin-left:8px; opacity:0.5; color:#64748b;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></div>
-        </div>
+    <div style="display:flex; align-items:center;">🛵 公務機車總表 <svg ...
+**將其替換為（移除 `disabled` 與提示，並加上點擊事件）：**
+```html
+<div class="menu-item" onclick="window.open('scooters.html', '_blank')">
+    <div style="display:flex; align-items:center;">🛵 公務機車總表 <svg style="margin-left:8px; opacity:0.5; color:#64748b;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></div>
+</div>
+
+這樣一來，我們就利用原先建好的底層工具，在不影響主系統穩定的情況下，無縫擴充了全新的應用！測試完成後請告訴我，我們可以繼續解決你在紀錄裡提到的「資產總表點擊卡頓」的問題。
         
         <div style="height: 1px; background: #e2e8f0; margin: 10px 20px;"></div>
         <div style="padding: 10px 20px 5px 20px; font-size: 12px; font-weight: bold; color: var(--text-muted);">🔗 友站連結</div>

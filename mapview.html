@@ -21,7 +21,7 @@
         header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); z-index: 10; flex-shrink: 0; }
         h1 { margin: 0; font-size: 24px; color: var(--primary); }
         .controls { display: flex; gap: 12px; align-items: center; }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); color: white; background: var(--primary); font-size: 15px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); color: white; background: var(--primary); font-size: 15px; }
         .btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .btn:active { transform: translateY(0); }
         .btn-secondary { background: #64748b; }
@@ -38,28 +38,35 @@
         /* 主要佈局 */
         main { display: flex; flex: 1; overflow: hidden; position: relative; }
         
-        /* 左側 SVG 地圖區塊 */
-        #map-container { flex: 1; position: relative; overflow: hidden; background: #e2e8f0; cursor: grab; display: flex; justify-content: center; align-items: center; transition: flex-basis 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        /* 左側 SVG 地圖區塊 (絲滑過渡) */
+        #map-container { flex: 1; position: relative; overflow: hidden; background: #e2e8f0; cursor: grab; display: flex; justify-content: center; align-items: center; transition: flex-basis 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
         #map-container:active { cursor: grabbing; }
         #svg-wrapper { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
         #svg-wrapper svg { width: 100%; height: 100%; display: block; }
         
         /* === SVG 互動樣式 === */
-        .interactive-room { cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .interactive-room { cursor: pointer; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .interactive-room { fill: transparent !important; stroke: transparent !important; }
         
         /* 綁定模式下的高光 */
         .mode-bind-office .interactive-room { fill: rgba(245, 158, 11, 0.3) !important; stroke: var(--warning) !important; stroke-width: 2px !important; stroke-dasharray: 4; }
         .mode-bind-office .interactive-room:hover { fill: rgba(245, 158, 11, 0.6) !important; stroke-width: 4px !important; }
         
+        /* ✨ 瀏覽模式下，未綁定的房間完全隱藏 (無紅線、不可點擊) */
+        .mode-view .interactive-room:not(.bound) {
+            opacity: 0 !important; 
+            pointer-events: none !important;
+            stroke-width: 0 !important;
+        }
+
         /* 瀏覽模式下已綁定的高光 */
-        .mode-view .interactive-room.bound { fill: rgba(37, 99, 235, 0.1) !important; stroke: rgba(37, 99, 235, 0.3) !important; stroke-width: 1.5px !important; }
-        .mode-view .interactive-room.bound:hover { fill: rgba(37, 99, 235, 0.25) !important; stroke: var(--primary) !important; stroke-width: 2.5px !important; }
+        .mode-view .interactive-room.bound { fill: rgba(37, 99, 235, 0.1) !important; stroke: rgba(37, 99, 235, 0.35) !important; stroke-width: 1.5px !important; }
+        .mode-view .interactive-room.bound:hover { fill: rgba(37, 99, 235, 0.3) !important; stroke: var(--primary) !important; stroke-width: 2.5px !important; }
         
         /* 被選取的房間 (Active) */
         .mode-view .interactive-room.active { fill: rgba(16, 185, 129, 0.4) !important; stroke: var(--success) !important; stroke-width: 4px !important; }
 
-        /* 沉浸模式 (隱藏非相關區域的紅線) */
+        /* 沉浸模式 (點選房間放大時，隱藏其他已綁定房間的高光) */
         .mode-view.has-active-room .interactive-room.bound:not(.active) {
             stroke-opacity: 0 !important; fill-opacity: 0 !important; pointer-events: none;
         }
@@ -68,13 +75,13 @@
         #map-tooltip { position: absolute; background: rgba(0,0,0,0.85); color: white; padding: 10px 16px; border-radius: 8px; font-size: 16px; font-weight: bold; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 20; transform: translate(-50%, -100%); margin-top: -15px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); }
         
         /* 點擊簡易彈窗 (Popup) */
-        #room-popup { position: absolute; background: white; padding: 18px; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); z-index: 21; display: none; transform: translate(-50%, -100%) scale(0.95); margin-top: -20px; min-width: 220px; border: 1px solid #e2e8f0; opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; }
+        #room-popup { position: absolute; background: white; padding: 18px; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); z-index: 21; display: none; transform: translate(-50%, -90%) scale(0.95); margin-top: -20px; min-width: 220px; border: 1px solid #e2e8f0; opacity: 0; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; }
         #room-popup.show { display: block; opacity: 1; transform: translate(-50%, -100%) scale(1); pointer-events: auto; }
         #room-popup::after { content:''; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: white transparent transparent transparent; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.1)); }
         .popup-title { margin: 0 0 12px 0; font-size: 18px; color: var(--primary); font-weight: bold; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; text-align: center; }
 
-        /* 右側詳細資訊側邊欄 (60%) */
-        #sidebar { flex-basis: 0; width: 0; opacity: 0; background: white; border-left: 2px solid #e2e8f0; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; display: flex; flex-direction: column; }
+        /* 右側詳細資訊側邊欄 (擴大至 60%) */
+        #sidebar { flex-basis: 0; width: 0; opacity: 0; background: white; border-left: 2px solid #e2e8f0; transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; display: flex; flex-direction: column; }
         #sidebar.open { flex-basis: 60%; width: 60%; opacity: 1; }
         .sidebar-header { padding: 25px 30px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; position: sticky; top: 0; z-index: 10; }
         .sidebar-content { padding: 30px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
@@ -87,7 +94,8 @@
         .info-value { flex: 1; color: var(--text-main); font-weight: bold; }
         
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .stat-box { background: #f1f5f9; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; }
+        .stat-box { background: #f1f5f9; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; transition: all 0.3s ease; }
+        .stat-box:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.05); }
         .stat-num { font-size: 36px; font-weight: bold; color: var(--primary); margin-top: 10px; }
 
         /* 巨型空白狀態 (Empty State) */
@@ -111,8 +119,8 @@
         .custom-modal-overlay.active { display: flex; animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         
-        optgroup { font-weight: bold; color: var(--primary); background: #f8fafc; }
-        option { font-weight: normal; color: var(--text-main); background: white; }
+        optgroup { font-weight: bold; color: var(--primary); background: #f1f5f9; padding: 5px; }
+        option { font-weight: normal; color: var(--text-main); background: white; padding: 5px; }
     </style>
 </head>
 <body>
@@ -121,9 +129,11 @@
     <h1>🗺️ 空間地圖導覽</h1>
     <div class="controls">
         <span id="status-badge" class="status-badge" style="display:none;">請匯入地圖</span>
-        <button class="btn btn-secondary" onclick="document.getElementById('svg-upload').click()">📥 重新匯入地圖</button>
-        <button id="btn-finish-bind" class="btn btn-finish" style="display:none;" onclick="window.finishBinding()">✅ 完成綁定並進入導覽</button>
-        <button id="btn-reset-view" class="btn btn-secondary" style="display:none;" onclick="window.resetView()">🔍 回到全覽視角</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('svg-upload').click()">📥 重新匯入</button>
+        <button id="btn-finish-bind" class="btn btn-finish" style="display:none;" onclick="window.finishBinding()">✅ 完成綁定</button>
+        <!-- 新增：隨時開放重新編輯綁定 -->
+        <button id="btn-edit-bind" class="btn btn-secondary" style="display:none;" onclick="window.editBinding()">⚙️ 編輯綁定</button>
+        <button id="btn-reset-view" class="btn btn-secondary" style="display:none;" onclick="window.resetView()">🔍 回到全覽</button>
         <input type="file" id="svg-upload" accept=".svg" style="display:none;" onchange="window.handleSVGUpload(event)">
     </div>
 </header>
@@ -164,7 +174,7 @@
                 <div style="font-size: 14px; color: var(--text-muted); font-weight: bold; margin-bottom: 5px;" id="sidebar-region-name">所屬區域</div>
                 <h2 style="margin:0; color:var(--primary); font-size: 28px;" id="sidebar-office-name">空間名稱</h2>
             </div>
-            <button class="btn btn-secondary" onclick="window.closeSidebar()" style="padding: 10px 20px; font-size: 16px;">✖ 關閉側邊欄</button>
+            <button class="btn btn-secondary" onclick="window.closeSidebar()" style="padding: 10px 20px; font-size: 16px;">✖ 關閉</button>
         </div>
         <div class="sidebar-content">
             
@@ -196,7 +206,7 @@
 
 <!-- 步驟一：選擇地圖所屬區域 Modal -->
 <div id="bind-region-modal-overlay" class="custom-modal-overlay">
-    <div style="background:white; padding:25px; border-radius:16px; width:90%; max-width:450px; box-shadow:0 15px 35px rgba(0,0,0,0.25);">
+    <div style="background:white; padding:25px; border-radius:16px; width:90%; max-width:450px; box-shadow:0 15px 35px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
         <h3 style="margin-top:0; color:var(--primary); border-bottom:2px solid #e2e8f0; padding-bottom:12px; font-size:22px;">📌 設定地圖所屬區域</h3>
         <p style="color: var(--text-muted); margin-bottom: 20px;">請從系統現有的區域中，選擇此張地圖代表的位置：</p>
         <div style="margin-bottom:25px;">
@@ -212,12 +222,12 @@
 
 <!-- 步驟二：選擇空間的綁定專用彈窗 -->
 <div id="bind-modal-overlay" class="custom-modal-overlay">
-    <div style="background:white; padding:25px; border-radius:16px; width:90%; max-width:450px; box-shadow:0 15px 35px rgba(0,0,0,0.25);">
+    <div style="background:white; padding:25px; border-radius:16px; width:90%; max-width:450px; box-shadow:0 15px 35px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
         <h3 style="margin-top:0; color:var(--primary); border-bottom:2px solid #e2e8f0; padding-bottom:12px; font-size:22px;">
             🔗 綁定地圖區域 <br><span id="bind-room-id-disp" style="font-size:15px; color:var(--text-muted); font-weight:normal;"></span>
         </h3>
         <div style="margin-bottom:25px; margin-top: 20px;">
-            <label style="display:block; margin-bottom:10px; font-weight:bold; font-size: 18px; color:var(--text-main);">從系統中選擇對應的空間 (含倉庫)：</label>
+            <label style="display:block; margin-bottom:10px; font-weight:bold; font-size: 18px; color:var(--text-main);">從系統中選擇對應的空間 (含倉庫/機房)：</label>
             <select id="bind-office-select" style="width:100%; padding:15px; font-size:18px; border:2px solid #cbd5e1; border-radius:8px; outline:none; cursor:pointer; background:#f8fafc;">
                 <option value="">-- 資料載入中... --</option>
             </select>
@@ -254,7 +264,7 @@
         // === 核心狀態 ===
         const state = {
             mode: 'empty', 
-            floorName: '', // 代表 Region 名稱
+            floorName: '', 
             boundRooms: {}, 
             activeRoomId: null,
             
@@ -269,7 +279,7 @@
             svgElement: null
         };
 
-        // 🚀 即時從 Firebase 讀取所有必要資料
+        // 🚀 即時讀取 Firebase 資料
         onSnapshot(collection(db, "regions"), snap => {
             state.globalRegions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             populateRegionSelect();
@@ -294,46 +304,40 @@
             });
         }
 
-        // ✨ 重寫的空間過濾器：使用 optgroup 分類，容錯率 100%
+        // ✨ 重寫：動態掃描所有資料庫真實區域，100% 容錯的 optgroup 群組分類
         function populateOfficeSelect() {
             const sel = document.getElementById('bind-office-select');
             sel.innerHTML = '<option value="">-- 點此展開選擇對應的空間 --</option>';
             
-            const currentRegionRooms = [];
-            const otherRooms = [];
-
-            // 把所有的空間(含倉庫、會議室)依照是否屬於選擇的樓層進行分流
+            // 將辦公室依據實際的 region 屬性進行分組
+            const groupedOffices = {};
             state.globalOffices.forEach(o => {
-                if (o.region === state.floorName) currentRegionRooms.push(o);
-                else otherRooms.push(o);
+                const r = o.region || '未分類 / 跨區空間';
+                if(!groupedOffices[r]) groupedOffices[r] = [];
+                groupedOffices[r].push(o);
             });
 
-            currentRegionRooms.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
-            otherRooms.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
-            
-            // 優先列出符合區域的空間
-            if(currentRegionRooms.length > 0) {
-                const grp1 = document.createElement('optgroup');
-                grp1.label = `📍 屬於 [${state.floorName}] 的空間`;
-                currentRegionRooms.forEach(off => {
-                    const opt = document.createElement('option');
-                    opt.value = off.id; opt.innerText = off.name || off.id;
-                    grp1.appendChild(opt);
-                });
-                sel.appendChild(grp1);
-            }
+            // 確保「當前選擇的地圖區域」排在最上面
+            const sortedRegions = Object.keys(groupedOffices).sort((a, b) => {
+                if (a === state.floorName) return -1;
+                if (b === state.floorName) return 1;
+                return a.localeCompare(b);
+            });
 
-            // 接著列出其他區域或未分類的空間 (防呆備用)
-            if(otherRooms.length > 0) {
-                const grp2 = document.createElement('optgroup');
-                grp2.label = `📁 其他區域的空間 (未分類或跨區綁定)`;
-                otherRooms.forEach(off => {
+            sortedRegions.forEach(r => {
+                const grp = document.createElement('optgroup');
+                // 視覺提示：屬於當前樓層的加上📍，其他的加上📁
+                grp.label = r === state.floorName ? `📍 屬於 [${r}] 的空間` : `📁 區域：[${r}] 的空間`;
+                
+                const rooms = groupedOffices[r].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+                rooms.forEach(off => {
                     const opt = document.createElement('option');
-                    opt.value = off.id; opt.innerText = `${off.name || off.id} (位於: ${off.region || '未指定'})`;
-                    grp2.appendChild(opt);
+                    opt.value = off.id; 
+                    opt.innerText = off.name || off.id;
+                    grp.appendChild(opt);
                 });
-                sel.appendChild(grp2);
-            }
+                sel.appendChild(grp);
+            });
         }
 
         const container = document.getElementById('map-container');
@@ -355,6 +359,7 @@
                 if (!svg) return alert('無效的 SVG 檔案！');
                 
                 state.svgElement = svg;
+                state.boundRooms = {}; // 重新匯入時重置綁定
                 svg.setAttribute('width', '100%'); svg.setAttribute('height', '100%');
                 
                 let vb = svg.getAttribute('viewBox');
@@ -376,7 +381,7 @@
             event.target.value = ''; 
         };
 
-        // === UI 輔助：顯示巨型引導橫幅 ===
+        // UI 引導橫幅
         function showInstruction(text, icon = "👉") {
             const banner = document.getElementById('instruction-banner');
             document.getElementById('instruction-text').innerText = text;
@@ -408,6 +413,7 @@
             setMode('bind_office');
             showInstruction(`步驟 2：請點擊地圖上「閃爍的黃色區塊」綁定 ${state.floorName} 內的空間`, "✨");
             document.getElementById('btn-finish-bind').style.display = 'block';
+            document.getElementById('btn-edit-bind').style.display = 'none';
 
             const rooms = state.svgElement.querySelectorAll('[id^="room_"]');
             if(rooms.length === 0) {
@@ -453,6 +459,16 @@
             currentBindingRoomId = null;
         };
 
+        // ✨ 編輯綁定 (讓隱藏的紅線重現)
+        window.editBinding = function() {
+            setMode('bind_office');
+            document.getElementById('btn-finish-bind').style.display = 'block';
+            document.getElementById('btn-reset-view').style.display = 'none';
+            document.getElementById('btn-edit-bind').style.display = 'none';
+            showInstruction(`編輯綁定：請點擊地圖上「閃爍的黃色區塊」調整空間配置`, "✨");
+            window.closeSidebar();
+        };
+
         // === 4. 完成綁定進入瀏覽模式 ===
         window.finishBinding = function() {
             const count = Object.keys(state.boundRooms).length;
@@ -462,6 +478,7 @@
             hideInstruction(); 
             document.getElementById('btn-finish-bind').style.display = 'none';
             document.getElementById('btn-reset-view').style.display = 'block';
+            document.getElementById('btn-edit-bind').style.display = 'block';
             
             setupViewInteractions();
         };
@@ -528,7 +545,7 @@
             const office = state.globalOffices.find(o => o.id === officeId);
             
             if (office) {
-                document.getElementById('sidebar-region-name').innerText = office.region || '未分類區域';
+                document.getElementById('sidebar-region-name').innerText = office.region || '跨區或未分類';
                 document.getElementById('sidebar-office-name').innerText = office.name || office.id;
                 document.getElementById('sb-office-id').innerText = office.id;
                 document.getElementById('sb-room-type').innerText = office.type || '一般辦公室';
@@ -545,7 +562,6 @@
             zoomToRoom(state.activeRoomId);
         };
 
-        // 跳轉至主系統按鈕邏輯
         window.jumpToMainSystem = function() {
             const officeId = state.boundRooms[state.activeRoomId];
             if (!officeId) return;
@@ -565,12 +581,14 @@
             animateViewBox(state.initialViewBox);
         };
 
+        // ✨ 絲滑縮放與 +25% 逼近邏輯
         function zoomToRoom(roomId) {
             const roomEl = document.getElementById(roomId);
             if(!roomEl) return;
             
             const bbox = roomEl.getBBox();
-            const padding = Math.max(bbox.width, bbox.height) * 0.8; 
+            // ✨ 將 padding 縮小至 0.3，讓房間佔據畫面比例增加，實現放大 25% 的視覺效果
+            const padding = Math.max(bbox.width, bbox.height) * 0.3; 
             
             const targetViewBox = {
                 x: bbox.x - padding,
@@ -583,12 +601,13 @@
 
         function animateViewBox(target) {
             const start = { ...state.viewBox };
-            const duration = 650; 
+            const duration = 700; // ✨ 動畫時間拉長至 700ms 增加流暢度
             const startTime = performance.now();
 
             function update(currentTime) {
                 const elapsed = currentTime - startTime;
                 const progress = Math.min(elapsed / duration, 1);
+                // ✨ 改用 Exponential 緩動曲線，實現快啟動、慢定格的舒適物理感
                 const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
 
                 state.viewBox.x = start.x + (target.x - start.x) * ease;
@@ -652,6 +671,27 @@
                 state.svgElement.setAttribute('viewBox', `${state.viewBox.x} ${state.viewBox.y} ${state.viewBox.w} ${state.viewBox.h}`);
             }
         }
+
+        // ✨ 點擊背景關閉 Modal 遮罩
+        document.querySelectorAll('.custom-modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) overlay.classList.remove('active');
+            });
+        });
+
+        // ✨ 全域 Esc 鍵防呆：關閉所有遮罩、側邊欄與彈窗
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.custom-modal-overlay').forEach(o => o.classList.remove('active'));
+                if(document.getElementById('sidebar').classList.contains('open')) window.closeSidebar();
+                if(popup.classList.contains('show')) {
+                    popup.classList.remove('show');
+                    state.svgElement.querySelectorAll('.active').forEach(r => r.classList.remove('active'));
+                    wrapper.classList.remove('has-active-room');
+                    state.activeRoomId = null;
+                }
+            }
+        });
 
         // === 工具：設定模式並更新 UI ===
         function setMode(mode) {

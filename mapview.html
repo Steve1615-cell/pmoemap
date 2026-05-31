@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>辦公室地圖導覽 | PMO電子圖資系統</title>
+    <title>空間地圖導覽 | PMO電子圖資系統</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -59,7 +59,7 @@
         /* 被選取的房間 (Active) */
         .mode-view .interactive-room.active { fill: rgba(16, 185, 129, 0.4) !important; stroke: var(--success) !important; stroke-width: 4px !important; }
 
-        /* ✨ 沉浸模式 (隱藏非相關區域的紅線) */
+        /* 沉浸模式 (隱藏非相關區域的紅線) */
         .mode-view.has-active-room .interactive-room.bound:not(.active) {
             stroke-opacity: 0 !important; fill-opacity: 0 !important; pointer-events: none;
         }
@@ -73,7 +73,7 @@
         #room-popup::after { content:''; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: white transparent transparent transparent; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.1)); }
         .popup-title { margin: 0 0 12px 0; font-size: 18px; color: var(--primary); font-weight: bold; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; text-align: center; }
 
-        /* ✨ 右側詳細資訊側邊欄 (擴大為 60%) */
+        /* 右側詳細資訊側邊欄 (60%) */
         #sidebar { flex-basis: 0; width: 0; opacity: 0; background: white; border-left: 2px solid #e2e8f0; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; display: flex; flex-direction: column; }
         #sidebar.open { flex-basis: 60%; width: 60%; opacity: 1; }
         .sidebar-header { padding: 25px 30px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; position: sticky; top: 0; z-index: 10; }
@@ -110,12 +110,15 @@
         .custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
         .custom-modal-overlay.active { display: flex; animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        optgroup { font-weight: bold; color: var(--primary); background: #f8fafc; }
+        option { font-weight: normal; color: var(--text-main); background: white; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>🗺️ 辦公室地圖導覽</h1>
+    <h1>🗺️ 空間地圖導覽</h1>
     <div class="controls">
         <span id="status-badge" class="status-badge" style="display:none;">請匯入地圖</span>
         <button class="btn btn-secondary" onclick="document.getElementById('svg-upload').click()">📥 重新匯入地圖</button>
@@ -148,18 +151,18 @@
         <div id="svg-wrapper"></div>
         <div id="map-tooltip"></div>
         <div id="room-popup">
-            <h3 class="popup-title" id="popup-name">辦公室名稱</h3>
+            <h3 class="popup-title" id="popup-name">空間名稱</h3>
             <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px; text-align: center;" id="popup-id">ID: room_x</div>
             <button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 16px;" onclick="window.openSidebar()">📄 檢視詳細網頁資訊</button>
         </div>
     </div>
 
-    <!-- ✨ 右側詳細資訊側邊欄 (60%) -->
+    <!-- 右側詳細資訊側邊欄 (60%) -->
     <aside id="sidebar">
         <div class="sidebar-header">
             <div>
                 <div style="font-size: 14px; color: var(--text-muted); font-weight: bold; margin-bottom: 5px;" id="sidebar-region-name">所屬區域</div>
-                <h2 style="margin:0; color:var(--primary); font-size: 28px;" id="sidebar-office-name">辦公室名稱</h2>
+                <h2 style="margin:0; color:var(--primary); font-size: 28px;" id="sidebar-office-name">空間名稱</h2>
             </div>
             <button class="btn btn-secondary" onclick="window.closeSidebar()" style="padding: 10px 20px; font-size: 16px;">✖ 關閉側邊欄</button>
         </div>
@@ -168,7 +171,7 @@
             <div class="info-card">
                 <h3>📋 基本資訊</h3>
                 <div class="info-row"><div class="info-label">系統 ID</div><div class="info-value" id="sb-office-id" style="font-family: monospace;">---</div></div>
-                <div class="info-row"><div class="info-label">房間類型</div><div class="info-value" id="sb-room-type">---</div></div>
+                <div class="info-row"><div class="info-label">空間類型</div><div class="info-value" id="sb-room-type">---</div></div>
                 <div class="info-row"><div class="info-label">門禁密碼</div><div class="info-value" id="sb-password">---</div></div>
             </div>
 
@@ -191,7 +194,7 @@
     </aside>
 </main>
 
-<!-- ✨ 步驟一：選擇地圖所屬區域 Modal -->
+<!-- 步驟一：選擇地圖所屬區域 Modal -->
 <div id="bind-region-modal-overlay" class="custom-modal-overlay">
     <div style="background:white; padding:25px; border-radius:16px; width:90%; max-width:450px; box-shadow:0 15px 35px rgba(0,0,0,0.25);">
         <h3 style="margin-top:0; color:var(--primary); border-bottom:2px solid #e2e8f0; padding-bottom:12px; font-size:22px;">📌 設定地圖所屬區域</h3>
@@ -207,14 +210,14 @@
     </div>
 </div>
 
-<!-- 步驟二：選擇辦公室的綁定專用彈窗 -->
+<!-- 步驟二：選擇空間的綁定專用彈窗 -->
 <div id="bind-modal-overlay" class="custom-modal-overlay">
     <div style="background:white; padding:25px; border-radius:16px; width:90%; max-width:450px; box-shadow:0 15px 35px rgba(0,0,0,0.25);">
         <h3 style="margin-top:0; color:var(--primary); border-bottom:2px solid #e2e8f0; padding-bottom:12px; font-size:22px;">
             🔗 綁定地圖區域 <br><span id="bind-room-id-disp" style="font-size:15px; color:var(--text-muted); font-weight:normal;"></span>
         </h3>
         <div style="margin-bottom:25px; margin-top: 20px;">
-            <label style="display:block; margin-bottom:10px; font-weight:bold; font-size: 18px; color:var(--text-main);">從該區域選擇對應辦公室：</label>
+            <label style="display:block; margin-bottom:10px; font-weight:bold; font-size: 18px; color:var(--text-main);">從系統中選擇對應的空間 (含倉庫)：</label>
             <select id="bind-office-select" style="width:100%; padding:15px; font-size:18px; border:2px solid #cbd5e1; border-radius:8px; outline:none; cursor:pointer; background:#f8fafc;">
                 <option value="">-- 資料載入中... --</option>
             </select>
@@ -252,7 +255,7 @@
         const state = {
             mode: 'empty', 
             floorName: '', // 代表 Region 名稱
-            boundRooms: {}, // 儲存 { "room_1f_n_01": "辦公室ID" }
+            boundRooms: {}, 
             activeRoomId: null,
             
             globalRegions: [],
@@ -281,7 +284,6 @@
             state.globalAssets = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         });
 
-        // 填充區域下拉選單
         function populateRegionSelect() {
             const sel = document.getElementById('bind-region-select');
             sel.innerHTML = '<option value="">-- 請選擇地圖所屬區域 --</option>';
@@ -292,25 +294,46 @@
             });
         }
 
-        // 填充辦公室下拉選單 (根據選擇的區域進行過濾！)
+        // ✨ 重寫的空間過濾器：使用 optgroup 分類，容錯率 100%
         function populateOfficeSelect() {
             const sel = document.getElementById('bind-office-select');
-            sel.innerHTML = '<option value="">-- 點此展開選擇辦公室 --</option>';
+            sel.innerHTML = '<option value="">-- 點此展開選擇對應的空間 --</option>';
             
-            const filteredOffices = state.globalOffices.filter(o => o.region === state.floorName);
-            filteredOffices.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+            const currentRegionRooms = [];
+            const otherRooms = [];
+
+            // 把所有的空間(含倉庫、會議室)依照是否屬於選擇的樓層進行分流
+            state.globalOffices.forEach(o => {
+                if (o.region === state.floorName) currentRegionRooms.push(o);
+                else otherRooms.push(o);
+            });
+
+            currentRegionRooms.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+            otherRooms.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
             
-            if(filteredOffices.length === 0) {
-                sel.innerHTML = '<option value="">-- 該區域目前沒有任何辦公室 --</option>';
-                return;
+            // 優先列出符合區域的空間
+            if(currentRegionRooms.length > 0) {
+                const grp1 = document.createElement('optgroup');
+                grp1.label = `📍 屬於 [${state.floorName}] 的空間`;
+                currentRegionRooms.forEach(off => {
+                    const opt = document.createElement('option');
+                    opt.value = off.id; opt.innerText = off.name || off.id;
+                    grp1.appendChild(opt);
+                });
+                sel.appendChild(grp1);
             }
 
-            filteredOffices.forEach(off => {
-                const opt = document.createElement('option');
-                opt.value = off.id; // 背後存 ID
-                opt.innerText = off.name || off.id; // 介面顯示名稱
-                sel.appendChild(opt);
-            });
+            // 接著列出其他區域或未分類的空間 (防呆備用)
+            if(otherRooms.length > 0) {
+                const grp2 = document.createElement('optgroup');
+                grp2.label = `📁 其他區域的空間 (未分類或跨區綁定)`;
+                otherRooms.forEach(off => {
+                    const opt = document.createElement('option');
+                    opt.value = off.id; opt.innerText = `${off.name || off.id} (位於: ${off.region || '未指定'})`;
+                    grp2.appendChild(opt);
+                });
+                sel.appendChild(grp2);
+            }
         }
 
         const container = document.getElementById('map-container');
@@ -378,12 +401,12 @@
             initBindingPhase2();
         };
 
-        // === 3. 綁定階段 2：綁定辦公室 ===
+        // === 3. 綁定階段 2：綁定辦公室/空間 ===
         let currentBindingRoomId = null;
 
         function initBindingPhase2() {
             setMode('bind_office');
-            showInstruction(`步驟 2：請點擊地圖上「閃爍的黃色區塊」綁定 ${state.floorName} 內的辦公室`, "✨");
+            showInstruction(`步驟 2：請點擊地圖上「閃爍的黃色區塊」綁定 ${state.floorName} 內的空間`, "✨");
             document.getElementById('btn-finish-bind').style.display = 'block';
 
             const rooms = state.svgElement.querySelectorAll('[id^="room_"]');
@@ -412,9 +435,9 @@
 
         window.confirmOfficeBind = function() {
             const val = document.getElementById('bind-office-select').value;
-            if (!val) return alert('請選擇一個現有的辦公室！');
+            if (!val) return alert('請選擇一個現有的空間！');
             
-            state.boundRooms[currentBindingRoomId] = val; // 存入辦公室 ID
+            state.boundRooms[currentBindingRoomId] = val;
             
             const roomEl = document.getElementById(currentBindingRoomId);
             if (roomEl) {
@@ -433,7 +456,7 @@
         // === 4. 完成綁定進入瀏覽模式 ===
         window.finishBinding = function() {
             const count = Object.keys(state.boundRooms).length;
-            if(count === 0 && !confirm("您尚未綁定任何辦公室，確定要直接進入導覽模式嗎？")) return;
+            if(count === 0 && !confirm("您尚未綁定任何空間，確定要直接進入導覽模式嗎？")) return;
             
             setMode('view');
             hideInstruction(); 
@@ -443,10 +466,9 @@
             setupViewInteractions();
         };
 
-        // 取得辦公室名稱 (輔助顯示)
         function getOfficeNameById(id) {
             const off = state.globalOffices.find(o => o.id === id);
-            return off ? (off.name || id) : '未知辦公室';
+            return off ? (off.name || id) : '未知空間';
         }
 
         // === 5. 瀏覽模式互動 (Hover / Click) ===
@@ -477,7 +499,7 @@
                     room.classList.add('active');
                     state.activeRoomId = room.id;
 
-                    // ✨ 觸發專注模式 (隱藏其他區域紅線)
+                    // 觸發專注模式 (隱藏其他區域紅線)
                     wrapper.classList.add('has-active-room');
 
                     document.getElementById('popup-name').innerText = getOfficeNameById(state.boundRooms[room.id]);
@@ -506,14 +528,12 @@
             const office = state.globalOffices.find(o => o.id === officeId);
             
             if (office) {
-                // 填入真實資料
                 document.getElementById('sidebar-region-name').innerText = office.region || '未分類區域';
                 document.getElementById('sidebar-office-name').innerText = office.name || office.id;
                 document.getElementById('sb-office-id').innerText = office.id;
                 document.getElementById('sb-room-type').innerText = office.type || '一般辦公室';
                 document.getElementById('sb-password').innerText = office.password || '無設定';
 
-                // 計算人員與資產總數
                 const memCount = state.globalMembers.filter(m => m.office_id === office.id).length;
                 const assetCount = state.globalAssets.filter(a => a.office_id === office.id).length;
                 
@@ -525,11 +545,10 @@
             zoomToRoom(state.activeRoomId);
         };
 
-        // ✨ 跳轉至主系統按鈕邏輯
+        // 跳轉至主系統按鈕邏輯
         window.jumpToMainSystem = function() {
             const officeId = state.boundRooms[state.activeRoomId];
             if (!officeId) return;
-            // 透過 URL 參數將指定辦公室 ID 帶過去，由主系統接收處理
             window.open(`index.html?target_office=${encodeURIComponent(officeId)}`, '_blank');
         };
 
@@ -551,7 +570,7 @@
             if(!roomEl) return;
             
             const bbox = roomEl.getBBox();
-            const padding = Math.max(bbox.width, bbox.height) * 0.8; // 稍微拉開一點距離更舒適
+            const padding = Math.max(bbox.width, bbox.height) * 0.8; 
             
             const targetViewBox = {
                 x: bbox.x - padding,
@@ -564,13 +583,12 @@
 
         function animateViewBox(target) {
             const start = { ...state.viewBox };
-            const duration = 650; // 延長時間至 650ms，讓動畫更絲滑
+            const duration = 650; 
             const startTime = performance.now();
 
             function update(currentTime) {
                 const elapsed = currentTime - startTime;
                 const progress = Math.min(elapsed / duration, 1);
-                // 使用更平滑的 ease-out-expo 曲線
                 const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
 
                 state.viewBox.x = start.x + (target.x - start.x) * ease;
@@ -611,7 +629,7 @@
 
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const zoomFactor = 1.15; // 稍微增強滾輪縮放手感
+                const zoomFactor = 1.15; 
                 const scale = e.deltaY > 0 ? zoomFactor : (1 / zoomFactor);
                 const rect = container.getBoundingClientRect();
                 const mouseX = e.clientX - rect.left;

@@ -63,12 +63,12 @@
         #import-preview-modal-overlay .modal-content { max-width: 95vw; height: 90vh; display: flex; flex-direction: column; }
         #import-preview-modal-overlay .table-container { flex: 1; overflow: auto; margin-top: 15px; border: 1px solid #e2e8f0; }
 
-        .checkout-stats-wrapper { display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap; }
-        .bar-chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; width: 100%; }
-        .bar-chart-label { width: 90px; font-size: 11px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
-        .bar-chart-track { flex: 1; background: #f1f5f9; height: 10px; border-radius: 4px; overflow: hidden; }
+        .bar-chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .bar-chart-label { width: 80px; font-size: 11px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+        .bar-chart-track { flex: 1; background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden; }
         .bar-chart-fill { background: var(--primary); height: 100%; border-radius: 4px; transition: width 0.5s ease; }
-        .bar-chart-val { font-size: 11px; font-weight: bold; width: 35px; color: var(--text-muted); }
+        .bar-chart-val { font-size: 11px; font-weight: bold; width: 30px; color: var(--text-muted); }
+        .checkout-stats-wrapper { display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap; }
 
         /* 新手教學專屬樣式 */
         #tutorial-overlay-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 99990; display: none; }
@@ -106,6 +106,7 @@
     </div>
     
     <div class="search-container">
+        <!-- 搜尋時回到第一頁 -->
         <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋資產名稱、編號、標籤或辦公室..." oninput="window.summaryCurrentPage = 1; window.renderCurrentView()">
     </div>
     
@@ -171,7 +172,7 @@
     <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除</button>
 </div>
 
-<!-- ✨ FAB 右下角按鈕群 (完美修復事件冒泡攔截) -->
+<!-- ✨ FAB 右下角按鈕群 -->
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 99995 !important;">
     <div class="fab-menu" id="fab-menu">
         <button class="fab-item" onclick="event.stopPropagation(); window.openExportModal(); window.toggleFabMenu(event);">📤 匯出資料中心</button>
@@ -324,8 +325,8 @@
         <div class="form-group">
             <label>資產大類</label>
             <div style="display:flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
-                <button type="button" id="btn-type-fixed" onclick="window.switchAssetMainType('fixed')" style="flex:1; padding:8px; border:none; background:var(--primary); color:white; font-weight:bold; cursor:pointer;">📌 固定資產</button>
-                <button type="button" id="btn-type-consumable" onclick="window.switchAssetMainType('consumable')" style="flex:1; padding:8px; border:none; background:white; color:var(--text-main); font-weight:bold; cursor:pointer;">📦 消耗品</button>
+                <button type="button" id="btn-type-fixed" onclick="if(window.switchAssetMainType) window.switchAssetMainType('fixed');" style="flex:1; padding:8px; border:none; background:var(--primary); color:white; font-weight:bold; cursor:pointer;">📌 固定資產</button>
+                <button type="button" id="btn-type-consumable" onclick="if(window.switchAssetMainType) window.switchAssetMainType('consumable');" style="flex:1; padding:8px; border:none; background:white; color:var(--text-main); font-weight:bold; cursor:pointer;">📦 消耗品</button>
             </div>
             <input type="hidden" id="asset-main-type" value="fixed">
         </div>
@@ -377,7 +378,7 @@
     window.pendingImports = []; 
     window.currentEditAssetId = null;
 
-    window.checkoutStatsRange = 'all'; // ✨ 預設切換為「全部歷史」
+    window.checkoutStatsRange = 'all';
 
     // 教學系統變數與防護鎖
     window.currentTutorialStep = 0;
@@ -1218,6 +1219,29 @@
         const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
         const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
         $$('.fab-submenu').forEach(s => s.classList.remove('open'));
+    };
+
+    // ✨ 補回遺失的資產類型切換控制器 (修復無法新增資產的問題)
+    window.switchAssetMainType = (type) => {
+        const typeInput = document.getElementById('asset-main-type');
+        if (typeInput) typeInput.value = type;
+
+        const btnFixed = document.getElementById('btn-type-fixed');
+        const btnConsumable = document.getElementById('btn-type-consumable');
+        const fixedFields = document.getElementById('fixed-asset-fields');
+        const consumableFields = document.getElementById('consumable-asset-fields');
+
+        if (type === 'fixed') {
+            if(btnFixed) { btnFixed.style.background = 'var(--primary)'; btnFixed.style.color = 'white'; }
+            if(btnConsumable) { btnConsumable.style.background = 'white'; btnConsumable.style.color = 'var(--text-main)'; }
+            if(fixedFields) fixedFields.style.display = 'block';
+            if(consumableFields) consumableFields.style.display = 'none';
+        } else {
+            if(btnConsumable) { btnConsumable.style.background = 'var(--primary)'; btnConsumable.style.color = 'white'; }
+            if(btnFixed) { btnFixed.style.background = 'white'; btnFixed.style.color = 'var(--text-main)'; }
+            if(fixedFields) fixedFields.style.display = 'none';
+            if(consumableFields) consumableFields.style.display = 'block';
+        }
     };
 
     window.openAssetModal = (id = null) => {

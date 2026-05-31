@@ -156,7 +156,7 @@
             <div id="map-selector-grid" class="map-grid">
                 <!-- 地圖卡片與新增按鈕將從 JS 動態渲染 -->
             </div>
-            <input type="file" id="svg-upload" accept=".svg" style="display:none;" onchange="window.handleSVGUpload(event)">
+            <input type="file" id="svg-upload-lobby" accept=".svg" style="display:none;" onchange="window.handleSVGUpload(event)">
         </div>
 
         <!-- 左側地圖區塊 -->
@@ -257,7 +257,7 @@
 
                 // 新增地圖的卡片
                 html += `
-                    <div class="map-card upload-map-card" onclick="document.getElementById('svg-upload').click()">
+                    <div class="map-card upload-map-card" onclick="document.getElementById('svg-upload-lobby').click()">
                         <div class="map-icon">➕</div>
                         <div class="map-name" style="color:var(--primary);">匯入新樓層地圖</div>
                         <div style="font-size:14px; color:var(--text-muted);">支援 SVG 格式檔案</div>
@@ -288,7 +288,7 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     // 暫存上傳的 SVG，等待選擇區域後再存入 Firebase
-                    state.svgElement = new DOMParser().parseDocument(e.target.result).querySelector('svg');
+                    state.svgElement = new DOMParser().parseFromString(e.target.result, "image/svg+xml").querySelector('svg');
                     if (!state.svgElement) return alert('無效的 SVG 檔案！');
                     
                     document.getElementById('lobby-state').style.display = 'none';
@@ -393,7 +393,7 @@
                 
                 document.getElementById('lobby-state').style.display = 'none';
                 document.getElementById('map-container').style.display = 'flex';
-                state.svgElement = new DOMParser().parseDocument(mapData.svgContent).querySelector('svg');
+                state.svgElement = new DOMParser().parseFromString(mapData.svgContent, "image/svg+xml").querySelector('svg');
                 injectSVGToDOM();
                 setMode('view');
             };
@@ -404,7 +404,7 @@
                     const mapData = state.globalMaps.find(m => m.id === floorName);
                     document.getElementById('lobby-state').style.display = 'none';
                     document.getElementById('map-container').style.display = 'flex';
-                    state.svgElement = new DOMParser().parseDocument(mapData.svgContent).querySelector('svg');
+                    state.svgElement = new DOMParser().parseFromString(mapData.svgContent, "image/svg+xml").querySelector('svg');
                     injectSVGToDOM();
                 }
                 setMode('bind_office');

@@ -13,32 +13,29 @@
             --card: #ffffff;
             --success: #10b981;
             --warning: #f59e0b;
+            --danger: #ef4444;
+            --accent: #f1f5f9;
         }
 
         body { font-family: 'Microsoft JhengHei', sans-serif; margin: 0; padding: 0; background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
         /* 頂部控制列 */
         header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); z-index: 10; flex-shrink: 0; }
-        h1 { margin: 0; font-size: 24px; color: var(--primary); }
+        h1 { margin: 0; font-size: 24px; color: var(--primary); display: flex; align-items: center; gap: 10px; cursor: pointer; }
         .controls { display: flex; gap: 12px; align-items: center; }
         .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); color: white; background: var(--primary); font-size: 15px; }
         .btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .btn:active { transform: translateY(0); }
         .btn-secondary { background: #64748b; }
         .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
         
-        .btn-finish { 
-            background: var(--success); font-size: 18px; padding: 12px 25px; border-radius: 50px;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); border: 2px solid white;
-            animation: gentlePulse 2s infinite;
-        }
-
         .status-badge { padding: 8px 16px; border-radius: 20px; font-size: 15px; font-weight: bold; background: #fef3c7; color: #d97706; transition: all 0.3s; }
 
         /* 主要佈局 */
         main { display: flex; flex: 1; overflow: hidden; position: relative; }
         
-        /* 左側 SVG 地圖區塊 (絲滑過渡) */
+        /* 左側 SVG 地圖區塊 */
         #map-container { flex: 1; position: relative; overflow: hidden; background: #e2e8f0; cursor: grab; display: flex; justify-content: center; align-items: center; transition: flex-basis 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
         #map-container:active { cursor: grabbing; }
         #svg-wrapper { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
@@ -51,13 +48,11 @@
         /* 綁定模式下的高光 */
         .mode-bind-office .interactive-room { fill: rgba(245, 158, 11, 0.3) !important; stroke: var(--warning) !important; stroke-width: 2px !important; stroke-dasharray: 4; }
         .mode-bind-office .interactive-room:hover { fill: rgba(245, 158, 11, 0.6) !important; stroke-width: 4px !important; }
-        
-        /* ✨ 瀏覽模式下，未綁定的房間完全隱藏 (無紅線、不可點擊) */
-        .mode-view .interactive-room:not(.bound) {
-            opacity: 0 !important; 
-            pointer-events: none !important;
-            stroke-width: 0 !important;
-        }
+        .mode-bind-office .interactive-room.bound { fill: rgba(16, 185, 129, 0.3) !important; stroke: var(--success) !important; stroke-width: 2px !important; stroke-dasharray: none; }
+        .mode-bind-office .interactive-room.active { fill: rgba(37, 99, 235, 0.5) !important; stroke: var(--primary) !important; stroke-width: 4px !important; stroke-dasharray: none; }
+
+        /* 瀏覽模式下，未綁定的房間完全隱藏 */
+        .mode-view .interactive-room:not(.bound) { opacity: 0 !important; pointer-events: none !important; stroke-width: 0 !important; }
 
         /* 瀏覽模式下已綁定的高光 */
         .mode-view .interactive-room.bound { fill: rgba(37, 99, 235, 0.1) !important; stroke: rgba(37, 99, 235, 0.35) !important; stroke-width: 1.5px !important; }
@@ -66,42 +61,53 @@
         /* 被選取的房間 (Active) */
         .mode-view .interactive-room.active { fill: rgba(16, 185, 129, 0.4) !important; stroke: var(--success) !important; stroke-width: 4px !important; }
 
-        /* 沉浸模式 (點選房間放大時，隱藏其他已綁定房間的高光) */
-        .mode-view.has-active-room .interactive-room.bound:not(.active) {
-            stroke-opacity: 0 !important; fill-opacity: 0 !important; pointer-events: none;
-        }
+        /* 沉浸模式 */
+        .mode-view.has-active-room .interactive-room.bound:not(.active) { stroke-opacity: 0 !important; fill-opacity: 0 !important; pointer-events: none; }
 
         /* 懸浮提示框 (Tooltip) */
-        #map-tooltip { position: absolute; background: rgba(0,0,0,0.85); color: white; padding: 10px 16px; border-radius: 8px; font-size: 16px; font-weight: bold; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 20; transform: translate(-50%, -100%); margin-top: -15px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); }
+        #map-tooltip { position: absolute; background: rgba(0,0,0,0.85); color: white; padding: 12px 16px; border-radius: 8px; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 20; transform: translate(-50%, -100%); margin-top: -15px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+
+        /* 右側側邊欄 (擴大至 60% 甚至更大供排版) */
+        #sidebar { flex-basis: 0; width: 0; opacity: 0; background: white; border-left: 2px solid #e2e8f0; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; display: flex; flex-direction: column; }
+        #sidebar.open { flex-basis: 55%; width: 55%; opacity: 1; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; position: sticky; top: 0; z-index: 10; }
+        .sidebar-content { padding: 0; flex: 1; display: flex; flex-direction: column; background: var(--bg); }
+
+        /* 右側邊欄：綁定清單項目 */
+        .bind-list-item { padding: 15px 20px; border-bottom: 1px solid #e2e8f0; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; background: white; font-weight: bold; font-size: 15px; }
+        .bind-list-item:hover { background: #eff6ff; }
+        .bind-list-item.selected { background: var(--primary); color: white; }
+
+        /* 右側邊欄：瀏覽模式置中資訊與 Tabs */
+        .hero-info-section { text-align: center; padding: 40px 20px; background: white; border-bottom: 1px solid #e2e8f0; }
+        .hero-title { font-size: 42px; color: var(--primary); margin: 0 0 10px 0; letter-spacing: 1px; cursor: help; }
+        .hero-type { font-size: 20px; color: var(--text-muted); margin-bottom: 15px; font-weight: bold; }
+        .hero-pwd { font-size: 28px; font-family: monospace; color: var(--danger); font-weight: bold; background: #fee2e2; display: inline-block; padding: 8px 24px; border-radius: 12px; letter-spacing: 2px; border: 2px dashed #fca5a5; }
+
+        .sidebar-tabs { display: flex; background: white; border-bottom: 2px solid #e2e8f0; }
+        .sidebar-tab-btn { flex: 1; padding: 15px 0; background: none; border: none; border-bottom: 3px solid transparent; font-size: 16px; font-weight: bold; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+        .sidebar-tab-btn:hover { color: var(--primary); background: #f8fafc; }
+        .sidebar-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: #eff6ff; }
+
+        .sidebar-tab-content { padding: 20px; display: none; }
+        .sidebar-tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 列表卡片樣式 */
+        .detail-card { background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); display: flex; justify-content: space-between; align-items: center; }
+        .detail-title { font-size: 16px; font-weight: bold; color: var(--text-main); margin-bottom: 4px; }
+        .detail-sub { font-size: 13px; color: var(--text-muted); }
+
+        /* 巨型空白狀態 (Empty State) & 地圖選擇大廳 */
+        #lobby-state { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); z-index: 5; overflow-y: auto; padding: 40px; }
+        .map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%; max-width: 1200px; margin: 0 auto; }
+        .map-card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; border: 2px solid transparent; transition: all 0.3s; display: flex; flex-direction: column; align-items: center; }
+        .map-card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 10px 25px rgba(37,99,235,0.1); }
+        .map-icon { font-size: 60px; margin-bottom: 15px; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.1)); }
+        .map-name { font-size: 22px; font-weight: bold; color: var(--text-main); margin-bottom: 10px; }
         
-        /* 點擊簡易彈窗 (Popup) */
-        #room-popup { position: absolute; background: white; padding: 18px; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); z-index: 21; display: none; transform: translate(-50%, -90%) scale(0.95); margin-top: -20px; min-width: 220px; border: 1px solid #e2e8f0; opacity: 0; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; }
-        #room-popup.show { display: block; opacity: 1; transform: translate(-50%, -100%) scale(1); pointer-events: auto; }
-        #room-popup::after { content:''; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: white transparent transparent transparent; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.1)); }
-        .popup-title { margin: 0 0 12px 0; font-size: 18px; color: var(--primary); font-weight: bold; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; text-align: center; }
-
-        /* 右側詳細資訊側邊欄 (擴大至 60%) */
-        #sidebar { flex-basis: 0; width: 0; opacity: 0; background: white; border-left: 2px solid #e2e8f0; transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; display: flex; flex-direction: column; }
-        #sidebar.open { flex-basis: 60%; width: 60%; opacity: 1; }
-        .sidebar-header { padding: 25px 30px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; position: sticky; top: 0; z-index: 10; }
-        .sidebar-content { padding: 30px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
-
-        /* 側邊欄資料卡片樣式 */
-        .info-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-        .info-card h3 { margin: 0 0 15px 0; color: var(--text-main); font-size: 18px; display: flex; align-items: center; gap: 8px; }
-        .info-row { display: flex; margin-bottom: 10px; font-size: 16px; }
-        .info-label { width: 120px; color: var(--text-muted); font-weight: bold; }
-        .info-value { flex: 1; color: var(--text-main); font-weight: bold; }
-        
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .stat-box { background: #f1f5f9; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; transition: all 0.3s ease; }
-        .stat-box:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.05); }
-        .stat-num { font-size: 36px; font-weight: bold; color: var(--primary); margin-top: 10px; }
-
-        /* 巨型空白狀態 (Empty State) */
-        #empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(248,250,252,0.95); z-index: 5; backdrop-filter: blur(5px); }
-        .giant-upload-btn { font-size: 24px; padding: 20px 50px; border-radius: 50px; box-shadow: 0 10px 25px rgba(37,99,235,0.3); border: none; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; font-weight: bold; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 15px; }
-        .giant-upload-btn:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 15px 35px rgba(37,99,235,0.4); }
+        .upload-map-card { background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 2px dashed var(--primary); justify-content: center; cursor: pointer; }
+        .upload-map-card:hover { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
 
         /* 醒目的螢幕中央引導橫幅 */
         .instruction-banner {
@@ -109,698 +115,584 @@
             background: var(--warning); color: white; padding: 18px 40px; border-radius: 50px;
             font-size: 22px; font-weight: bold; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
             z-index: 100; display: none; align-items: center; gap: 15px;
-            animation: pulseBanner 2s infinite; border: 3px solid white;
+            border: 3px solid white; pointer-events: none;
         }
-        @keyframes pulseBanner { 0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(245, 158, 11, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } }
-        @keyframes gentlePulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
 
-        /* 專屬的 Modal 遮罩樣式 */
-        .custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
-        .custom-modal-overlay.active { display: flex; animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        
-        optgroup { font-weight: bold; color: var(--primary); background: #f1f5f9; padding: 5px; }
-        option { font-weight: normal; color: var(--text-main); background: white; padding: 5px; }
+        /* 載入提示 */
+        #loading-msg { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: bold; color: var(--primary); flex-direction: column; gap: 15px;}
     </style>
 </head>
 <body>
 
-<header>
-    <h1>🗺️ 空間地圖導覽</h1>
-    <div class="controls">
-        <span id="status-badge" class="status-badge" style="display:none;">請匯入地圖</span>
-        <button class="btn btn-secondary" onclick="document.getElementById('svg-upload').click()">📥 重新匯入</button>
-        <button id="btn-finish-bind" class="btn btn-finish" style="display:none;" onclick="window.finishBinding()">✅ 完成綁定</button>
-        <!-- 新增：隨時開放重新編輯綁定 -->
-        <button id="btn-edit-bind" class="btn btn-secondary" style="display:none;" onclick="window.editBinding()">⚙️ 編輯綁定</button>
-        <button id="btn-reset-view" class="btn btn-secondary" style="display:none;" onclick="window.resetView()">🔍 回到全覽</button>
-        <input type="file" id="svg-upload" accept=".svg" style="display:none;" onchange="window.handleSVGUpload(event)">
-    </div>
-</header>
-
-<main>
-    <!-- 巨型螢幕引導橫幅 -->
-    <div id="instruction-banner" class="instruction-banner">
-        <span id="instruction-icon">👉</span>
-        <span id="instruction-text">引導文字</span>
+    <div id="loading-msg">
+        <div style="font-size: 40px; animation: spin 1s linear infinite;">⏳</div>
+        <div>載入系統圖資與資料庫...</div>
     </div>
 
-    <!-- 左側地圖區塊 -->
-    <div id="map-container">
-        <!-- 巨型空白狀態 -->
-        <div id="empty-state">
-            <div style="font-size: 100px; margin-bottom: 20px; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.1));">🗺️</div>
-            <h2 style="color: var(--text-main); font-size: 38px; margin: 0 0 15px 0;">尚未載入任何樓層地圖</h2>
-            <p style="color: var(--text-muted); font-size: 20px; margin-bottom: 40px;">請匯入您建置好的 SVG 檔案，即可開始視覺化綁定</p>
-            <button class="giant-upload-btn" onclick="document.getElementById('svg-upload').click()">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                立即選擇 SVG 檔案
-            </button>
+    <header>
+        <h1 onclick="window.backToLobby()">🗺️ 空間地圖導覽 <span style="font-size:12px; color:var(--text-muted); font-weight:normal; background:var(--accent); padding:4px 8px; border-radius:12px; margin-left:10px;">點擊回大廳</span></h1>
+        <div class="controls" id="map-controls" style="display:none;">
+            <span id="status-badge" class="status-badge" style="display:none;">模式</span>
+            <button id="btn-edit-bind" class="btn btn-warning" style="display:none; background:var(--warning);" onclick="window.startEditBinding()">⚙️ 編輯綁定配置</button>
+            <button id="btn-finish-bind" class="btn btn-success" style="display:none;" onclick="window.finishBinding()">✅ 完成配置</button>
+            <button class="btn btn-secondary" onclick="window.resetZoom()">🔄 重置視角</button>
+            <button class="btn btn-danger" onclick="window.close()">✖ 關閉頁面</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- 巨型螢幕引導橫幅 -->
+        <div id="instruction-banner" class="instruction-banner">
+            <span id="instruction-icon">👉</span>
+            <span id="instruction-text">引導文字</span>
         </div>
 
-        <div id="svg-wrapper"></div>
-        <div id="map-tooltip"></div>
-        <div id="room-popup">
-            <h3 class="popup-title" id="popup-name">空間名稱</h3>
-            <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px; text-align: center;" id="popup-id">ID: room_x</div>
-            <button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 16px;" onclick="window.openSidebar()">📄 檢視詳細網頁資訊</button>
-        </div>
-    </div>
-
-    <!-- 右側詳細資訊側邊欄 (60%) -->
-    <aside id="sidebar">
-        <div class="sidebar-header">
-            <div>
-                <div style="font-size: 14px; color: var(--text-muted); font-weight: bold; margin-bottom: 5px;" id="sidebar-region-name">所屬區域</div>
-                <h2 style="margin:0; color:var(--primary); font-size: 28px;" id="sidebar-office-name">空間名稱</h2>
+        <!-- 系統大廳：選擇或上傳地圖 -->
+        <div id="lobby-state">
+            <div style="text-align:center; margin-bottom: 40px;">
+                <h2 style="color: var(--text-main); font-size: 38px; margin: 0 0 10px 0;">選擇要導覽的區域地圖</h2>
+                <p style="color: var(--text-muted); font-size: 18px;">系統已儲存以下樓層的平面圖資，您也可以隨時匯入新的樓層 SVG。</p>
             </div>
-            <button class="btn btn-secondary" onclick="window.closeSidebar()" style="padding: 10px 20px; font-size: 16px;">✖ 關閉</button>
-        </div>
-        <div class="sidebar-content">
-            
-            <div class="info-card">
-                <h3>📋 基本資訊</h3>
-                <div class="info-row"><div class="info-label">系統 ID</div><div class="info-value" id="sb-office-id" style="font-family: monospace;">---</div></div>
-                <div class="info-row"><div class="info-label">空間類型</div><div class="info-value" id="sb-room-type">---</div></div>
-                <div class="info-row"><div class="info-label">門禁密碼</div><div class="info-value" id="sb-password">---</div></div>
+            <div id="map-selector-grid" class="map-grid">
+                <!-- 地圖卡片與新增按鈕將從 JS 動態渲染 -->
             </div>
+            <input type="file" id="svg-upload" accept=".svg" style="display:none;" onchange="window.handleSVGUpload(event)">
+        </div>
 
-            <div class="stats-grid">
-                <div class="stat-box">
-                    <div style="font-size: 16px; color: var(--text-muted); font-weight: bold;">🧑‍🤝‍🧑 人員編制總數</div>
-                    <div class="stat-num" id="sb-member-count">0</div>
+        <!-- 左側地圖區塊 -->
+        <div id="map-container" style="display:none;">
+            <div id="svg-wrapper"></div>
+            <div id="map-tooltip"></div>
+        </div>
+
+        <!-- 右側詳細資訊側邊欄 (多功能模組) -->
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <div>
+                    <div style="font-size: 14px; color: var(--text-muted); font-weight: bold; margin-bottom: 5px;" id="sidebar-top-label">目前操作區域</div>
+                    <h2 style="margin:0; color:var(--primary); font-size: 24px;" id="sidebar-main-title">載入中...</h2>
                 </div>
-                <div class="stat-box">
-                    <div style="font-size: 16px; color: var(--text-muted); font-weight: bold;">💻 列管資產總數</div>
-                    <div class="stat-num" id="sb-asset-count">0</div>
-                </div>
+                <button class="btn btn-secondary" onclick="window.closeSidebar()" style="padding: 8px 15px; font-size: 14px;">✖ 收合</button>
             </div>
-
-            <button class="btn btn-primary" style="width: 100%; padding: 18px; font-size: 20px; margin-top: 10px; border-radius: 12px; box-shadow: 0 6px 15px rgba(37,99,235,0.2);" onclick="window.jumpToMainSystem()">
-                🚀 跳轉至主系統查看完整資料
-            </button>
             
-        </div>
-    </aside>
-</main>
+            <div class="sidebar-content" id="sidebar-dynamic-content">
+                <!-- 內容由 JS 根據模式 (Bind Region / Bind Office / View) 注入 -->
+            </div>
+        </aside>
+    </main>
 
-<!-- 步驟一：選擇地圖所屬區域 Modal -->
-<div id="bind-region-modal-overlay" class="custom-modal-overlay">
-    <div style="background:white; padding:25px; border-radius:16px; width:90%; max-width:450px; box-shadow:0 15px 35px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
-        <h3 style="margin-top:0; color:var(--primary); border-bottom:2px solid #e2e8f0; padding-bottom:12px; font-size:22px;">📌 設定地圖所屬區域</h3>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">請從系統現有的區域中，選擇此張地圖代表的位置：</p>
-        <div style="margin-bottom:25px;">
-            <select id="bind-region-select" style="width:100%; padding:15px; font-size:18px; border:2px solid #cbd5e1; border-radius:8px; outline:none; cursor:pointer; background:#f8fafc;">
-                <option value="">-- 載入區域資料中... --</option>
-            </select>
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:12px;">
-            <button class="btn btn-success" style="font-size: 16px; padding: 12px 20px; width:100%;" onclick="window.confirmRegionBind()">確認區域</button>
-        </div>
-    </div>
-</div>
+    <!-- Firebase SDK (模組化) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-<!-- 步驟二：選擇空間的綁定專用彈窗 -->
-<div id="bind-modal-overlay" class="custom-modal-overlay">
-    <div style="background:white; padding:25px; border-radius:16px; width:90%; max-width:450px; box-shadow:0 15px 35px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
-        <h3 style="margin-top:0; color:var(--primary); border-bottom:2px solid #e2e8f0; padding-bottom:12px; font-size:22px;">
-            🔗 綁定地圖區域 <br><span id="bind-room-id-disp" style="font-size:15px; color:var(--text-muted); font-weight:normal;"></span>
-        </h3>
-        <div style="margin-bottom:25px; margin-top: 20px;">
-            <label style="display:block; margin-bottom:10px; font-weight:bold; font-size: 18px; color:var(--text-main);">從系統中選擇對應的空間 (含倉庫/機房)：</label>
-            <select id="bind-office-select" style="width:100%; padding:15px; font-size:18px; border:2px solid #cbd5e1; border-radius:8px; outline:none; cursor:pointer; background:#f8fafc;">
-                <option value="">-- 資料載入中... --</option>
-            </select>
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:12px;">
-            <button class="btn btn-secondary" style="font-size: 16px; padding: 12px 20px;" onclick="window.closeBindModal()">取消</button>
-            <button class="btn btn-success" style="font-size: 16px; padding: 12px 20px;" onclick="window.confirmOfficeBind()">確認綁定</button>
-        </div>
-    </div>
-</div>
-
-<!-- 啟用模組化宣告，引入 Firebase -->
-<script type="module">
-    import { collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    let db;
-    try {
-        const configPath = './js/firebase-config.js';
-        const mod = await import(configPath);
-        db = mod.db;
-    } catch (err) {
-        console.warn("目前為 Canvas 預覽環境，無法解析本地模組路徑。");
-        document.getElementById('empty-state').innerHTML = `
-            <div style="font-size: 80px; margin-bottom: 20px;">⚠️</div>
-            <h2 style="color: var(--danger); font-size: 32px; margin: 0 0 10px 0;">預覽環境限制</h2>
-            <p style="color: var(--text-muted); font-size: 18px; line-height: 1.6; text-align: center; max-width: 600px;">
-                目前的預覽畫面無法讀取您本地的 <code>./js/firebase-config.js</code> 檔案。<br>
-                👉 <b>請直接將此檔案的程式碼複製回您的 VS Code 專案中即可完美運作！</b>
-            </p>
-        `;
-    }
-
-    if (db) {
-        // === 核心狀態 ===
-        const state = {
-            mode: 'empty', 
-            floorName: '', 
-            boundRooms: {}, 
-            mapBindings: {}, // ✨ 新增：儲存 Firebase 同步來的綁定資料
-            activeRoomId: null,
-            
-            globalRegions: [],
-            globalOffices: [], 
-            globalMembers: [],
-            globalAssets: [],
-            
-            isDragging: false, startX: 0, startY: 0,
-            viewBox: { x: 0, y: 0, w: 1000, h: 1000 },
-            initialViewBox: { x: 0, y: 0, w: 1000, h: 1000 },
-            svgElement: null
-        };
-
-        // 🚀 即時讀取 Firebase 資料
-        onSnapshot(collection(db, "regions"), snap => {
-            state.globalRegions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            populateRegionSelect();
-        });
-        onSnapshot(collection(db, "offices"), snap => {
-            state.globalOffices = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            populateRegionSelect(); // 確保重新整理時也能抓到 office 裡的 floor
-        });
-        onSnapshot(collection(db, "members"), snap => {
-            state.globalMembers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        });
-        onSnapshot(collection(db, "assets"), snap => {
-            state.globalAssets = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        });
-        // ✨ 新增：監聽 map_bindings
-        onSnapshot(collection(db, "map_bindings"), snap => {
-            state.mapBindings = {};
-            snap.docs.forEach(doc => { state.mapBindings[doc.id] = doc.data(); });
-            if (state.mode === 'view') highlightBoundRooms();
-        });
-
-        // ✨ 升級 1：整合大樓與自己建立的樓層名稱
-        function populateRegionSelect() {
-            const sel = document.getElementById('bind-region-select');
-            sel.innerHTML = '<option value="">-- 請選擇地圖所屬區域 --</option>';
-            
-            const floorSet = new Set();
-            state.globalRegions.forEach(r => floorSet.add(r.name || r.id));
-            state.globalOffices.forEach(o => {
-                if (o.floor && o.floor !== '未分類區域' && o.floor !== '未分類 / 跨區空間') {
-                    floorSet.add(o.floor);
-                }
-            });
-
-            const floors = Array.from(floorSet).sort();
-            floors.forEach(f => {
-                const opt = document.createElement('option');
-                opt.value = f; 
-                opt.innerText = f;
-                sel.appendChild(opt);
-            });
+        let db;
+        try {
+            const configPath = './js/firebase-config.js';
+            const mod = await import(configPath);
+            db = mod.db;
+        } catch (err) {
+            console.warn("無法解析本地模組，已切換至展示模式");
+            document.getElementById('lobby-state').innerHTML = `<div style="text-align:center; padding:100px;"><h2 style="color:var(--danger); font-size:30px;">⚠️ 本地模組載入失敗</h2><p>請於正常 VS Code Live Server 環境下執行。</p></div>`;
         }
 
-        // ✨ 升級 2：改用 o.floor 來分群，確保找得到自建樓層的空間
-        function populateOfficeSelect() {
-            const sel = document.getElementById('bind-office-select');
-            sel.innerHTML = '<option value="">-- 點此展開選擇對應的空間 --</option>';
-            
-            const groupedOffices = {};
-            state.globalOffices.forEach(o => {
-                const f = o.floor || '未分類 / 跨區空間';
-                if(!groupedOffices[f]) groupedOffices[f] = [];
-                groupedOffices[f].push(o);
-            });
-
-            const sortedRegions = Object.keys(groupedOffices).sort((a, b) => {
-                if (a === state.floorName) return -1;
-                if (b === state.floorName) return 1;
-                return a.localeCompare(b);
-            });
-
-            sortedRegions.forEach(r => {
-                const grp = document.createElement('optgroup');
-                grp.label = r === state.floorName ? `📍 屬於 [${r}] 的空間` : `📁 區域：[${r}] 的空間`;
+        if (db) {
+            // === 核心狀態 ===
+            const state = {
+                mode: 'lobby', // lobby, bind_region, bind_office, view
+                floorName: null,
+                activeRoomId: null,
                 
-                const rooms = groupedOffices[r].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
-                rooms.forEach(off => {
-                    const opt = document.createElement('option');
-                    opt.value = off.id; 
-                    opt.innerText = off.name || off.id;
-                    grp.appendChild(opt);
+                globalMaps: [],     // 儲存已上傳的地圖 {id: 樓層名, svg: 內容}
+                globalRegions: [],
+                globalOffices: [], 
+                globalMembers: [],
+                globalAssets: [],
+                mapBindings: {},    // Firebase 同步來的房間綁定資料
+                
+                svgElement: null,
+                isDragging: false, startX: 0, startY: 0,
+                viewBox: { x: 0, y: 0, w: 1000, h: 1000 },
+                initialViewBox: { x: 0, y: 0, w: 1000, h: 1000 }
+            };
+
+            // 🚀 即時讀取 Firebase 資料
+            const auth = getAuth();
+            onAuthStateChanged(auth, (user) => {
+                if (user) fetchData();
+                else document.getElementById('loading-msg').innerHTML = '<div style="color:var(--danger);">⛔ 請先於主系統登入！</div>';
+            });
+
+            function fetchData() {
+                let loaded = 0; const total = 6;
+                const checkLoad = () => { loaded++; if (loaded >= total) { document.getElementById('loading-msg').style.display = 'none'; renderLobby(); } };
+
+                onSnapshot(collection(db, "maps"), s => {
+                    state.globalMaps = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                    if(state.mode === 'lobby') renderLobby();
+                    checkLoad();
                 });
-                sel.appendChild(grp);
-            });
-        }
+                onSnapshot(collection(db, "regions"), s => { state.globalRegions = s.docs.map(d => ({ id: d.id, ...d.data() })); checkLoad(); });
+                onSnapshot(collection(db, "offices"), s => { state.globalOffices = s.docs.map(d => ({ id: d.id, ...d.data() })); if(state.mode === 'bind_office') refreshBindList(); checkLoad(); });
+                onSnapshot(collection(db, "map_bindings"), s => {
+                    state.mapBindings = {}; s.docs.forEach(d => { state.mapBindings[d.id] = d.data(); });
+                    if(state.mode === 'view' || state.mode === 'bind_office') highlightBoundRooms();
+                    checkLoad();
+                });
+                onSnapshot(collection(db, "members"), s => { state.globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); checkLoad(); });
+                onSnapshot(collection(db, "assets"), s => { state.globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })); checkLoad(); });
+            }
 
-        const container = document.getElementById('map-container');
-        const wrapper = document.getElementById('svg-wrapper');
-        const tooltip = document.getElementById('map-tooltip');
-        const popup = document.getElementById('room-popup');
+            // === 1. 大廳渲染 (Lobby) ===
+            function renderLobby() {
+                if (state.mode !== 'lobby') return;
+                document.getElementById('lobby-state').style.display = 'flex';
+                document.getElementById('map-container').style.display = 'none';
+                document.getElementById('map-controls').style.display = 'none';
+                closeSidebar();
 
-        // === 1. 處理 SVG 匯入 ===
-        window.handleSVGUpload = function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+                const grid = document.getElementById('map-selector-grid');
+                let html = '';
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                wrapper.innerHTML = e.target.result;
-                document.getElementById('empty-state').style.display = 'none';
+                // 新增地圖的卡片
+                html += `
+                    <div class="map-card upload-map-card" onclick="document.getElementById('svg-upload').click()">
+                        <div class="map-icon">➕</div>
+                        <div class="map-name" style="color:var(--primary);">匯入新樓層地圖</div>
+                        <div style="font-size:14px; color:var(--text-muted);">支援 SVG 格式檔案</div>
+                    </div>
+                `;
+
+                // 渲染已儲存的地圖
+                state.globalMaps.sort((a,b) => a.id.localeCompare(b.id)).forEach(m => {
+                    html += `
+                        <div class="map-card">
+                            <div class="map-icon">🗺️</div>
+                            <div class="map-name">${m.id}</div>
+                            <div style="display:flex; gap:10px; width:100%; margin-top:15px;">
+                                <button class="btn btn-secondary" style="flex:1; font-size:14px; background:#fefce8; color:#a16207;" onclick="window.startEditBinding('${m.id}')">⚙️ 編輯</button>
+                                <button class="btn btn-primary" style="flex:2; font-size:14px;" onclick="window.enterViewMode('${m.id}')">👁️ 進入導覽</button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                grid.innerHTML = html;
+            }
+            window.backToLobby = () => { state.mode = 'lobby'; renderLobby(); };
+
+            // === 2. 處理 SVG 上傳 (直接開啟右側邊欄設定樓層) ===
+            window.handleSVGUpload = function(event) {
+                const file = event.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // 暫存上傳的 SVG，等待選擇區域後再存入 Firebase
+                    state.svgElement = new DOMParser().parseDocument(e.target.result).querySelector('svg');
+                    if (!state.svgElement) return alert('無效的 SVG 檔案！');
+                    
+                    document.getElementById('lobby-state').style.display = 'none';
+                    document.getElementById('map-container').style.display = 'flex';
+                    injectSVGToDOM();
+
+                    setMode('bind_region');
+                };
+                reader.readAsText(file);
+                event.target.value = ''; 
+            };
+
+            function injectSVGToDOM() {
+                const wrapper = document.getElementById('svg-wrapper');
+                wrapper.innerHTML = '';
+                wrapper.appendChild(state.svgElement);
                 
-                const svg = wrapper.querySelector('svg');
-                if (!svg) return alert('無效的 SVG 檔案！');
+                state.svgElement.setAttribute('width', '100%'); 
+                state.svgElement.setAttribute('height', '100%');
                 
-                state.svgElement = svg;
-                state.boundRooms = {}; 
-                svg.setAttribute('width', '100%'); svg.setAttribute('height', '100%');
-                
-                let vb = svg.getAttribute('viewBox');
-                if (vb) {
-                    const parts = vb.split(/[\s,]+/).map(Number);
-                    state.viewBox = { x: parts[0], y: parts[1], w: parts[2], h: parts[3] };
-                } else {
-                    const w = parseFloat(svg.getAttribute('width')) || 1000;
-                    const h = parseFloat(svg.getAttribute('height')) || 1000;
-                    state.viewBox = { x: 0, y: 0, w: w, h: h };
-                    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-                }
+                let vb = state.svgElement.getAttribute('viewBox');
+                if (vb) { const parts = vb.split(/[\s,]+/).map(Number); state.viewBox = { x: parts[0], y: parts[1], w: parts[2], h: parts[3] }; } 
+                else { const w = parseFloat(state.svgElement.getAttribute('width')) || 1000; const h = parseFloat(state.svgElement.getAttribute('height')) || 1000; state.viewBox = { x: 0, y: 0, w: w, h: h }; state.svgElement.setAttribute('viewBox', `0 0 ${w} ${h}`); }
                 state.initialViewBox = { ...state.viewBox };
 
                 setupPanZoom();
-                initBindingPhase1();
-            };
-            reader.readAsText(file);
-            event.target.value = ''; 
-        };
-
-        // UI 引導橫幅
-        function showInstruction(text, icon = "👉") {
-            const banner = document.getElementById('instruction-banner');
-            document.getElementById('instruction-text').innerText = text;
-            document.getElementById('instruction-icon').innerText = icon;
-            banner.style.display = 'flex';
-        }
-        function hideInstruction() { document.getElementById('instruction-banner').style.display = 'none'; }
-
-        // === 2. 綁定階段 1：設定所屬區域 ===
-        function initBindingPhase1() {
-            setMode('bind_region');
-            showInstruction("步驟 1：請設定這張地圖代表的區域", "📌");
-            document.getElementById('bind-region-modal-overlay').classList.add('active');
-        }
-
-        window.confirmRegionBind = function() {
-            const val = document.getElementById('bind-region-select').value;
-            if (!val) return alert('請從清單中選擇一個區域！');
-            
-            state.floorName = val;
-            document.getElementById('bind-region-modal-overlay').classList.remove('active');
-            initBindingPhase2();
-        };
-
-        // === 3. 綁定階段 2：綁定辦公室/空間 ===
-        let currentBindingRoomId = null;
-
-        function initBindingPhase2() {
-            setMode('bind_office');
-            showInstruction(`步驟 2：請點擊地圖上「閃爍的黃色區塊」綁定 ${state.floorName} 內的空間`, "✨");
-            document.getElementById('btn-finish-bind').style.display = 'block';
-            document.getElementById('btn-edit-bind').style.display = 'none';
-            document.getElementById('btn-reset-view').style.display = 'none';
-
-            const rooms = state.svgElement.querySelectorAll('[id^="room_"]');
-            if(rooms.length === 0) {
-                hideInstruction();
-                alert("⚠️ 在您的 SVG 中沒有找到 ID 以 'room_' 開頭的區塊。請確認您的 SVG 命名。");
             }
 
-            rooms.forEach(room => {
-                room.classList.add('interactive-room');
+            // === 3. 側邊欄邏輯與模式切換 ===
+            function setMode(mode) {
+                state.mode = mode;
+                const badge = document.getElementById('status-badge');
+                const container = document.getElementById('map-container');
+                document.getElementById('map-controls').style.display = 'flex';
                 
-                // 清除之前的事件綁定避免疊加
-                const newRoom = room.cloneNode(true);
-                room.parentNode.replaceChild(newRoom, room);
+                container.classList.remove('mode-bind-region', 'mode-bind-office', 'mode-view');
+                document.getElementById('btn-finish-bind').style.display = 'none';
+                document.getElementById('btn-edit-bind').style.display = 'none';
+                document.getElementById('btn-reset-view').style.display = 'none';
+                badge.style.display = 'inline-block';
                 
-                newRoom.addEventListener('click', (e) => {
-                    if (state.mode !== 'bind_office') return;
-                    e.stopPropagation();
-                    
-                    currentBindingRoomId = newRoom.id;
-                    document.getElementById('bind-room-id-disp').innerText = `[ 圖資節點: ${newRoom.id} ]`;
-                    populateOfficeSelect();
-                    
-                    // 如果有 Firebase 綁定或本地綁定，預選該值
-                    const binding = state.mapBindings[newRoom.id];
-                    const preVal = binding ? binding.officeId : state.boundRooms[newRoom.id];
-                    if (preVal) document.getElementById('bind-office-select').value = preVal;
-                    
-                    document.getElementById('bind-modal-overlay').classList.add('active');
-                });
-            });
-            
-            highlightBoundRooms();
-        }
-
-        // ✨ 升級 3：將綁定資料寫入 Firebase 供所有使用者同步
-        window.confirmOfficeBind = async function() {
-            const val = document.getElementById('bind-office-select').value;
-            if (!val) return alert('請選擇一個現有的空間！');
-            
-            const office = state.globalOffices.find(o => o.id === val);
-            if (!office) return alert('找不到空間資料');
-
-            const btn = document.querySelector('#bind-modal-overlay .btn-success');
-            const originalText = btn.innerText;
-            btn.innerText = '綁定中...';
-            btn.disabled = true;
-
-            try {
-                // 寫入 Firebase
-                await setDoc(doc(db, "map_bindings", currentBindingRoomId), {
-                    officeId: office.id,
-                    officeName: office.name,
-                    floor: state.floorName,
-                    updatedAt: new Date().toISOString()
-                });
-
-                state.boundRooms[currentBindingRoomId] = val; // 本地備用紀錄
-                
-                const roomEl = document.getElementById(currentBindingRoomId);
-                if (roomEl) {
-                    roomEl.classList.add('bound');
-                    roomEl.style.fill = 'rgba(16, 185, 129, 0.5)';
-                    setTimeout(() => roomEl.style.fill = '', 500);
+                if (mode === 'bind_region') {
+                    badge.innerText = '⚙️ 步驟一：選擇地圖樓層'; badge.style.background = '#fef3c7'; badge.style.color = '#d97706';
+                    container.classList.add('mode-bind-region');
+                    openSidebarForRegionSelect();
+                } else if (mode === 'bind_office') {
+                    badge.innerText = `⚙️ 步驟二：綁定房間 (${state.floorName})`; badge.style.background = '#d1fae5'; badge.style.color = '#059669';
+                    container.classList.add('mode-bind-office');
+                    document.getElementById('btn-finish-bind').style.display = 'block';
+                    setupBindingInteractions();
+                    openSidebarForOfficeSelect();
+                } else if (mode === 'view') {
+                    badge.innerText = `🗺️ 導覽模式 (${state.floorName})`; badge.style.background = '#e0e7ff'; badge.style.color = '#4f46e5';
+                    container.classList.add('mode-view');
+                    document.getElementById('btn-edit-bind').style.display = 'block';
+                    document.getElementById('btn-reset-view').style.display = 'block';
+                    setupViewInteractions();
+                    closeSidebar();
                 }
-                window.closeBindModal();
-            } catch(e) {
-                console.error(e);
-                alert("綁定儲存失敗：" + e.message);
-            } finally {
-                btn.innerText = originalText;
-                btn.disabled = false;
+                highlightBoundRooms();
             }
-        };
 
-        window.closeBindModal = function() {
-            document.getElementById('bind-modal-overlay').classList.remove('active');
-            currentBindingRoomId = null;
-        };
+            // 側邊欄 1：設定地圖樓層 (結合 Firebase 儲存)
+            function openSidebarForRegionSelect() {
+                document.getElementById('sidebar-top-label').innerText = '地圖初始化';
+                document.getElementById('sidebar-main-title').innerText = '📌 設定樓層';
+                
+                const floorSet = new Set();
+                state.globalRegions.forEach(r => floorSet.add(r.name || r.id));
+                state.globalOffices.forEach(o => { if (o.floor && o.floor !== '未分類區域' && o.floor !== '未分類 / 跨區空間') floorSet.add(o.floor); });
+                const floors = Array.from(floorSet).sort();
 
-        window.editBinding = function() {
-            setMode('bind_office');
-            document.getElementById('btn-finish-bind').style.display = 'block';
-            document.getElementById('btn-reset-view').style.display = 'none';
-            document.getElementById('btn-edit-bind').style.display = 'none';
-            showInstruction(`編輯綁定：請點擊地圖上「閃爍的黃色區塊」調整空間配置`, "✨");
-            window.closeSidebar();
-            initBindingPhase2(); // 重新啟動綁定模式事件
-        };
+                let html = `<div style="padding:20px;">
+                    <p style="color:var(--text-muted); margin-bottom:20px; line-height:1.6;">請為這張地圖選擇對應的樓層或區域。選擇後系統會自動上傳儲存，以後即可直接讀取。</p>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                `;
+                if(floors.length === 0) html += `<div style="color:var(--danger); font-weight:bold;">系統尚無樓層，請回主系統新增。</div>`;
+                else {
+                    floors.forEach(f => { html += `<div class="bind-list-item" onclick="window.saveMapToFirebase('${f}')">🏢 ${f}</div>`; });
+                }
+                html += `</div></div>`;
+                document.getElementById('sidebar-dynamic-content').innerHTML = html;
+                document.getElementById('sidebar').classList.add('open');
+            }
 
-        // === 4. 完成綁定進入瀏覽模式 ===
-        window.finishBinding = function() {
-            const count = Object.keys(state.boundRooms).length + Object.keys(state.mapBindings).length;
-            if(count === 0 && !confirm("您尚未綁定任何空間，確定要直接進入導覽模式嗎？")) return;
-            
-            setMode('view');
-            hideInstruction(); 
-            document.getElementById('btn-finish-bind').style.display = 'none';
-            document.getElementById('btn-reset-view').style.display = 'block';
-            document.getElementById('btn-edit-bind').style.display = 'block';
-            
-            setupViewInteractions();
-            highlightBoundRooms();
-        };
+            window.saveMapToFirebase = async (floorName) => {
+                if(!confirm(`確定將此地圖綁定並儲存為「${floorName}」嗎？\n(若已有同名地圖將會被覆蓋)`)) return;
+                try {
+                    document.getElementById('sidebar-dynamic-content').innerHTML = `<div style="padding:40px; text-align:center; font-size:18px; color:var(--primary); font-weight:bold;">⏳ 上傳地圖中...</div>`;
+                    const svgString = state.svgElement.outerHTML;
+                    await setDoc(doc(db, 'maps', floorName), { svgContent: svgString, updatedAt: new Date().toISOString() });
+                    state.floorName = floorName;
+                    setMode('bind_office'); // 進入第二步
+                } catch(e) { alert('地圖上傳失敗：' + e.message); setMode('bind_region'); }
+            };
 
-        function getOfficeNameById(id) {
-            const off = state.globalOffices.find(o => o.id === id);
-            return off ? (off.name || id) : '未知空間';
-        }
+            // === 進入已有地圖的流程 ===
+            window.enterViewMode = (floorName) => {
+                state.floorName = floorName;
+                const mapData = state.globalMaps.find(m => m.id === floorName);
+                if(!mapData) return alert('找不到圖資內容！');
+                
+                document.getElementById('lobby-state').style.display = 'none';
+                document.getElementById('map-container').style.display = 'flex';
+                state.svgElement = new DOMParser().parseDocument(mapData.svgContent).querySelector('svg');
+                injectSVGToDOM();
+                setMode('view');
+            };
 
-        function highlightBoundRooms() {
-            if(!state.svgElement) return;
-            state.svgElement.querySelectorAll('.interactive-room').forEach(el => {
-                const binding = state.mapBindings[el.id];
-                if (binding && binding.floor === state.floorName) {
-                    el.classList.add('bound');
-                } else if (state.boundRooms[el.id]) {
-                    el.classList.add('bound');
+            window.startEditBinding = (floorName = null) => {
+                if(floorName) {
+                    state.floorName = floorName;
+                    const mapData = state.globalMaps.find(m => m.id === floorName);
+                    document.getElementById('lobby-state').style.display = 'none';
+                    document.getElementById('map-container').style.display = 'flex';
+                    state.svgElement = new DOMParser().parseDocument(mapData.svgContent).querySelector('svg');
+                    injectSVGToDOM();
+                }
+                setMode('bind_office');
+            };
+
+            // 側邊欄 2：綁定辦公室 (左點圖、右選房，連續動作)
+            function openSidebarForOfficeSelect() {
+                document.getElementById('sidebar-top-label').innerText = `目前設定樓層：${state.floorName}`;
+                document.getElementById('sidebar-main-title').innerText = '🔗 綁定空間';
+                refreshBindList();
+                document.getElementById('sidebar').classList.add('open');
+            }
+
+            function refreshBindList() {
+                if(state.mode !== 'bind_office') return;
+                
+                let html = `<div style="padding:20px; background:#fff7ed; border-bottom:1px solid #fed7aa; color:#9a3412; font-size:14px; font-weight:bold;">👉 請先在地圖上點擊要綁定的色塊，然後在下方清單點擊對應的空間即可完成綁定！</div>`;
+                
+                const curId = state.activeRoomId;
+                if (curId) {
+                    html += `<div style="padding:15px 20px; background:var(--primary); color:white; font-size:16px; font-weight:bold;">選中區塊：${curId}</div>`;
                 } else {
-                    el.classList.remove('bound');
+                    html += `<div style="padding:15px 20px; background:#e2e8f0; color:var(--text-muted); font-size:16px; font-weight:bold; text-align:center;">尚未選擇地圖區塊</div>`;
                 }
-            });
-        }
 
-        // === 5. 瀏覽模式互動 (Hover / Click) ===
-        function setupViewInteractions() {
-            const rooms = state.svgElement.querySelectorAll('.interactive-room.bound');
-            
-            rooms.forEach(room => {
-                // 清除之前的事件綁定避免疊加
-                const newRoom = room.cloneNode(true);
-                room.parentNode.replaceChild(newRoom, room);
+                html += `<div style="overflow-y:auto; flex:1;">`;
                 
-                newRoom.addEventListener('mouseenter', (e) => {
-                    if (state.mode !== 'view') return;
-                    const binding = state.mapBindings[newRoom.id];
-                    const officeId = binding ? binding.officeId : state.boundRooms[newRoom.id];
-                    tooltip.innerText = getOfficeNameById(officeId);
-                    tooltip.style.opacity = '1';
-                });
+                // 只列出屬於該樓層的房間
+                const rooms = state.globalOffices.filter(o => o.floor === state.floorName).sort((a,b) => (a.name||'').localeCompare(b.name||''));
                 
-                newRoom.addEventListener('mousemove', (e) => {
-                    if (state.mode !== 'view') return;
-                    const rect = container.getBoundingClientRect();
-                    tooltip.style.left = (e.clientX - rect.left) + 'px';
-                    tooltip.style.top = (e.clientY - rect.top) + 'px';
-                });
-
-                newRoom.addEventListener('mouseleave', () => tooltip.style.opacity = '0');
-
-                newRoom.addEventListener('click', (e) => {
-                    if (state.mode !== 'view') return;
-                    e.stopPropagation();
+                if (rooms.length === 0) html += `<div style="padding:20px; text-align:center; color:var(--text-muted);">此樓層尚未建立任何辦公室。</div>`;
+                
+                rooms.forEach(o => {
+                    const isBound = Object.values(state.mapBindings).some(b => b.officeId === o.id && b.floor === state.floorName);
+                    const isPreselected = state.mapBindings[curId] && state.mapBindings[curId].officeId === o.id;
+                    const badge = isPreselected ? `<span class="badge" style="background:white; color:var(--primary);">目前綁定</span>` : (isBound ? `<span class="badge" style="background:#d1fae5; color:#059669;">已綁定其他</span>` : '');
                     
+                    html += `<div class="bind-list-item ${isPreselected ? 'selected' : ''}" onclick="window.quickBindOffice('${o.id}', '${o.name}')">
+                        <span>🚪 ${o.name}</span>${badge}
+                    </div>`;
+                });
+
+                html += `</div>`;
+                document.getElementById('sidebar-dynamic-content').innerHTML = html;
+            }
+
+            // SVG 互動：點擊區塊準備綁定
+            function setupBindingInteractions() {
+                const rooms = state.svgElement.querySelectorAll('[id^="room_"]');
+                rooms.forEach(room => {
+                    room.classList.add('interactive-room');
+                    const newRoom = room.cloneNode(true); room.parentNode.replaceChild(newRoom, room);
+                    
+                    newRoom.addEventListener('click', (e) => {
+                        if (state.mode !== 'bind_office') return;
+                        e.stopPropagation();
+                        state.svgElement.querySelectorAll('.active').forEach(r => r.classList.remove('active'));
+                        newRoom.classList.add('active');
+                        state.activeRoomId = newRoom.id;
+                        refreshBindList();
+                    });
+                });
+            }
+
+            window.quickBindOffice = async (officeId, officeName) => {
+                if(!state.activeRoomId) return alert('請先在地圖上點擊一個區塊！');
+                try {
+                    await setDoc(doc(db, "map_bindings", state.activeRoomId), {
+                        officeId: officeId, officeName: officeName, floor: state.floorName, updatedAt: new Date().toISOString()
+                    });
+                    // 給予視覺回饋 (閃爍綠色)
+                    const el = state.svgElement.getElementById(state.activeRoomId);
+                    if(el) { el.style.fill = 'rgba(16, 185, 129, 0.6)'; setTimeout(() => el.style.fill = '', 500); }
+                    
+                    // 自動取消選取，讓使用者能流暢點擊下一個房間
                     state.svgElement.querySelectorAll('.active').forEach(r => r.classList.remove('active'));
-                    newRoom.classList.add('active');
-                    state.activeRoomId = newRoom.id;
-
-                    // 觸發專注模式 (隱藏其他區域紅線)
-                    wrapper.classList.add('has-active-room');
-
-                    const binding = state.mapBindings[newRoom.id];
-                    const officeId = binding ? binding.officeId : state.boundRooms[newRoom.id];
-                    
-                    document.getElementById('popup-name').innerText = getOfficeNameById(officeId);
-                    document.getElementById('popup-id').innerText = `系統 ID: ${officeId}`;
-                    
-                    const rect = container.getBoundingClientRect();
-                    popup.classList.add('show');
-                    popup.style.left = (e.clientX - rect.left) + 'px';
-                    popup.style.top = (e.clientY - rect.top) + 'px';
-                });
-            });
-
-            state.svgElement.addEventListener('click', () => {
-                if (state.mode !== 'view') return;
-                popup.classList.remove('show');
-                state.svgElement.querySelectorAll('.active').forEach(r => r.classList.remove('active'));
-                wrapper.classList.remove('has-active-room'); // 取消專注模式
-                state.activeRoomId = null;
-            });
-        }
-
-        // === 6. 側邊欄真實資料綁定與視角縮放控制 ===
-        window.openSidebar = function() {
-            popup.classList.remove('show');
-            
-            const binding = state.mapBindings[state.activeRoomId];
-            const officeId = binding ? binding.officeId : state.boundRooms[state.activeRoomId];
-            const office = state.globalOffices.find(o => o.id === officeId);
-            
-            if (office) {
-                document.getElementById('sidebar-region-name').innerText = office.floor || '跨區或未分類';
-                document.getElementById('sidebar-office-name').innerText = office.name || office.id;
-                document.getElementById('sb-office-id').innerText = office.id;
-                document.getElementById('sb-room-type').innerText = office.roomType || '一般辦公室';
-                document.getElementById('sb-password').innerText = office.pwd || '無設定';
-
-                const memCount = state.globalMembers.filter(m => m.office_id === office.id).length;
-                const assetCount = state.globalAssets.filter(a => a.office_id === office.id).length;
-                
-                document.getElementById('sb-member-count').innerText = memCount;
-                document.getElementById('sb-asset-count').innerText = assetCount;
-            } else {
-                document.getElementById('sidebar-region-name').innerText = '未綁定';
-                document.getElementById('sidebar-office-name').innerText = '未知空間';
-                document.getElementById('sb-office-id').innerText = '---';
-                document.getElementById('sb-room-type').innerText = '---';
-                document.getElementById('sb-password').innerText = '---';
-                document.getElementById('sb-member-count').innerText = '0';
-                document.getElementById('sb-asset-count').innerText = '0';
-            }
-
-            document.getElementById('sidebar').classList.add('open');
-            zoomToRoom(state.activeRoomId);
-        };
-
-        window.jumpToMainSystem = function() {
-            const binding = state.mapBindings[state.activeRoomId];
-            const officeId = binding ? binding.officeId : state.boundRooms[state.activeRoomId];
-            if (!officeId) return;
-            window.open(`index.html?target_office=${encodeURIComponent(officeId)}`, '_blank');
-        };
-
-        window.closeSidebar = function() {
-            document.getElementById('sidebar').classList.remove('open');
-            const activeEl = document.getElementById(state.activeRoomId);
-            if(activeEl) activeEl.classList.remove('active');
-            wrapper.classList.remove('has-active-room');
-            state.activeRoomId = null;
-            resetView();
-        };
-
-        window.resetView = function() {
-            animateViewBox(state.initialViewBox);
-        };
-
-        // ✨ 絲滑縮放與 +25% 逼近邏輯
-        function zoomToRoom(roomId) {
-            const roomEl = document.getElementById(roomId);
-            if(!roomEl) return;
-            
-            const bbox = roomEl.getBBox();
-            const padding = Math.max(bbox.width, bbox.height) * 0.3; 
-            
-            const targetViewBox = {
-                x: bbox.x - padding,
-                y: bbox.y - padding,
-                w: bbox.width + padding * 2,
-                h: bbox.height + padding * 2
-            };
-            animateViewBox(targetViewBox);
-        }
-
-        function animateViewBox(target) {
-            const start = { ...state.viewBox };
-            const duration = 700; 
-            const startTime = performance.now();
-
-            function update(currentTime) {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-
-                state.viewBox.x = start.x + (target.x - start.x) * ease;
-                state.viewBox.y = start.y + (target.y - start.y) * ease;
-                state.viewBox.w = start.w + (target.w - start.w) * ease;
-                state.viewBox.h = start.h + (target.h - start.h) * ease;
-
-                applyViewBox();
-                if (progress < 1) requestAnimationFrame(update);
-            }
-            requestAnimationFrame(update);
-        }
-
-        // === 7. 基礎平移與縮放 (Pan & Zoom) ===
-        function setupPanZoom() {
-            container.addEventListener('mousedown', (e) => {
-                if(e.button !== 0) return; 
-                state.isDragging = true;
-                state.startX = e.clientX;
-                state.startY = e.clientY;
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (!state.isDragging) return;
-                const rect = container.getBoundingClientRect();
-                const scaleX = state.viewBox.w / rect.width;
-                const scaleY = state.viewBox.h / rect.height;
-
-                state.viewBox.x += (state.startX - e.clientX) * scaleX;
-                state.viewBox.y += (state.startY - e.clientY) * scaleY;
-                applyViewBox();
-
-                state.startX = e.clientX;
-                state.startY = e.clientY;
-            });
-
-            window.addEventListener('mouseup', () => state.isDragging = false);
-
-            container.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const zoomFactor = 1.15; 
-                const scale = e.deltaY > 0 ? zoomFactor : (1 / zoomFactor);
-                const rect = container.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-
-                const svgX = state.viewBox.x + (mouseX / rect.width) * state.viewBox.w;
-                const svgY = state.viewBox.y + (mouseY / rect.height) * state.viewBox.h;
-
-                state.viewBox.w *= scale;
-                state.viewBox.h *= scale;
-                
-                state.viewBox.x = svgX - (mouseX / rect.width) * state.viewBox.w;
-                state.viewBox.y = svgY - (mouseY / rect.height) * state.viewBox.h;
-                applyViewBox();
-            }, { passive: false });
-        }
-
-        function applyViewBox() {
-            if(state.svgElement) {
-                state.svgElement.setAttribute('viewBox', `${state.viewBox.x} ${state.viewBox.y} ${state.viewBox.w} ${state.viewBox.h}`);
-            }
-        }
-
-        // ✨ 點擊背景關閉 Modal 遮罩
-        document.querySelectorAll('.custom-modal-overlay').forEach(overlay => {
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) overlay.classList.remove('active');
-            });
-        });
-
-        // ✨ 全域 Esc 鍵防呆：關閉所有遮罩、側邊欄與彈窗
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.custom-modal-overlay').forEach(o => o.classList.remove('active'));
-                if(document.getElementById('sidebar').classList.contains('open')) window.closeSidebar();
-                if(popup.classList.contains('show')) {
-                    popup.classList.remove('show');
-                    state.svgElement.querySelectorAll('.active').forEach(r => r.classList.remove('active'));
-                    wrapper.classList.remove('has-active-room');
                     state.activeRoomId = null;
-                }
-            }
-        });
+                    highlightBoundRooms();
+                    refreshBindList();
+                } catch(e) { alert('綁定失敗：' + e.message); }
+            };
 
-        // === 工具：設定模式並更新 UI ===
-        function setMode(mode) {
-            state.mode = mode;
-            const badge = document.getElementById('status-badge');
-            container.classList.remove('mode-bind-region', 'mode-bind-office', 'mode-view');
-            badge.style.display = 'inline-block';
-            
-            if (mode === 'bind_region') {
-                badge.innerText = '⚙️ 模式：樓層區域設定';
-                badge.style.background = '#fef3c7'; badge.style.color = '#d97706';
-                container.classList.add('mode-bind-region');
-            } else if (mode === 'bind_office') {
-                badge.innerText = `⚙️ 模式：綁定辦公室 (${state.floorName})`;
-                badge.style.background = '#d1fae5'; badge.style.color = '#059669';
-                container.classList.add('mode-bind-office');
-            } else if (mode === 'view') {
-                badge.innerText = `🗺️ 導覽模式 (${state.floorName})`;
-                badge.style.background = '#e0e7ff'; badge.style.color = '#4f46e5';
-                container.classList.add('mode-view');
+            window.finishBinding = () => { setMode('view'); };
+
+            // === 4. 瀏覽模式 (View) 互動邏輯 ===
+            const tooltip = document.getElementById('map-tooltip');
+
+            function setupViewInteractions() {
+                const rooms = state.svgElement.querySelectorAll('.interactive-room.bound');
+                rooms.forEach(room => {
+                    const newRoom = room.cloneNode(true); room.parentNode.replaceChild(newRoom, room);
+                    
+                    // 懸浮預覽
+                    newRoom.addEventListener('mouseenter', (e) => {
+                        if (state.mode !== 'view') return;
+                        const binding = state.mapBindings[newRoom.id]; if(!binding) return;
+                        const office = state.globalOffices.find(o => o.id === binding.officeId); if(!office) return;
+                        
+                        const memCount = state.globalMembers.filter(m => m.office_id === office.id).length;
+                        const assetCount = state.globalAssets.filter(a => a.office_id === office.id).length;
+                        
+                        tooltip.innerHTML = `<div style="color:var(--warning); font-size:18px; margin-bottom:4px;">${office.name}</div><div style="font-size:13px; font-weight:normal; color:#cbd5e1;">👤 人員: <b style="color:white;">${memCount}</b> | 📦 資產: <b style="color:white;">${assetCount}</b></div>`;
+                        tooltip.style.opacity = '1';
+                    });
+                    
+                    newRoom.addEventListener('mousemove', (e) => {
+                        if (state.mode !== 'view') return;
+                        const rect = document.getElementById('svg-wrapper').getBoundingClientRect();
+                        tooltip.style.left = (e.clientX - rect.left) + 'px'; tooltip.style.top = (e.clientY - rect.top) + 'px';
+                    });
+                    newRoom.addEventListener('mouseleave', () => tooltip.style.opacity = '0');
+
+                    // 點擊打開右側專屬資料面板
+                    newRoom.addEventListener('click', (e) => {
+                        if (state.mode !== 'view') return;
+                        e.stopPropagation();
+                        state.svgElement.querySelectorAll('.active').forEach(r => r.classList.remove('active'));
+                        newRoom.classList.add('active');
+                        state.activeRoomId = newRoom.id;
+                        document.getElementById('svg-wrapper').classList.add('has-active-room');
+                        
+                        openSidebarForView();
+                    });
+                });
+
+                state.svgElement.addEventListener('click', () => {
+                    if (state.mode !== 'view') return;
+                    state.svgElement.querySelectorAll('.active').forEach(r => r.classList.remove('active'));
+                    document.getElementById('svg-wrapper').classList.remove('has-active-room');
+                    state.activeRoomId = null;
+                    closeSidebar();
+                });
+            }
+
+            // 側邊欄 3：瀏覽空間詳細資訊 (置中放大、三標籤頁)
+            function openSidebarForView() {
+                const binding = state.mapBindings[state.activeRoomId];
+                if(!binding) return;
+                const office = state.globalOffices.find(o => o.id === binding.officeId);
+                if(!office) return;
+
+                document.getElementById('sidebar-top-label').innerText = '導覽資訊';
+                document.getElementById('sidebar-main-title').innerText = '📄 空間詳細資料';
+
+                let html = `
+                    <div class="hero-info-section">
+                        <h2 class="hero-title" title="系統綁定節點 ID: ${state.activeRoomId}\n資料庫 ID: ${office.id}">${office.name}</h2>
+                        <div class="hero-type">${office.roomType || '一般辦公室'}</div>
+                        <div class="hero-pwd">${office.pwd || '無密碼'}</div>
+                    </div>
+                    
+                    <div class="sidebar-tabs">
+                        <button class="sidebar-tab-btn active" onclick="window.switchSidebarTab('basic')">基礎資訊</button>
+                        <button class="sidebar-tab-btn" onclick="window.switchSidebarTab('members')">人員清單</button>
+                        <button class="sidebar-tab-btn" onclick="window.switchSidebarTab('assets')">資產清單</button>
+                    </div>
+
+                    <div id="tab-content-basic" class="sidebar-tab-content active">
+                        <p style="color:var(--text-muted); line-height:1.6; font-size:14px;">此空間位於 <b>${office.floor}</b>。點擊上方標籤可查看駐點人員與列管資產。若需進行編修操作，請跳轉至主系統。</p>
+                        <button class="btn btn-primary" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(37,99,235,0.2);" onclick="window.openMainSystem('${office.id}')">🚀 在主系統中開啟</button>
+                    </div>
+
+                    <div id="tab-content-members" class="sidebar-tab-content">
+                        ${renderMembersList(office.id)}
+                    </div>
+
+                    <div id="tab-content-assets" class="sidebar-tab-content">
+                        ${renderAssetsList(office.id)}
+                    </div>
+                `;
+
+                document.getElementById('sidebar-dynamic-content').innerHTML = html;
+                document.getElementById('sidebar').classList.add('open');
+                zoomToRoom(state.activeRoomId);
+            }
+
+            function renderMembersList(officeId) {
+                const members = state.globalMembers.filter(m => m.office_id === officeId).sort((a,b) => (a.name||'').localeCompare(b.name||''));
+                if (members.length === 0) return `<div style="text-align:center; padding:30px; color:var(--text-muted);">此空間尚無配置人員</div>`;
+                return members.map(m => `
+                    <div class="detail-card">
+                        <div>
+                            <div class="detail-title">${m.name}</div>
+                            <div class="detail-sub">${m.title && m.title !== 'N/A' ? m.title : '無職稱'}</div>
+                        </div>
+                        <div style="font-size:18px; font-weight:bold; color:var(--primary); font-family:monospace;">${m.ext && m.ext !== 'N/A' ? m.ext : '無分機'}</div>
+                    </div>
+                `).join('');
+            }
+
+            function renderAssetsList(officeId) {
+                const assets = state.globalAssets.filter(a => a.office_id === officeId).sort((a,b) => (a.item||'').localeCompare(b.item||''));
+                if (assets.length === 0) return `<div style="text-align:center; padding:30px; color:var(--text-muted);">此空間尚無列管資產</div>`;
+                return assets.map(a => {
+                    const isCons = a.assetType === 'consumable';
+                    const icon = isCons ? '📦' : '📌';
+                    const val = isCons ? `${a.quantity||0} ${a.unit||'個'}` : (a.sn || 'N/A');
+                    const color = isCons ? 'var(--primary)' : 'var(--danger)';
+                    return `
+                    <div class="detail-card">
+                        <div>
+                            <div class="detail-title">${icon} ${a.item || a.category || '未命名'}</div>
+                            <div class="detail-sub">${a.status || a.tag || ''}</div>
+                        </div>
+                        <div style="font-size:14px; font-weight:bold; color:${color}; font-family:monospace;">${val}</div>
+                    </div>
+                `}).join('');
+            }
+
+            window.switchSidebarTab = (tabId) => {
+                document.querySelectorAll('.sidebar-tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.sidebar-tab-content').forEach(c => c.classList.remove('active'));
+                event.target.classList.add('active');
+                document.getElementById(`tab-content-${tabId}`).classList.add('active');
+            };
+
+            window.openMainSystem = (officeId) => { window.open(`index.html?target_office=${encodeURIComponent(officeId)}`, '_blank'); };
+
+            window.closeSidebar = function() {
+                document.getElementById('sidebar').classList.remove('open');
+                if (state.mode === 'view') {
+                    const activeEl = document.getElementById(state.activeRoomId);
+                    if(activeEl) activeEl.classList.remove('active');
+                    document.getElementById('svg-wrapper').classList.remove('has-active-room');
+                    state.activeRoomId = null;
+                    resetView();
+                }
+            };
+
+            function highlightBoundRooms() {
+                if(!state.svgElement) return;
+                state.svgElement.querySelectorAll('.interactive-room').forEach(el => {
+                    const binding = state.mapBindings[el.id];
+                    if (binding && binding.floor === state.floorName) el.classList.add('bound');
+                    else el.classList.remove('bound');
+                });
+            }
+
+            // === 共用平移與縮放邏輯 ===
+            window.resetView = function() { animateViewBox(state.initialViewBox); };
+
+            function zoomToRoom(roomId) {
+                const roomEl = document.getElementById(roomId); if(!roomEl) return;
+                const bbox = roomEl.getBBox(); const padding = Math.max(bbox.width, bbox.height) * 0.3; 
+                const targetViewBox = { x: bbox.x - padding, y: bbox.y - padding, w: bbox.width + padding * 2, h: bbox.height + padding * 2 };
+                animateViewBox(targetViewBox);
+            }
+
+            function animateViewBox(target) {
+                const start = { ...state.viewBox }; const duration = 700; const startTime = performance.now();
+                function update(currentTime) {
+                    const elapsed = currentTime - startTime; const progress = Math.min(elapsed / duration, 1);
+                    const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+                    state.viewBox.x = start.x + (target.x - start.x) * ease; state.viewBox.y = start.y + (target.y - start.y) * ease;
+                    state.viewBox.w = start.w + (target.w - start.w) * ease; state.viewBox.h = start.h + (target.h - start.h) * ease;
+                    applyViewBox();
+                    if (progress < 1) requestAnimationFrame(update);
+                }
+                requestAnimationFrame(update);
+            }
+
+            function setupPanZoom() {
+                const container = document.getElementById('map-container');
+                container.addEventListener('mousedown', (e) => {
+                    if(e.button !== 0) return; 
+                    state.isDragging = true; state.startX = e.clientX; state.startY = e.clientY;
+                });
+                window.addEventListener('mousemove', (e) => {
+                    if (!state.isDragging) return;
+                    const rect = container.getBoundingClientRect(); const scaleX = state.viewBox.w / rect.width; const scaleY = state.viewBox.h / rect.height;
+                    state.viewBox.x += (state.startX - e.clientX) * scaleX; state.viewBox.y += (state.startY - e.clientY) * scaleY;
+                    applyViewBox(); state.startX = e.clientX; state.startY = e.clientY;
+                });
+                window.addEventListener('mouseup', () => state.isDragging = false);
+                container.addEventListener('wheel', (e) => {
+                    e.preventDefault(); const zoomFactor = 1.15; const scale = e.deltaY > 0 ? zoomFactor : (1 / zoomFactor);
+                    const rect = container.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
+                    const svgX = state.viewBox.x + (mouseX / rect.width) * state.viewBox.w; const svgY = state.viewBox.y + (mouseY / rect.height) * state.viewBox.h;
+                    state.viewBox.w *= scale; state.viewBox.h *= scale;
+                    state.viewBox.x = svgX - (mouseX / rect.width) * state.viewBox.w; state.viewBox.y = svgY - (mouseY / rect.height) * state.viewBox.h;
+                    applyViewBox();
+                }, { passive: false });
+            }
+
+            function applyViewBox() {
+                if(state.svgElement) state.svgElement.setAttribute('viewBox', `${state.viewBox.x} ${state.viewBox.y} ${state.viewBox.w} ${state.viewBox.h}`);
             }
         }
-    }
-</script>
-
+    </script>
 </body>
 </html>

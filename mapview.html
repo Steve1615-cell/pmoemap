@@ -21,7 +21,7 @@
         
         /* 頂部控制列 */
         header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); z-index: 10; flex-shrink: 0; }
-        h1 { margin: 0; font-size: 24px; color: var(--primary); display: flex; align-items: center; gap: 10px; cursor: pointer;}
+        h1 { margin: 0; font-size: 24px; color: var(--primary); display: flex; align-items: center; gap: 10px; cursor: pointer; }
         .controls { display: flex; gap: 12px; align-items: center; }
         .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); color: white; background: var(--primary); font-size: 15px; }
         .btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -29,6 +29,7 @@
         .btn-secondary { background: #64748b; }
         .btn-success { background: var(--success); }
         .btn-warning { background: var(--warning); color: white; }
+        .btn-danger { background: var(--danger); }
         
         .btn-finish { 
             background: var(--success); font-size: 18px; padding: 12px 25px; border-radius: 50px;
@@ -109,7 +110,7 @@
         /* 首頁地圖選擇大廳 */
         #lobby-state { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); z-index: 5; overflow-y: auto; padding: 40px; }
         .map-grid { display: flex; overflow-x: auto; gap: 20px; padding-bottom: 20px; width: 100%; scroll-snap-type: x mandatory; align-items: center; margin-top: 20px;}
-        .map-card { flex: 0 0 320px; scroll-snap-align: start; background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; border: 2px solid transparent; transition: all 0.3s; display: flex; flex-direction: column; align-items: center; }
+        .map-card { position: relative; flex: 0 0 320px; scroll-snap-align: start; background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; border: 2px solid transparent; transition: all 0.3s; display: flex; flex-direction: column; align-items: center; }
         .map-card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 10px 25px rgba(37,99,235,0.1); }
         .map-icon { font-size: 80px; margin-bottom: 20px; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.1)); }
         .map-name { font-size: 24px; font-weight: bold; color: var(--text-main); margin-bottom: 15px; }
@@ -147,14 +148,20 @@
     </div>
 
 <header>
-    <h1 onclick="window.backToLobby()">🗺️ 空間地圖導覽 <span style="font-size:12px; color:var(--text-muted); font-weight:normal; background:var(--accent); padding:4px 8px; border-radius:12px; margin-left:10px;">回首頁大廳</span></h1>
+    <h1 onclick="window.backToLobby()" title="點擊回地圖清單大廳">🗺️ 空間地圖導覽</h1>
     <div class="controls" id="map-controls" style="display:none;">
         <span id="status-badge" class="status-badge" style="display:none;">請匯入地圖</span>
         <button id="btn-edit-bind" class="btn btn-warning" style="display:none;" onclick="window.startEditBinding()">⚙️ 編輯綁定</button>
         <button id="btn-finish-bind" class="btn btn-finish" style="display:none;" onclick="window.finishBinding()">✅ 完成綁定</button>
         <button id="btn-reset-view" class="btn btn-secondary" style="display:none;" onclick="window.resetView()">🔍 回到全覽</button>
+        
+        <!-- ✨ 專屬的地圖管理控制區 -->
+        <div style="width: 2px; height: 24px; background: #cbd5e1; margin: 0 8px;"></div>
+        <button id="btn-lobby" class="btn btn-secondary" style="display:none;" onclick="window.backToLobby()">🏠 地圖大廳</button>
+        <button id="btn-upload-new" class="btn btn-primary" onclick="document.getElementById('svg-upload-header').click()">➕ 上傳新地圖</button>
         <button class="btn btn-danger" onclick="window.close()">✖ 關閉網頁</button>
     </div>
+    <input type="file" id="svg-upload-header" accept=".svg" style="display:none;" onchange="window.handleSVGUpload(event)">
 </header>
 
 <main>
@@ -164,7 +171,7 @@
         <span id="instruction-text">引導文字</span>
     </div>
 
-    <!-- 首頁大廳：展示已上傳地圖 (支援左右滑動) -->
+    <!-- ✨ 首頁大廳：展示已上傳地圖 (支援左右滑動與刪除) -->
     <div id="lobby-state">
         <div style="text-align:center; margin-bottom: 20px;">
             <h2 style="color: var(--text-main); font-size: 38px; margin: 0 0 10px 0;">選擇要導覽的區域地圖</h2>
@@ -173,7 +180,6 @@
         <div id="map-selector-grid" class="map-grid">
             <!-- 動態渲染卡片 -->
         </div>
-        <input type="file" id="svg-upload-lobby" accept=".svg" style="display:none;" onchange="window.handleSVGUpload(event)">
     </div>
 
     <!-- 左側地圖區塊 -->
@@ -215,7 +221,7 @@
 </div>
 
 <script type="module">
-    import { collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     let db;
@@ -231,13 +237,13 @@
     if (db) {
         // === 核心狀態 ===
         const state = {
-            mode: 'lobby', // lobby, bind_region, bind_office, view
+            mode: 'lobby', 
             floorName: '', 
             boundRooms: {},     // 本地暫存綁定狀態
             mapBindings: {},    // Firebase 同步來的房間綁定資料
             activeRoomId: null,
             
-            globalMaps: [],     // 儲存已上傳的地圖 {id: 樓層名, svg: 內容}
+            globalMaps: [],     // 儲存已上傳的地圖 {id: 樓層名, svgContent: 內容}
             globalRegions: [],
             globalOffices: [], 
             globalMembers: [],
@@ -286,7 +292,7 @@
             onSnapshot(collection(db, "assets"), snap => { state.globalAssets = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); checkLoad(); });
         }
 
-        // ✨ 升級 1：整合大樓與自己建立的樓層名稱
+        // 整理大樓與自己建立的樓層名稱
         function populateRegionSelect() {
             const sel = document.getElementById('bind-region-select');
             sel.innerHTML = '<option value="">-- 請選擇地圖所屬區域 --</option>';
@@ -308,14 +314,14 @@
             if (state.mode !== 'lobby') return;
             document.getElementById('lobby-state').style.display = 'flex';
             document.getElementById('map-container').style.display = 'none';
-            document.getElementById('map-controls').style.display = 'none';
+            setMode('lobby'); // 確保 Header 按鈕狀態正確
             closeSidebar();
 
             const grid = document.getElementById('map-selector-grid');
             let html = `
-                <div class="map-card upload-map-card" onclick="document.getElementById('svg-upload-lobby').click()">
+                <div class="map-card upload-map-card" onclick="document.getElementById('svg-upload-header').click()">
                     <div class="map-icon">➕</div>
-                    <div class="map-name" style="color:var(--primary);">匯入新樓層地圖</div>
+                    <div class="map-name" style="color:var(--primary);">上傳新樓層圖資</div>
                     <div style="font-size:15px; color:var(--text-muted); font-weight:bold;">支援 SVG 格式檔案</div>
                 </div>
             `;
@@ -323,6 +329,7 @@
             state.globalMaps.sort((a,b) => a.id.localeCompare(b.id)).forEach(m => {
                 html += `
                     <div class="map-card">
+                        <button onclick="event.stopPropagation(); window.deleteMap('${m.id}')" style="position:absolute; top:15px; right:15px; background:none; border:none; cursor:pointer; font-size:20px; color:var(--danger); opacity:0.5; transition:0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5" title="刪除此圖資">🗑️</button>
                         <div class="map-icon">🗺️</div>
                         <div class="map-name">${m.id}</div>
                         <div style="display:flex; gap:10px; width:100%; margin-top:15px;">
@@ -337,7 +344,15 @@
 
         window.backToLobby = () => { state.mode = 'lobby'; renderLobby(); };
 
-        // === 2. 處理 SVG 上傳 ===
+        window.deleteMap = async (mapId) => {
+            if (!confirm(`確定要刪除地圖「${mapId}」嗎？\n注意：這不會刪除任何人員與資產資料，僅會移除此 SVG 平面圖資。`)) return;
+            try {
+                await deleteDoc(doc(db, 'maps', mapId));
+                alert(`已刪除地圖「${mapId}」！`);
+            } catch(e) { alert('刪除失敗：' + e.message); }
+        };
+
+        // === 2. 處理 SVG 上傳 (支援由大廳或 Header 觸發) ===
         window.handleSVGUpload = function(event) {
             const file = event.target.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -417,7 +432,8 @@
             document.getElementById('btn-finish-bind').style.display = 'none';
             document.getElementById('btn-edit-bind').style.display = 'none';
             document.getElementById('btn-reset-view').style.display = 'none';
-            badge.style.display = 'inline-block';
+            document.getElementById('btn-lobby').style.display = mode === 'lobby' ? 'none' : 'block';
+            badge.style.display = mode === 'lobby' ? 'none' : 'inline-block';
             
             if (mode === 'bind_region') {
                 badge.innerText = '⚙️ 步驟一：選擇地圖樓層'; badge.style.background = '#fef3c7'; badge.style.color = '#d97706';
@@ -460,6 +476,9 @@
                 setMode('bind_office');
             } catch(e) { 
                 alert('地圖上傳失敗：' + e.message); 
+            } finally {
+                const btn = document.querySelector('#bind-region-modal-overlay .btn-success');
+                btn.innerText = '確認並上傳'; btn.disabled = false;
             }
         };
 
@@ -520,7 +539,6 @@
         };
 
         window.finishBinding = () => { setMode('view'); };
-        window.editBinding = () => { setMode('bind_office'); };
 
         // === ✨ 事件委派：處理 SVG 所有互動 ===
         const svgWrapper = document.getElementById('svg-wrapper');

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>縮時相機管理 | PMO電子圖資系統</title>
+    <title>公務機車總表 | PMO電子圖資系統</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -16,13 +16,19 @@
         .search-box { padding: 15px 25px; border: 2px solid #cbd5e1; border-radius: 40px; width: 100%; box-sizing: border-box; font-size: 35px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: border-color 0.2s; outline: none; }
         .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.2); }
 
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; display: none; }
+        .tab-btn { position: relative; padding: 10px 30px; background: white; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; color: var(--text-muted); }
+        .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
         .table-container { width: 100%; display: flex; flex-direction: column; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden; }
         .notion-table { width: 100%; border-collapse: collapse; min-width: 1000px; text-align: left; font-size: 14px; user-select: none; -webkit-user-select: none; }
         .notion-table th { background: #f8fafc; color: var(--text-muted); font-weight: bold; padding: 12px 15px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
         .notion-table td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; color: var(--text-main); }
         .notion-table tr:hover { background: #f8fafc; }
-        
-        .archived-row { background-color: #f1f5f9 !important; opacity: 0.7; }
+
+        /* ✨ 外調車輛專屬色底 */
+        .row-external { background-color: rgba(252, 143, 143, 0.25) !important; }
+        .row-external:hover { background-color: rgba(252, 143, 143, 0.4) !important; }
         
         /* 增強版表頭樣式 */
         .th-content { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
@@ -36,8 +42,6 @@
         #filter-cb-list { overflow-y: auto; max-height: 220px; display: flex; flex-direction: column; gap: 5px; padding-right: 5px; }
 
         .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block; white-space: nowrap; }
-        .badge.power-on { background: #d1fae5; color: #059669; }
-        .badge.power-off { background: #fee2e2; color: #e11d48; }
         .badge.tag { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
 
         .batch-checkbox { width: 22px; height: 22px; background: white; border: 2px solid #cbd5e1; border-radius: 6px; cursor: pointer; position: relative; appearance: none; transition: 0.2s; vertical-align: middle; }
@@ -59,21 +63,20 @@
         .fab-submenu { position: absolute; right: 100%; margin-right: 15px; display: flex; gap: 10px; white-space: nowrap; transition: all 0.3s ease; opacity: 0; transform: translateX(20px); pointer-events: none; }
         .fab-submenu.open { opacity: 1; transform: translateX(0); pointer-events: auto; }
         
+        #import-preview-modal-overlay .modal-content { max-width: 95vw; height: 90vh; display: flex; flex-direction: column; }
+        #import-preview-modal-overlay .table-container { flex: 1; overflow: auto; margin-top: 15px; border: 1px solid #e2e8f0; }
+
         /* ✨ 歷史紀錄彈窗時間軸 (升級為 70% 畫面大視窗) */
         #history-modal-overlay .modal-content { 
             width: 70vw; max-width: 1200px; height: 70vh; display: flex; flex-direction: column; overflow: hidden;
         }
         .history-timeline { flex: 1; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-right: 10px; margin-top: 15px;}
         .history-item { background: #f8fafc; border-left: 4px solid var(--primary); padding: 12px 18px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .history-item.return { border-left-color: var(--success); }
+        .history-item.repair { border-left-color: var(--warning); }
 
-        /* 相機表單多標籤樣式 */
-        .multi-tag-container { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px; min-height: 36px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; align-items: center; cursor: pointer; }
-        .multi-tag-item { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; }
-        .tag-remove-btn { cursor: pointer; font-weight: bold; opacity: 0.6; } 
-        .tag-remove-btn:hover { opacity: 1; color: var(--danger); }
-        
-        /* 教學樣式防呆 */
-        #tutorial-overlay-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 99990; display: none; pointer-events: none;}
+        /* 新手教學專屬樣式 (加入 pointer-events 防護) */
+        #tutorial-overlay-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 99990; display: none; }
         #tutorial-ring-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99992; pointer-events: none; display: none; }
         .tutorial-on-top { z-index: 99991 !important; position: relative; background: white; border-radius: 12px; }
         #fab-container.tutorial-on-top { position: fixed !important; background: transparent; }
@@ -87,56 +90,61 @@
 <!-- 表頭過濾彈出面板 -->
 <div id="col-filter-panel"></div>
 
-<!-- 教學遮罩與互動層 -->
-<div id="tutorial-overlay-mask"></div>
-<div id="tutorial-ring-container"></div>
-<div id="tutorial-dialog">
+<!-- 教學遮罩與互動層 (加入絕對隱藏與防點擊干擾) -->
+<div id="tutorial-overlay-mask" style="display:none; pointer-events:none;"></div>
+<div id="tutorial-ring-container" style="display:none; pointer-events:none;"></div>
+<div id="tutorial-dialog" style="display:none;">
     <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
         <b id="tutorial-title" style="color:var(--danger); font-size: 18px; display:flex; align-items:center; gap:8px;">💡 系統教學</b>
         <button onclick="window.exitTutorial()" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; font-weight:bold; line-height:1;">&times;</button>
     </div>
     <div id="tutorial-text" style="font-size: 14px; line-height: 1.7; color: var(--text-main);"></div>
     <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-        <span id="tutorial-step-indicator" style="font-size:12px; font-weight:bold; color:var(--text-muted);">1 / 3</span>
+        <span id="tutorial-step-indicator" style="font-size:12px; font-weight:bold; color:var(--text-muted);">1 / 2</span>
         <button id="tutorial-btn-next" onclick="window.nextTutorialStep()" class="btn-primary" style="background:var(--danger); box-shadow:0 4px 10px rgba(225,29,72,0.3);">下一步 ➔</button>
     </div>
 </div>
 
 <div class="app-container">
     <div class="header-bar">
-        <h1 class="header-title" onclick="window.startTutorial()" title="點擊重新觀看教學">📷 縮時相機總表 <span style="font-size:14px; font-weight:normal; color:var(--text-muted); opacity:0.5; vertical-align:middle;">(點擊教學)</span></h1>
+        <h1 class="header-title" onclick="window.startTutorial()" title="點擊重新觀看教學">🛵 公務機車總表 <span style="font-size:14px; font-weight:normal; color:var(--text-muted); opacity:0.5; vertical-align:middle;">(點擊教學)</span></h1>
     </div>
     
     <div class="search-container">
-        <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋機台編號、專案、地點或工項..." oninput="window.summaryCurrentPage = 1; window.renderSummary()">
+        <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋車牌號、單位或狀態..." oninput="window.summaryCurrentPage = 1; window.renderCurrentView()">
     </div>
     
     <!-- 頂部快速操作列 -->
     <div id="top-action-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; background: white; padding: 15px 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
         <div style="display:flex; gap:10px;">
-            <button class="btn-primary" style="font-size:16px; padding:10px 25px; border-radius:30px; box-shadow:0 4px 15px rgba(37,99,235,0.3);" onclick="window.openRecordModal()">📝 新增巡檢/狀態紀錄</button>
+            <button class="btn-primary" style="font-size:16px; padding:10px 25px; border-radius:30px; box-shadow:0 4px 15px rgba(37,99,235,0.3);" onclick="window.openRecordModal()">📝 新增機車出借/歸還</button>
         </div>
-        <div style="font-size: 13px; color: var(--text-muted);">💡 提示：點擊列表的「機台名稱」可查看該相機完整歷史巡檢與移動軌跡。</div>
+        <div style="font-size: 13px; color: var(--text-muted);">💡 提示：點擊列表的「車牌號」可查看該車的完整歷史軌跡。</div>
+    </div>
+
+    <div class="tabs" style="display: none;">
+        <button id="tab-btn-summary" class="tab-btn active" onclick="window.switchTab('summary')">📊 總覽</button>
+        <button id="tab-btn-registry" class="tab-btn" onclick="window.switchTab('registry')">📝 登記</button>
     </div>
     
     <div id="loading-msg" style="text-align: center; color: var(--text-muted); padding: 50px; font-size: 18px;">⏳ 資料讀取與連線中...</div>
 
     <!-- ================= 視圖 1：總覽 ================= -->
-    <div id="view-summary" style="display:block;">
+    <div id="view-summary" class="view active">
         <div class="stats-row" id="tutorial-target-stats">
             <div class="stat-card" onclick="window.toggleDataDisplay('total')">
                 <div class="donut-chart-container" id="chart-total"></div>
-                <div class="stat-title">📷 總機台數</div>
+                <div class="stat-title">🛵 總車輛數</div>
                 <div class="stat-subtitle">(點擊切換 數量/佔比)</div>
             </div>
-            <div class="stat-card" onclick="window.toggleDataDisplay('idle')">
-                <div class="donut-chart-container" id="chart-idle"></div>
-                <div class="stat-title">🏢 閒置中 (在庫)</div>
+            <div class="stat-card" onclick="window.toggleDataDisplay('inhouse')">
+                <div class="donut-chart-container" id="chart-inhouse"></div>
+                <div class="stat-title">🏢 目前在庫 (PMO)</div>
                 <div class="stat-subtitle">(點擊切換 數量/佔比)</div>
             </div>
-            <div class="stat-card" onclick="window.toggleDataDisplay('active')">
-                <div class="donut-chart-container" id="chart-active"></div>
-                <div class="stat-title">🔑 專案使用中</div>
+            <div class="stat-card" onclick="window.toggleDataDisplay('out')">
+                <div class="donut-chart-container" id="chart-out"></div>
+                <div class="stat-title">🔑 出借中 / 維修中</div>
                 <div class="stat-subtitle">(點擊切換 數量/佔比)</div>
             </div>
         </div>
@@ -151,124 +159,77 @@
             <div id="summary-pagination" style="display:flex; justify-content:center; align-items:center; padding: 15px; gap: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; margin-top: auto;"></div>
         </div>
     </div>
+    
+    <!-- 登記視圖保留給未來擴充使用 -->
+    <div id="view-registry" class="view"></div>
 </div>
 
 <!-- 懸浮動作列 -->
 <div id="floating-batch-bar">
     <button onclick="window.clearBatchSelection()" style="background:none; border:none; color:#64748b; font-weight:bold; cursor:pointer; text-decoration:underline; margin-right:10px;">❌ 取消多選</button>
     <span id="batch-sel-count" style="font-size:15px; font-weight:bold; color:var(--primary); margin-right:15px; border-right:2px solid #e2e8f0; padding-right:15px;">0 項</span>
-    <button class="btn-primary" style="background:#fefce8; color:#854d0e; border:1px solid #fef08a;" onclick="window.openBatchEditModal()">✏️ 批次修改專案</button>
-    <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除相機</button>
+    <button class="btn-primary" style="background:#fefce8; color:#854d0e; border:1px solid #fef08a;" onclick="window.openBatchEditModal()">✏️ 批次標記屬性</button>
+    <button class="btn-danger" style="background:#fef2f2; color:#991b1b; border:1px dashed #fca5a5;" onclick="window.batchDeleteAssets()">🗑️ 刪除車輛</button>
 </div>
 
 <!-- ✨ FAB 右下角按鈕群 -->
 <div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 99998 !important; pointer-events: auto;">
     <div class="fab-menu" id="fab-menu">
-        <button class="fab-item" onclick="event.stopPropagation(); window.executeExport(); window.toggleFabMenu(event);">📤 匯出資料表</button>
+        <button class="fab-item" onclick="event.stopPropagation(); window.openExportModal(); window.toggleFabMenu(event);">📤 匯出資料中心</button>
         <div style="position: relative; display: flex; align-items: center; justify-content: flex-end;">
             <div id="import-submenu" class="fab-submenu">
-                <button class="fab-item" onclick="event.stopPropagation(); document.getElementById('csv-upload').click(); window.toggleFabMenu(event);">📝 Notion巡檢歷史 (.csv)</button>
-                <button class="fab-item" onclick="event.stopPropagation(); document.getElementById('excel-upload').click(); window.toggleFabMenu(event);">📊 相機總表匯入 (.xlsx)</button>
+                <button class="fab-item" onclick="event.stopPropagation(); document.getElementById('file-upload').click(); window.toggleFabMenu(event);">📥 選擇機車表單 (CSV/XLSX)</button>
             </div>
-            <button class="fab-item" onclick="window.toggleSubmenu('import-submenu', event)">📥 匯入外部資料 ◀</button>
+            <button class="fab-item" onclick="window.toggleSubmenu('import-submenu', event)">📥 匯入外部清單 ◀</button>
         </div>
-        <button class="fab-item" onclick="event.stopPropagation(); window.openRecordModal(); window.toggleFabMenu(event);">📝 新增狀態紀錄</button>
-        <button class="fab-item" onclick="event.stopPropagation(); window.openCameraModal(); window.toggleFabMenu(event);">➕ 新增相機本體</button>
+        <button class="fab-item" onclick="event.stopPropagation(); window.openRecordModal(); window.toggleFabMenu(event);">📝 新增出借/歸還紀錄</button>
+        <button class="fab-item" onclick="event.stopPropagation(); window.openAssetModal(); window.toggleFabMenu(event);">➕ 新增公務機車</button>
     </div>
     <button class="fab-btn" onclick="window.toggleFabMenu(event)">＋</button>
 </div>
-<input type="file" id="excel-upload" accept=".xlsx, .xls, .csv" style="display:none;" onchange="window.handleExcelUpload(event)">
-<input type="file" id="csv-upload" accept=".csv" style="display:none;" onchange="window.handleCSVUpload(event)">
+<input type="file" id="file-upload" accept=".xlsx, .xls, .csv" style="display:none;" onchange="window.handlePreviewImport(event)">
 
-<!-- ================= Modal: 巡檢紀錄表單 ================= -->
+<!-- ================= Modal: 新增出借/歸還紀錄 ================= -->
 <div id="record-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeRecordModal()">
     <div class="modal-content" style="overflow: visible;">
-        <div class="modal-header"><span id="record-modal-title">📝 新增巡檢/移動紀錄</span><button class="btn-close" onclick="window.closeRecordModal()">×</button></div>
-        
+        <div class="modal-header"><span>📝 新增紀錄 (出借/歸還/維修)</span><button class="btn-close" onclick="window.closeRecordModal()">×</button></div>
         <div class="form-group">
-            <label>1. 選擇相機</label>
+            <label>1. 操作類型</label>
+            <div style="display:flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
+                <button type="button" id="btn-type-borrow" onclick="window.switchRecordType('borrow')" style="flex:1; padding:8px; border:none; background:var(--danger); color:white; font-weight:bold; cursor:pointer;">📤 出借 / 送修</button>
+                <button type="button" id="btn-type-return" onclick="window.switchRecordType('return')" style="flex:1; padding:8px; border:none; background:white; color:var(--text-main); font-weight:bold; cursor:pointer;">📥 歸還入庫</button>
+            </div>
+            <input type="hidden" id="record-type" value="borrow">
+        </div>
+        <div class="form-group">
+            <label>2. 選擇機車車號</label>
             <select id="record-asset-id" style="font-weight:bold; font-size:16px; width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;"></select>
         </div>
-
+        <div class="form-group" id="group-target-unit">
+            <label>3. 目標單位 / 修車廠</label>
+            <input type="text" id="record-unit" placeholder="例如：H1198高緯 或 修車廠">
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">💡 提示：若輸入「修車廠」，系統將自動標記為維修狀態。</div>
+        </div>
         <div class="form-group">
-            <label>2. 參與人 (可多選)</label>
-            <div class="multi-tag-container" onclick="window.toggleDropdown('opt-participant', event)">
-                <div id="multi-tags-participant" style="flex:1; display:flex; flex-wrap:wrap; gap:5px;"></div><span>▼</span>
-            </div>
-            <div class="custom-dropdown-panel" id="opt-participant-panel" onclick="event.stopPropagation()">
-                <div class="dropdown-search-row">
-                    <input type="text" id="opt-participant-input" placeholder="新增參與人...">
-                    <button class="btn-primary" onclick="window.addOption('participant', event)">➕</button>
-                </div>
-                <div class="dropdown-list" id="opt-participant-list"></div>
-            </div>
+            <label>4. 日期</label>
+            <input type="date" id="record-date">
         </div>
-
         <div class="form-group">
-            <label>3. 地點 (可多選)</label>
-            <div class="multi-tag-container" onclick="window.toggleDropdown('opt-location', event)">
-                <div id="multi-tags-location" style="flex:1; display:flex; flex-wrap:wrap; gap:5px;"></div><span>▼</span>
-            </div>
-            <div class="custom-dropdown-panel" id="opt-location-panel" onclick="event.stopPropagation()">
-                <div class="dropdown-search-row">
-                    <input type="text" id="opt-location-input" placeholder="新增地點...">
-                    <button class="btn-primary" onclick="window.addOption('location', event)">➕</button>
-                </div>
-                <div class="dropdown-list" id="opt-location-list"></div>
-            </div>
+            <label>5. 備註 (選填)</label>
+            <textarea id="record-remarks" rows="2" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; resize:vertical;" placeholder="補充說明..."></textarea>
         </div>
-
-        <div class="form-group" style="display:flex; gap:10px;">
-            <div style="flex:1;"><label>🔋 電量 (%)</label><input type="number" id="rec-battery" placeholder="100" min="0" max="100"></div>
-            <div style="flex:1;">
-                <label>💾 容量</label>
-                <div class="custom-dropdown-btn" onclick="window.toggleDropdown('opt-capacity', event)">
-                    <span id="disp-opt-capacity">64GB</span><span>▼</span>
-                </div>
-                <div class="custom-dropdown-panel" id="opt-capacity-panel" onclick="event.stopPropagation()">
-                    <div class="dropdown-search-row">
-                        <input type="text" id="opt-capacity-input" placeholder="新增容量...">
-                        <button class="btn-primary" onclick="window.addOption('capacity', event)">➕</button>
-                    </div>
-                    <div class="dropdown-list" id="opt-capacity-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>4. 工項 (可多選)</label>
-            <div class="multi-tag-container" onclick="window.toggleDropdown('opt-task', event)">
-                <div id="multi-tags-task" style="flex:1; display:flex; flex-wrap:wrap; gap:5px;"></div><span>▼</span>
-            </div>
-            <div class="custom-dropdown-panel" id="opt-task-panel" onclick="event.stopPropagation()">
-                <div class="dropdown-search-row">
-                    <input type="text" id="opt-task-input" placeholder="新增工項...">
-                    <button class="btn-primary" onclick="window.addOption('task', event)">➕</button>
-                </div>
-                <div class="dropdown-list" id="opt-task-list"></div>
-            </div>
-        </div>
-
-        <div class="form-group" style="display:flex; gap:10px;">
-            <div style="flex:1;"><label>電源狀態</label><select id="rec-power"><option value="開">🟢 開機</option><option value="關">🔴 關機</option></select></div>
-            <div style="flex:1;"><label>巡檢時間</label><input type="date" id="rec-date"></div>
-        </div>
-        <div class="form-group"><label>備註 (上限 100 字)</label><textarea id="rec-remarks" rows="2" maxlength="100" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; resize:vertical; font-family:inherit;"></textarea></div>
-        
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="window.closeRecordModal()">取消</button>
-            <button class="btn-primary" onclick="window.saveRecord()">儲存紀錄</button>
-        </div>
+        <div class="modal-footer"><button class="btn-secondary" onclick="window.closeRecordModal()">取消</button><button class="btn-primary" onclick="window.saveRecord()">儲存紀錄</button></div>
     </div>
 </div>
 
-<!-- ================= Modal: 查看歷史紀錄時間軸 (70% 放大版) ================= -->
+<!-- ================= Modal: 查看機車歷史軌跡 (70% 放大版) ================= -->
 <div id="history-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeHistoryModal()">
     <div class="modal-content">
         <div class="modal-header">
-            <span id="history-modal-title" style="font-size: 22px;">📷 歷史巡檢紀錄</span>
+            <span id="history-modal-title" style="font-size: 22px;">🛵 機車歷程</span>
             <div style="display:flex; gap:10px;">
-                <button class="btn-primary" style="padding:6px 15px; font-size:14px; background:var(--primary);" onclick="window.openRecordModal(window.currentHistoryCamId)">➕ 新增紀錄</button>
+                <button class="btn-primary" style="padding:6px 15px; font-size:14px; background:var(--danger);" onclick="window.openRecordModal(window.currentHistoryCamId, 'borrow')">📤 出借</button>
+                <button class="btn-primary" style="padding:6px 15px; font-size:14px; background:var(--success);" onclick="window.openRecordModal(window.currentHistoryCamId, 'return')">📥 歸還</button>
                 <button class="btn-close" style="font-size: 28px;" onclick="window.closeHistoryModal()">×</button>
             </div>
         </div>
@@ -277,46 +238,54 @@
     </div>
 </div>
 
-<!-- ================= Modal: 新增/編輯相機資產 ================= -->
-<div id="camera-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeCameraModal()">
+<!-- ================= Modal: 建立新機車資產 ================= -->
+<div id="asset-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeAssetModal()">
     <div class="modal-content" style="overflow: visible;">
-        <div class="modal-header"><span id="camera-modal-title">📦 編輯相機本體</span><button class="btn-close" onclick="window.closeCameraModal()">×</button></div>
-        
+        <div class="modal-header"><span id="asset-modal-title">📦 新增機車檔案</span><button class="btn-close" onclick="window.closeAssetModal()">×</button></div>
+        <div class="form-group"><label>車號 (車牌)</label><input type="text" id="asset-item" placeholder="例如：M-458 (必填)"></div>
         <div class="form-group">
-            <label>設定所屬專案</label>
-            <div class="custom-dropdown-btn" onclick="window.toggleDropdown('opt-project', event)">
-                <span id="disp-opt-project">閒置</span><span>▼</span>
-            </div>
-            <div class="custom-dropdown-panel" id="opt-project-panel" onclick="event.stopPropagation()">
-                <div class="dropdown-search-row">
-                    <input type="text" id="opt-project-input" placeholder="新增或搜尋專案...">
-                    <button class="btn-primary" onclick="window.addOption('project', event)">➕</button>
-                </div>
-                <div class="dropdown-list" id="opt-project-list"></div>
-            </div>
+            <label>是否為外調車輛 (非PMO原屬資產)？</label>
+            <select id="asset-is-external">
+                <option value="false">否 (PMO所屬)</option>
+                <option value="true">是 (向外單位借用)</option>
+            </select>
         </div>
+        <div class="form-group" id="asset-original-unit-group" style="display:none;">
+            <label>原所屬單位</label>
+            <input type="text" id="asset-original-unit" placeholder="例如：品保處、船體工廠">
+        </div>
+        <div class="form-group"><label>初始備註</label><input type="text" id="asset-remarks" placeholder="補充說明..."></div>
+        <div class="modal-footer"><button class="btn-secondary" onclick="window.closeAssetModal()">取消</button><button class="btn-primary" onclick="window.saveAssetData()">建立檔案</button></div>
+    </div>
+</div>
 
-        <div class="form-group"><label>機台名稱 (數字編號)</label><input type="text" id="cam-name" placeholder="例如：14"></div>
-        <div class="form-group" style="display:flex; gap:10px;">
-            <div style="flex:1;"><label>品牌</label><input type="text" id="cam-brand" placeholder="Brinno"></div>
-            <div style="flex:1;"><label>型號</label><input type="text" id="cam-model" placeholder="TLC2000"></div>
+<!-- ================= Modal: 匯入預覽所 ================= -->
+<div id="import-preview-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeImportPreviewModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>📥 匯入預覽</span>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-danger" onclick="window.previewBatchDelete()" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5;">🗑️ 刪除勾選</button>
+                <button class="btn-primary" onclick="window.confirmImport()" style="background:var(--success);">✅ 確認匯入</button>
+                <button class="btn-close" onclick="window.closeImportPreviewModal()" style="margin-left:15px;">×</button>
+            </div>
         </div>
-        <div class="form-group"><label>資產編號 (SN)</label><input type="text" id="cam-sn" placeholder="N/A"></div>
-        <div class="form-group"><label>購入日</label><input type="date" id="cam-date"></div>
-        
-        <div class="modal-footer" style="justify-content: space-between;">
-            <button class="btn-secondary" onclick="window.closeCameraModal()">取消</button>
-            <button class="btn-primary" onclick="window.saveCamera()">儲存</button>
+        <div style="font-size:13px; color:var(--text-muted); margin-bottom:10px;">此表格將自動更新機車資料，並將借還狀態轉為歷史紀錄存檔。</div>
+        <div class="table-container">
+            <table class="notion-table">
+                <thead id="preview-thead"></thead><tbody id="preview-tbody"></tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<!-- ================= Modal: 批次編輯專案 ================= -->
+<!-- ================= Modal: 批次編輯屬性 ================= -->
 <div id="batch-edit-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeBatchEditModal()">
     <div class="modal-content" style="overflow: visible;">
-        <div class="modal-header"><span>✏️ 批次修改所屬專案</span><button class="btn-close" onclick="window.closeBatchEditModal()">×</button></div>
+        <div class="modal-header"><span>✏️ 批次修改車輛屬性</span><button class="btn-close" onclick="window.closeBatchEditModal()">×</button></div>
         <div style="font-size:13px; color:var(--text-muted); margin-bottom:15px;" id="batch-edit-hint"></div>
-        <div class="form-group"><label>將勾選相機的專案變更為：</label><input type="text" id="batch-edit-proj" placeholder="輸入專案名稱 (例如: 閒置)"></div>
+        <div class="form-group"><label>變更外調狀態 (保留空白不修改)</label><select id="batch-edit-external"><option value="">-- 不修改 --</option><option value="true">是 (外調)</option><option value="false">否 (PMO所屬)</option></select></div>
+        <div class="form-group"><label>變更原屬單位 (保留空白不修改)</label><input type="text" id="batch-edit-org" placeholder="例如：品保處"></div>
         <div class="modal-footer"><button class="btn-secondary" onclick="window.closeBatchEditModal()">取消</button><button class="btn-primary" onclick="window.executeBatchEdit()">確定修改</button></div>
     </div>
 </div>
@@ -330,28 +299,25 @@
     const chartPalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#eab308'];
 
     let db, auth;
-    let globalAssets = [], globalRecords = [];
-    let options = { project: ['閒置', '無法使用'], location: [], capacity: ['64GB', '128GB'], task: ['換電池', '換位置', '收SD卡', '建檔巡檢'], participant: [] };
+    let globalAssets = [], globalOffices = [], globalMembers = [], globalMotoRecords = [];
     
-    // ✨ 排序與過濾系統全域變數
+    // ✨ 全域變數
     window.summaryCurrentPage = 1;
     window.summaryItemsPerPage = 50;
-    window.tableSort = { col: '_name', dir: 'asc' };
+    window.tableSort = { col: '_plate', dir: 'asc' };
     window.tableFilters = { summary: {} };
 
-    window.displayMode = { 'total': 'qty', 'idle': 'qty', 'active': 'qty' };
-    window.currentEditCamId = null;
+    window.displayMode = { 'total': 'qty', 'inhouse': 'qty', 'out': 'qty' };
+    window.pendingImports = []; 
+    window.currentEditAssetId = null;
     window.currentHistoryCamId = null;
-    window.currentRecordCamId = null;
-    let currentSelectedTags = { location: [], task: [], participant: [] };
 
     // 教學系統
     window.currentTutorialStep = 0;
     let tutorialTimer = null; 
     const tutorialData = [
-        { title: "1. 介紹相機總表", text: "提供三種狀態環形圖。下方表格會自動結合並顯示每台相機的「最新一次巡檢紀錄」。點擊表頭文字可排序，點擊「⋯」可多重篩選。", tab: "summary", targets: ['#tutorial-target-stats'] },
-        { title: "2. 新增與歷史紀錄", text: "點擊上方按鈕，或點選列表內的「機台名稱」，即可呼叫出 70% 放大的歷史時間軸，並且可以透過多選標籤快速發佈相機狀態！", tab: "summary", targets: ['#top-action-bar'] },
-        { title: "3. 匯入與匯出", text: "右下角「＋」可開啟專屬的檔案操作中心，支援直接匯入專屬 Excel 總表，自動建檔機台與初始巡檢紀錄！", tab: "summary", targets: ['#fab-container'] }
+        { title: "1. 介紹機車總表", text: "「總表」提供三種狀態環形圖。下方表格會自動運算每台機車的最新出借或維修狀態。點擊表頭文字可排序，點擊「⋯」可多重篩選，右下角「＋」可叫出匯入與匯出選單。", tab: "summary", targets: ['#tutorial-target-stats', '#fab-container'] },
+        { title: "2. 新增與歷史紀錄", text: "點擊上方「新增紀錄」或直接點擊列表內的「車牌號碼」，即可呼叫出該機車的專屬時間軸，並可快速登記借出或歸還！", tab: "summary", targets: ['#top-action-bar'] }
     ];
 
     const isRealEnvironment = window.location.hostname.length > 0 && !window.location.href.startsWith('blob:');
@@ -373,34 +339,40 @@
                 isAppInitialized = true;
                 fetchData(); 
                 initDragSelect();
+                
+                $('asset-is-external').addEventListener('change', (e) => {
+                    $('asset-original-unit-group').style.display = e.target.value === 'true' ? 'block' : 'none';
+                });
 
-                if(!localStorage.getItem('pmo_tutorial_timelapse_seen')) {
+                // ✨ 修復分頁載入白屏的記憶衝突問題 (改用專屬 Key)
+                const savedTab = localStorage.getItem('motorcycles_tab') || 'summary';
+                window.switchTab(savedTab);
+
+                if(!localStorage.getItem('pmo_tutorial_moto_seen')) {
                     setTimeout(() => window.startTutorial(), 1000);
-                    localStorage.setItem('pmo_tutorial_timelapse_seen', '1');
+                    localStorage.setItem('pmo_tutorial_moto_seen', '1');
                 }
             }
         });
     }
 
     function fetchData() {
-        onSnapshot(doc(db, "settings", "timelapse_options"), (s) => {
-            if (s.exists()) { options = { ...options, ...s.data() }; } else { setDoc(doc(db, "settings", "timelapse_options"), options); }
-        });
+        onSnapshot(collection(db, "offices"), (s) => { globalOffices = s.docs.map(d => ({ id: d.id, ...d.data() })); });
+        onSnapshot(collection(db, "members"), (s) => { globalMembers = s.docs.map(d => ({ id: d.id, ...d.data() })); });
 
-        // ✨ 重大修復：放寬過濾條件，包含「縮時」、「相機」、「攝影機」等關鍵字
         onSnapshot(collection(db, "assets"), (s) => { 
-            const validCats = ['縮時', '相機', '攝影機'];
+            const validCats = ['公務車', '公務機車', '機車', '汽車', '車輛', '車'];
             globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => {
                 if (!a.category) return false;
                 const cat = a.category.toLowerCase();
                 return validCats.some(v => cat.includes(v));
             }); 
-            window.renderSummary(); 
+            window.renderCurrentView(); 
         });
         
-        onSnapshot(collection(db, "timelapse_records"), (s) => { 
-            globalRecords = s.docs.map(d => ({ id: d.id, ...d.data() })); 
-            window.renderSummary(); 
+        onSnapshot(collection(db, "motorcycle_records"), (s) => { 
+            globalMotoRecords = s.docs.map(d => ({ id: d.id, ...d.data() })); 
+            window.renderCurrentView(); 
             if ($('history-modal-overlay').classList.contains('active') && window.currentHistoryCamId) {
                 window.renderHistoryModal(window.currentHistoryCamId);
             }
@@ -418,14 +390,16 @@
     }
 
     window.toggleAllCheckboxes = (className, el) => { $$('.' + className).forEach(cb => cb.checked = el.checked); window.updateFloatingBar(); };
+    window.toggleAllPreview = (el) => { $$('.cb-preview-row').forEach(cb => cb.checked = el.checked); };
     window.clearBatchSelection = () => { $$('.batch-checkbox').forEach(cb => cb.checked = false); window.updateFloatingBar(); };
 
     window.updateFloatingBar = () => {
         let sel = Array.from($$('.cb-summary-row:checked')).map(cb => cb.value);
         const bar = $('floating-batch-bar'); const countSpan = $('batch-sel-count');
         if (!bar || !countSpan) return;
-        if (sel.length > 0) { countSpan.innerText = `已選擇 ${sel.length} 項`; bar.classList.add('show'); } 
-        else { bar.classList.remove('show'); }
+        if (sel.length > 0) { 
+            countSpan.innerText = `已選擇 ${sel.length} 項`; bar.classList.add('show'); 
+        } else { bar.classList.remove('show'); }
     };
 
     function getSelectedIds() { return Array.from($$('.cb-summary-row:checked')).map(cb => cb.value); }
@@ -459,10 +433,10 @@
     window.outSvgDonut = (el, cid) => { el.setAttribute('stroke-width', '30'); const c = $(cid), v = $(cid+'-val'), l = $(cid+'-lbl'); if(v && c) { v.textContent = c.dataset.origVal; v.setAttribute('fill', 'var(--text-main)'); } if(l && c) l.textContent = c.dataset.origLbl; };
 
     // ======== ✨ 統一排序與過濾引擎 ========
-    const fmtTags = (val, bg, tc) => (!val || val.length === 0) ? '-' : (Array.isArray(val) ? val : [val]).map(v => `<span style="background:${bg}; color:${tc}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; margin:2px; display:inline-block;">${v}</span>`).join('');
-
     window.getSortIcon = (col) => {
-        if (window.tableSort.col === col) { return window.tableSort.dir === 'desc' ? '<span style="color:var(--danger); font-size:12px; margin-left:4px;">⬇</span>' : '<span style="color:var(--success); font-size:12px; margin-left:4px;">⬆</span>'; }
+        if (window.tableSort.col === col) {
+            return window.tableSort.dir === 'desc' ? '<span style="color:var(--danger); font-size:12px; margin-left:4px;">⬇</span>' : '<span style="color:var(--success); font-size:12px; margin-left:4px;">⬆</span>';
+        }
         return '';
     };
 
@@ -471,68 +445,67 @@
     window.handleSort = (col) => {
         if (window.tableSort.col === col) window.tableSort.dir = window.tableSort.dir === 'desc' ? 'asc' : 'desc';
         else { window.tableSort.col = col; window.tableSort.dir = 'asc'; }
-        window.summaryCurrentPage = 1; window.renderSummary();
+        window.summaryCurrentPage = 1; window.renderCurrentView();
     };
 
-    // ✨ 重大修復：嚴格依據「相機實體」收斂歷史紀錄，拒絕無限分身
-    window.getMappedCameraData = () => {
-        // 只以有註冊的實體機台為基準
+    // ✨ 核心邏輯：計算每台機車的即時動態狀態
+    window.getMappedMotoData = () => {
         return globalAssets.map(a => {
-            const aNameLower = String(a.item || '').trim().toLowerCase();
+            let isExt = a.isExternal === true || String(a.isExternal) === 'true';
+            let orgUnit = isExt ? (a.originalUnit || '外單位') : 'PMO';
             
-            // 過濾出屬於該相機的所有紀錄 (依據 ID 或 名稱 雙重比對)
-            let recs = globalRecords.filter(r => {
-                const rNameLower = String(r.cameraName || r.assetName || '').trim().toLowerCase();
-                return r.cameraId === a.id || r.assetId === a.id || rNameLower === aNameLower;
+            let recs = globalMotoRecords.filter(r => r.motorcycleId === a.id).sort((x,y) => String(x.date).localeCompare(String(y.date)));
+            
+            let currentUnit = orgUnit;
+            let latestReturn = '-';
+            let latestMaint = '-';
+            let isReturnedToOrg = false;
+
+            recs.forEach(r => {
+                if (r.type === 'borrow') {
+                    if ((r.unit || '').includes('修車') || (r.unit || '').includes('維修')) {
+                        currentUnit = '維修中';
+                        latestMaint = `${r.date} ${r.remarks ? '('+r.remarks+')' : ''}`;
+                        isReturnedToOrg = false;
+                    } else {
+                        currentUnit = r.unit || '未知';
+                        isReturnedToOrg = false;
+                    }
+                } else if (r.type === 'return') {
+                    if ((r.unit || '').includes('原單位') || r.unit === orgUnit) {
+                        currentUnit = orgUnit;
+                        latestReturn = r.date;
+                        isReturnedToOrg = true;
+                    } else {
+                        currentUnit = r.unit || 'PMO';
+                        latestReturn = r.date;
+                        isReturnedToOrg = false;
+                    }
+                }
             });
-            
-            // 透過 Firestore 文件 ID 去除重複
-            recs = Array.from(new Map(recs.map(r => [r.id, r])).values());
-            
-            // 由新到舊排序
-            recs.sort((x,y) => {
-                const dx = x.date || x.checkoutDate || x.createdAt || '';
-                const dy = y.date || y.checkoutDate || y.createdAt || '';
-                return String(dy).localeCompare(String(dx));
-            });
-            
-            let latest = recs[0] || {};
-            
-            const loc = latest.location ? latest.location : (latest.officeName ? [latest.officeName] : []);
-            const task = latest.task ? latest.task : (latest.type ? [latest.type] : []);
+
+            if (!isExt && currentUnit === 'PMO') isReturnedToOrg = false;
 
             return { 
                 ...a, 
-                _name: a.item || '未命名', 
-                _project: a.project || '閒置',
-                _locationStr: loc.join(', '),
-                _location: loc,
-                _power: latest.power || '無',
-                _battery: latest.battery || 0,
-                _taskStr: task.join(', '),
-                _task: task,
-                _date: latest.createdAt ? new Date(latest.createdAt).toLocaleString('zh-TW', {hour12:false}) : (latest.date || latest.checkoutDate || '-')
+                _plate: a.item || '未命名', 
+                _isExtStr: isExt ? '是' : '否', 
+                _currentUnit: currentUnit || '', 
+                _returnDate: latestReturn || '', 
+                _maintenance: latestMaint || '',
+                _isReturnedToOrg: isReturnedToOrg
             };
         });
     };
 
     window.openFilter = (e, tab, colKey, colName) => {
         e.stopPropagation();
-        let data = window.getMappedCameraData();
-        
-        let uniqueVals = [];
-        if (colKey === '_locationStr') {
-            const set = new Set(); data.forEach(d => d._location.forEach(x => set.add(x))); uniqueVals = [...set].sort();
-        } else if (colKey === '_taskStr') {
-            const set = new Set(); data.forEach(d => d._task.forEach(x => set.add(x))); uniqueVals = [...set].sort();
-        } else {
-            uniqueVals = [...new Set(data.map(d => String(d[colKey] !== undefined ? d[colKey] : '')))].sort();
-        }
-
+        let data = window.getMappedMotoData();
+        let uniqueVals = [...new Set(data.map(d => String(d[colKey] !== undefined ? d[colKey] : '')))].sort();
         let activeFilters = window.tableFilters[tab][colKey]; if (!activeFilters) activeFilters = uniqueVals;
 
         let html = `<div style="font-weight:bold; margin-bottom:5px; color:var(--primary); font-size:15px;">篩選：${colName}</div><div style="display:flex; gap:10px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed #cbd5e1;"><button class="btn-secondary" onclick="window.selectAllFilter(true)" style="padding:4px 8px; font-size:12px; flex:1;">全選</button><button class="btn-secondary" onclick="window.selectAllFilter(false)" style="padding:4px 8px; font-size:12px; flex:1;">全不選</button></div><div id="filter-cb-list">`;
-        uniqueVals.forEach(v => { let checked = activeFilters.includes(v) ? 'checked' : ''; let dispV = v === '' ? '(空白/無)' : v; html += `<label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; padding:4px 0; color:var(--text-main);"><input type="checkbox" class="col-filter-cb" value="${v}" ${checked} style="width:16px; height:16px; cursor:pointer;"> ${dispV}</label>`; });
+        uniqueVals.forEach(v => { let checked = activeFilters.includes(v) ? 'checked' : ''; let dispV = v === '' ? '(空白)' : v; html += `<label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; padding:4px 0; color:var(--text-main);"><input type="checkbox" class="col-filter-cb" value="${v}" ${checked} style="width:16px; height:16px; cursor:pointer;"> ${dispV}</label>`; });
         html += `</div><div style="display:flex; justify-content:space-between; margin-top:15px; border-top:1px solid #e2e8f0; padding-top:10px;"><button class="btn-danger" onclick="window.clearColFilter('${tab}', '${colKey}')" style="padding:6px 12px; font-size:12px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5;">清除條件</button><button class="btn-primary" onclick="window.applyColFilter('${tab}', '${colKey}')" style="padding:6px 16px; font-size:12px;">套用篩選</button></div>`;
         
         const panel = $('col-filter-panel'); panel.innerHTML = html; panel.style.display = 'flex';
@@ -540,69 +513,77 @@
     };
 
     window.selectAllFilter = (check) => { $$('.col-filter-cb').forEach(cb => cb.checked = check); };
-    window.clearColFilter = (tab, col) => { delete window.tableFilters[tab][col]; $('col-filter-panel').style.display='none'; window.summaryCurrentPage=1; window.renderSummary(); };
-    window.applyColFilter = (tab, col) => { let cbs = Array.from($$('.col-filter-cb:checked')).map(cb => cb.value); window.tableFilters[tab][col] = cbs; $('col-filter-panel').style.display='none'; window.summaryCurrentPage=1; window.renderSummary(); };
+    window.clearColFilter = (tab, col) => { delete window.tableFilters[tab][col]; $('col-filter-panel').style.display='none'; window.summaryCurrentPage=1; window.renderCurrentView(); };
+    window.applyColFilter = (tab, col) => { let cbs = Array.from($$('.col-filter-cb:checked')).map(cb => cb.value); window.tableFilters[tab][col] = cbs; $('col-filter-panel').style.display='none'; window.summaryCurrentPage=1; window.renderCurrentView(); };
+
+    // ======== 視圖切換與渲染 ========
+    window.switchTab = (tab) => { 
+        window.currentTab = tab; 
+        localStorage.setItem('motorcycles_tab', tab); 
+        $$('.tab-btn').forEach(b => b.classList.remove('active')); 
+        $(`tab-btn-${tab}`).classList.add('active'); 
+        $$('.view').forEach(v => v.classList.remove('active')); 
+        $(`view-${tab}`).classList.add('active'); 
+        window.clearBatchSelection(); 
+        window.renderCurrentView(); 
+    };
+    
+    window.renderCurrentView = () => { if (window.currentTab === 'summary') window.renderSummary(); };
 
     window.changeSummaryPage = (delta) => { window.summaryCurrentPage += delta; window.clearBatchSelection(); window.renderSummary(); };
 
     window.renderSummary = () => {
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
-        let allMapped = window.getMappedCameraData();
+        let allMapped = window.getMappedMotoData();
 
         // 統計計算
-        const totalCams = allMapped.length;
-        let idleCount = 0, activeCount = 0;
+        const totalMotos = allMapped.length;
+        let inhouseCount = 0, outCount = 0, maintCount = 0;
         allMapped.forEach(m => {
-            if (m._project === '閒置' || m._project === 'PMO') idleCount++;
-            else if (m._project !== '無法使用') activeCount++;
+            if (m._currentUnit === '維修中') maintCount++;
+            else if (m._currentUnit === 'PMO' || (m._isExtStr === '是' && m._currentUnit === m.originalUnit)) inhouseCount++;
+            else outCount++;
         });
 
-        const totalChart = [{ label: '正常編制', value: allMapped.filter(m=>m._project!=='無法使用').length }, { label: '封存/無法使用', value: allMapped.filter(m=>m._project==='無法使用').length, color: '#94a3b8' }];
-        const idleChart = [{ label: '在庫閒置', value: idleCount, color: '#10b981' }, { label: '其他', value: totalCams - idleCount, color: '#e2e8f0' }];
-        const activeChart = [{ label: '專案出借', value: activeCount, color: '#3b82f6' }, { label: '非使用中', value: totalCams - activeCount, color: '#e2e8f0' }];
+        const totalChart = [{ label: 'PMO自有', value: allMapped.filter(m=>m._isExtStr==='否').length }, { label: '外調車輛', value: allMapped.filter(m=>m._isExtStr==='是').length, color: '#f59e0b' }];
+        const inhouseChart = [{ label: '在庫', value: inhouseCount, color: '#10b981' }, { label: '非在庫', value: totalMotos - inhouseCount, color: '#e2e8f0' }];
+        const outChart = [{ label: '出借中', value: outCount, color: '#3b82f6' }, { label: '維修中', value: maintCount, color: '#ef4444' }];
 
-        drawSvgDonut('chart-total', totalChart, totalCams, '100%', '總台數', '所有相機', 'total');
-        drawSvgDonut('chart-idle', idleChart, idleCount, Math.round((idleCount/totalCams)*100)+'%', '在庫數', `佔總數 (${idleCount}/${totalCams})`, 'idle');
-        drawSvgDonut('chart-active', activeChart, activeCount, Math.round((activeCount/totalCams)*100)+'%', '出借數', `佔總數 (${activeCount}/${totalCams})`, 'active');
+        drawSvgDonut('chart-total', totalChart, totalMotos, '100%', '總台數', '所有車輛', 'total');
+        drawSvgDonut('chart-inhouse', inhouseChart, inhouseCount, Math.round((inhouseCount/totalMotos)*100)+'%', '在庫數', `佔總數 (${inhouseCount}/${totalMotos})`, 'inhouse');
+        drawSvgDonut('chart-out', outChart, outCount + maintCount, Math.round(((outCount+maintCount)/totalMotos)*100)+'%', '不在庫', `佔總數 (${outCount+maintCount}/${totalMotos})`, 'out');
 
         // 動態生成表頭
         const thead = $('summary-table-thead'); 
         thead.innerHTML = `<tr>
             <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-summary" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-summary-row', this)"></th>
-            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_name')">📷 機台名稱 ${window.getSortIcon('_name')}</span><span class="th-filter-btn ${window.isFiltered('summary','_name')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_name', '機台名稱')">⋯</span></div></th>
-            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_project')">🏷️ 專案狀態 ${window.getSortIcon('_project')}</span><span class="th-filter-btn ${window.isFiltered('summary','_project')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_project', '專案狀態')">⋯</span></div></th>
-            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_locationStr')">📍 最新地點 ${window.getSortIcon('_locationStr')}</span><span class="th-filter-btn ${window.isFiltered('summary','_locationStr')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_locationStr', '最新地點')">⋯</span></div></th>
-            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_power')">🔌 電源 ${window.getSortIcon('_power')}</span><span class="th-filter-btn ${window.isFiltered('summary','_power')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_power', '電源')">⋯</span></div></th>
-            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_taskStr')">🔧 最新工項 ${window.getSortIcon('_taskStr')}</span><span class="th-filter-btn ${window.isFiltered('summary','_taskStr')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_taskStr', '最新工項')">⋯</span></div></th>
-            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_date')">📅 紀錄時間 ${window.getSortIcon('_date')}</span><span class="th-filter-btn ${window.isFiltered('summary','_date')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_date', '紀錄時間')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_plate')">🛵 車號 ${window.getSortIcon('_plate')}</span><span class="th-filter-btn ${window.isFiltered('summary','_plate')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_plate', '車號')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_isExtStr')">🔄 外調車輛 ${window.getSortIcon('_isExtStr')}</span><span class="th-filter-btn ${window.isFiltered('summary','_isExtStr')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_isExtStr', '外調車輛')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_currentUnit')">🏢 使用單位/狀態 ${window.getSortIcon('_currentUnit')}</span><span class="th-filter-btn ${window.isFiltered('summary','_currentUnit')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_currentUnit', '使用單位/狀態')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_returnDate')">📅 最新歸還日期 ${window.getSortIcon('_returnDate')}</span><span class="th-filter-btn ${window.isFiltered('summary','_returnDate')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_returnDate', '歸還日期')">⋯</span></div></th>
+            <th><div class="th-content"><span class="th-sort" onclick="window.handleSort('_maintenance')">🔧 維修紀錄 ${window.getSortIcon('_maintenance')}</span><span class="th-filter-btn ${window.isFiltered('summary','_maintenance')?'active-filter':''}" onclick="window.openFilter(event, 'summary', '_maintenance', '維修紀錄')">⋯</span></div></th>
         </tr>`;
 
         const tb = $('summary-table-tbody'); if($('cb-select-all-summary')) $('cb-select-all-summary').checked = false;
 
         let allFiltered = allMapped.filter(a => {
-            const matchKw = (a._name).toLowerCase().includes(keyword) || (a._project).toLowerCase().includes(keyword) || (a._locationStr).toLowerCase().includes(keyword) || (a._taskStr).toLowerCase().includes(keyword);
+            const matchKw = (a._plate).toLowerCase().includes(keyword) || (a._currentUnit).toLowerCase().includes(keyword) || (a._maintenance).toLowerCase().includes(keyword);
             if (!matchKw) return false;
 
             let passFilter = true;
             Object.keys(window.tableFilters.summary).forEach(colKey => {
                 let checkedVals = window.tableFilters.summary[colKey];
                 if (checkedVals && checkedVals.length > 0) {
-                    if (colKey === '_locationStr') {
-                        if (!a._location.some(v => checkedVals.includes(v)) && !(checkedVals.includes('') && a._location.length === 0)) passFilter = false;
-                    } else if (colKey === '_taskStr') {
-                        if (!a._task.some(v => checkedVals.includes(v)) && !(checkedVals.includes('') && a._task.length === 0)) passFilter = false;
-                    } else {
-                        if (!checkedVals.includes(String(a[colKey] !== undefined ? a[colKey] : ''))) passFilter = false;
-                    }
+                    if (!checkedVals.includes(String(a[colKey] !== undefined ? a[colKey] : ''))) passFilter = false;
                 } else if (window.tableFilters.summary[colKey] !== undefined) passFilter = false; 
             });
             return passFilter;
         });
 
-        // 統一排序 (無法使用者置底)
+        // 統一排序 (歸還原單位者強制置底)
         allFiltered.sort((a, b) => {
-            if (a._project === '無法使用' && b._project !== '無法使用') return 1;
-            if (a._project !== '無法使用' && b._project === '無法使用') return -1;
+            if (a._isReturnedToOrg && !b._isReturnedToOrg) return 1;
+            if (!a._isReturnedToOrg && b._isReturnedToOrg) return -1;
 
             let col = window.tableSort.col; let dir = window.tableSort.dir;
             let va = a[col] !== undefined ? a[col] : ''; let vb = b[col] !== undefined ? b[col] : '';
@@ -619,22 +600,21 @@
 
         let htmlStr = '';
         pageData.forEach(a => {
-            const isArchived = a._project === '無法使用';
-            const rowClass = isArchived ? 'archived-row' : '';
-            const pBadge = a._power === '開' ? '<span class="badge power-on">開</span>' : a._power === '關' ? '<span class="badge power-off">關</span>' : '-';
+            const isExt = a._isExtStr === '是';
+            const rowClass = isExt ? 'row-external' : '';
+            const unitColor = a._currentUnit === '維修中' ? 'var(--danger)' : 'var(--text-main)';
             
             htmlStr += `<tr class="${rowClass}">
                 <td style="text-align:center;"><input type="checkbox" class="cb-summary-row batch-checkbox" value="${a.id}" onchange="window.updateFloatingBar()"></td>
-                <td><a href="#" onclick="event.preventDefault(); window.openHistoryModal('${a.id}')" style="font-size:16px; font-weight:bold; color:var(--primary); text-decoration:none;">${a._name}</a></td>
-                <td><span class="badge tag">${a._project}</span></td>
-                <td>${fmtTags(a._location, '#e0e7ff', '#4f46e5')}</td>
-                <td>${pBadge} <span style="font-size:12px; font-weight:bold; margin-left:5px;">${a._battery ? a._battery+'%' : ''}</span></td>
-                <td>${fmtTags(a._task, '#fef08a', '#854d0e')}</td>
-                <td style="font-size:12px; color:var(--text-muted);">${a._date}</td>
+                <td><a href="#" onclick="event.preventDefault(); window.openHistoryModal('${a.id}')" style="font-size:16px; font-weight:bold; color:var(--primary); text-decoration:none;">${a._plate}</a></td>
+                <td style="font-weight:bold; color:${isExt?'#991b1b':'var(--text-muted)'};">${a._isExtStr} ${isExt ? `(${a.originalUnit||'外單位'})` : ''}</td>
+                <td><span style="font-weight:bold; color:${unitColor};">${a._currentUnit}</span></td>
+                <td style="font-family:monospace; color:var(--text-muted);">${a._returnDate}</td>
+                <td style="font-size:12px; color:var(--text-muted); max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a._maintenance}</td>
             </tr>`;
         });
         
-        if (allFiltered.length === 0) htmlStr = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的相機。若您剛匯入資料，請確認資產表有建檔對應的機台名稱。</td></tr>';
+        if (allFiltered.length === 0) htmlStr = '<tr><td colspan="6" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的機車。</td></tr>';
         tb.innerHTML = htmlStr;
 
         let pageHtml = `<button class="btn-secondary" onclick="window.changeSummaryPage(-1)" ${window.summaryCurrentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>◀ 上一頁</button><span style="font-weight:bold; color:var(--text-main); font-size:14px;">第 ${window.summaryCurrentPage} / ${totalPages} 頁 (共 ${totalItems} 項)</span><button class="btn-secondary" onclick="window.changeSummaryPage(1)" ${window.summaryCurrentPage === totalPages || totalPages === 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>下一頁 ▶</button>`;
@@ -642,7 +622,7 @@
         window.updateFloatingBar();
     };
 
-    // ======== ✨ 歷史紀錄大彈窗 ========
+    // ======== ✨ 歷史紀錄彈窗 ========
     window.openHistoryModal = (camId) => {
         window.currentHistoryCamId = camId;
         window.renderHistoryModal(camId);
@@ -651,385 +631,343 @@
     window.closeHistoryModal = () => $('history-modal-overlay').classList.remove('active');
 
     window.renderHistoryModal = (camId) => {
-        const a = window.getMappedCameraData().find(x => x.id === camId); if(!a) return;
-        $('history-modal-title').innerText = `📷 歷程：${a._name}`;
+        const a = globalAssets.find(x => x.id === camId); if(!a) return;
+        $('history-modal-title').innerText = `🛵 歷程：${a.item}`;
         
         const tl = $('history-timeline'); tl.innerHTML = '';
-        
-        const aNameLower = String(a._name).toLowerCase();
-        let recs = globalRecords.filter(r => {
-            const rNameLower = String(r.cameraName || r.assetName || '').trim().toLowerCase();
-            return r.cameraId === camId || r.assetId === camId || rNameLower === aNameLower;
-        });
-        recs = Array.from(new Map(recs.map(r => [r.id, r])).values());
-        recs.sort((x,y) => String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
+        const recs = globalMotoRecords.filter(r => r.motorcycleId === camId).sort((x,y) => String(y.date).localeCompare(String(x.date))); // 新到舊
         
         if (recs.length === 0) {
-            tl.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">尚無任何巡檢紀錄</div>';
+            tl.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">尚無任何出借或歸還紀錄</div>';
             return;
         }
 
         recs.forEach(r => {
-            const pwr = r.power || '無';
-            const pBadge = pwr === '開' ? '🟢 開機' : pwr === '關' ? '🔴 關機' : '⚪ 無';
-            
-            const loc = r.location ? r.location : (r.officeName ? [r.officeName] : []);
-            const task = r.task ? r.task : (r.type ? [r.type] : []);
+            const isRepair = r.unit.includes('修車') || r.unit.includes('維修');
+            const clz = r.type === 'return' ? 'history-item return' : isRepair ? 'history-item repair' : 'history-item';
+            const icon = r.type === 'return' ? '📥 歸還自' : isRepair ? '🔧 送修至' : '📤 出借至';
             
             tl.innerHTML += `
-                <div class="history-item">
+                <div class="${clz}">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span style="font-weight:bold; color:var(--text-main);">📍 ${fmtTags(loc, '#e0e7ff', '#4f46e5')}</span>
-                        <button class="btn-danger" style="padding:2px 6px; font-size:10px; background:none; color:var(--danger); border:none;" onclick="window.deleteSingleRecord('${r.id}', event)">刪除紀錄</button>
+                        <span style="font-weight:bold; font-size:16px; color:var(--text-main);">${icon} ${r.unit}</span>
+                        <button class="btn-danger" style="padding:4px 8px; font-size:12px; background:none; color:var(--danger); border:none;" onclick="window.deleteMotoRecord('${r.id}')">刪除紀錄</button>
                     </div>
-                    <div style="font-size:14px; margin-bottom:10px;">⚡ ${pBadge} (${r.battery||0}%) | 🔧 ${fmtTags(task, '#fef08a', '#854d0e')}</div>
-                    <div style="font-family:monospace; font-size:12px; color:var(--text-muted); margin-bottom:5px;">${new Date(r.createdAt || r.date || r.checkoutDate).toLocaleString('zh-TW', {hour12:false})} | 👤 ${fmtTags(r.participants || (r.borrower ? [r.borrower] : []), '#f8fafc', '#475569')}</div>
+                    <div style="font-family:monospace; font-size:13px; color:var(--text-muted); margin-bottom:5px;">${r.date}</div>
                     ${r.remarks ? `<div style="font-size:13px; background:white; padding:8px; border-radius:6px; border:1px dashed #cbd5e1; line-height:1.5;">${r.remarks}</div>` : ''}
                 </div>
             `;
         });
     };
 
-    window.deleteSingleRecord = async (rId, e) => {
-        if(e) e.stopPropagation(); if(!confirm('確定刪除此紀錄？')) return;
-        await deleteDoc(doc(db, "timelapse_records", rId));
+    window.deleteMotoRecord = async (rId) => {
+        if(!confirm('確定刪除此筆歷史紀錄？')) return;
+        await deleteDoc(doc(db, "motorcycle_records", rId));
     };
 
-    // ======== ✨ 自訂下拉選單與多選 Tag 邏輯 ========
-    window.toggleDropdown = (t, e) => { 
-        if(e) e.stopPropagation(); $$('.custom-dropdown-panel').forEach(p => { if(p.id !== `${t}-panel`) p.classList.remove('active'); }); $(`${t}-panel`).classList.toggle('active'); 
-        if($(`${t}-panel`).classList.contains('active')) { window.renderOptionsList(t.replace('opt-', '')); const i = $(`${t}-input`); if(i) i.focus(); } 
-    };
-
-    window.renderMultiSelectTags = (k) => { 
-        const c = $(`multi-tags-${k}`); if(!c) return; 
-        if (currentSelectedTags[k].length === 0) { c.innerHTML = `<span style="color:var(--text-muted); font-size:14px;">選擇...</span>`; } 
-        else { 
-            let bg = k==='location'?'#e0e7ff' : k==='task'?'#fef08a' : '#f8fafc';
-            let tc = k==='location'?'#4f46e5' : k==='task'?'#854d0e' : '#475569';
-            c.innerHTML = currentSelectedTags[k].map(v => `<span class="multi-tag-item" style="background:${bg}; color:${tc};">${v} <span class="tag-remove-btn" onclick="event.stopPropagation(); window.removeMultiSelectTag('${k}', '${v}')">×</span></span>`).join(''); 
+    // ======== ✨ 出借/歸還紀錄表單 ========
+    window.switchRecordType = (type) => {
+        $('record-type').value = type;
+        const btnB = $('btn-type-borrow'); const btnR = $('btn-type-return');
+        if (type === 'borrow') {
+            btnB.style.background = 'var(--danger)'; btnB.style.color = 'white';
+            btnR.style.background = 'white'; btnR.style.color = 'var(--text-main)';
+            $('group-target-unit').querySelector('label').innerText = '3. 目標單位 / 修車廠';
+        } else {
+            btnB.style.background = 'white'; btnB.style.color = 'var(--text-main)';
+            btnR.style.background = 'var(--success)'; btnR.style.color = 'white';
+            $('group-target-unit').querySelector('label').innerText = '3. 歸還單位 (預設為PMO或原單位)';
         }
     };
 
-    window.removeMultiSelectTag = (k, v) => { currentSelectedTags[k] = currentSelectedTags[k].filter(x => x !== v); window.renderMultiSelectTags(k); };
-
-    window.renderOptionsList = (k) => {
-        const iv = $(`opt-${k}-input`).value.toLowerCase(); const ld = $(`opt-${k}-list`); ld.innerHTML = '';
-        (options[k] || []).filter(v => v.toLowerCase().includes(iv)).forEach(val => {
-            const d = document.createElement('div'); d.className = 'dropdown-item'; d.innerHTML = `<span style="flex:1;">${val}</span><button class="dropdown-item-delete" onclick="event.stopPropagation(); window.delOption('${k}', '${val}')">×</button>`;
-            d.querySelector('span').onclick = (e) => { 
-                if (k === 'location' || k === 'task' || k === 'participant') { 
-                    e.stopPropagation(); if (!currentSelectedTags[k].includes(val)) { currentSelectedTags[k].push(val); window.renderMultiSelectTags(k); } 
-                } else { $(`disp-opt-${k}`).innerText = val; $(`opt-${k}-panel`).classList.remove('active'); } 
-            }; ld.appendChild(d);
-        });
-    }
-
-    window.addOption = async (k, e) => {
-        if(e) e.stopPropagation(); const val = $(`opt-${k}-input`).value.trim(); if(!val) return; if(!options[k]) options[k] = []; if(options[k].includes(val)) return alert('選項已存在');
-        options[k].push(val); await setDoc(doc(db, "settings", "timelapse_options"), options);
-        if (k === 'location' || k === 'task' || k === 'participant') { if (!currentSelectedTags[k].includes(val)) currentSelectedTags[k].push(val); window.renderMultiSelectTags(k); $(`opt-${k}-input`).value = ''; window.renderOptionsList(k); } 
-        else { $(`disp-opt-${k}`).innerText = val; $(`opt-${k}-panel`).classList.remove('active'); }
-    };
-    window.delOption = async (k, val) => { 
-        if(!confirm(`刪除 ${val}？`)) return; options[k] = options[k].filter(v => v !== val); await setDoc(doc(db, "settings", "timelapse_options"), options); 
-        if (k === 'location' || k === 'task' || k === 'participant') { currentSelectedTags[k] = currentSelectedTags[k].filter(v => v !== val); window.renderMultiSelectTags(k); } window.renderOptionsList(k); 
-    };
-
-    // ======== 巡檢表單 ========
-    window.openRecordModal = (id = null) => {
-        window.currentRecordCamId = id; 
-        const sel = $('record-asset-id'); sel.innerHTML = '';
-        
-        let selectionAssets = globalAssets.filter(a => {
-            if (!a.category) return false;
-            const cat = a.category.toLowerCase();
-            return ['縮時', '相機', '攝影機'].some(v => cat.includes(v));
-        });
-        
-        selectionAssets.sort((a,b) => String(a.item||'').localeCompare(String(b.item||''))).forEach(a => {
-            sel.innerHTML += `<option value="${a.id}">${a.item} (${a.project||'閒置'})</option>`;
-        });
-        
-        if (id && typeof id === 'string') sel.value = id;
-        
-        currentSelectedTags.location = []; currentSelectedTags.task = []; currentSelectedTags.participant = [currentUserProfile.name]; 
-        window.renderMultiSelectTags('location'); window.renderMultiSelectTags('task'); window.renderMultiSelectTags('participant');
-        
-        $('rec-battery').value = ''; $('disp-opt-capacity').innerText = '64GB'; $('rec-power').value = '開'; $('rec-remarks').value = '';
-        const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        $('rec-date').value = now.toISOString().slice(0,10);
-
-        ['location', 'capacity', 'task', 'participant'].forEach(k => { if($(`opt-${k}-input`)) $(`opt-${k}-input`).value = ''; });
+    window.openRecordModal = (presetCamId = null, presetType = 'borrow') => {
         $('record-modal-overlay').classList.add('active');
+        window.switchRecordType(presetType);
+        
+        const sel = $('record-asset-id'); sel.innerHTML = '';
+        globalAssets.sort((a,b) => String(a.item).localeCompare(String(b.item))).forEach(a => {
+            sel.innerHTML += `<option value="${a.id}">${a.item} ${a.isExternal === 'true' || a.isExternal === true ? '(外調)' : ''}</option>`;
+        });
+        
+        if (presetCamId && typeof presetCamId === 'string') sel.value = presetCamId;
+        
+        const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        $('record-date').value = now.toISOString().slice(0,10); 
+        $('record-unit').value = ''; 
+        $('record-remarks').value = '';
+        
+        sel.onchange = () => {
+            if ($('record-type').value === 'return') {
+                const a = globalAssets.find(x => x.id === sel.value);
+                if (a) $('record-unit').value = (a.isExternal === 'true' || a.isExternal === true) ? (a.originalUnit || '原單位') : 'PMO';
+            }
+        };
+        sel.onchange();
     };
     window.closeRecordModal = () => $('record-modal-overlay').classList.remove('active');
-    
+
     window.saveRecord = async () => {
-        const cId = $('record-asset-id').value; if (!cId) return alert('請選擇相機！');
-        if(currentSelectedTags.location.length === 0) return alert('請選擇或新增至少一個地點！');
-        
-        const c = globalAssets.find(x => x.id === cId); if (!c) return alert('相機不存在！');
+        const cId = $('record-asset-id').value;
+        const rType = $('record-type').value;
+        const u = $('record-unit').value.trim() || (rType === 'return' ? 'PMO' : '未知單位');
+        const d = $('record-date').value;
+        const rem = $('record-remarks').value.trim();
+
+        if (!cId || !d) return alert('車輛與日期為必填！');
 
         const btn = document.querySelector('#record-modal-overlay .btn-primary'); 
-        btn.disabled = true; btn.innerText = '發佈中...';
-        
+        btn.disabled = true; btn.innerText = '儲存中...';
         try {
-            const dVal = $('rec-date').value;
-            const cDate = dVal ? new Date(dVal).toISOString() : new Date().toISOString();
-
-            await addDoc(collection(db, "timelapse_records"), { 
-                cameraId: c.id, cameraName: c.item, project: c.project || '閒置', location: currentSelectedTags.location, 
-                battery: $('rec-battery').value, capacity: $('disp-opt-capacity').innerText, power: $('rec-power').value, 
-                task: currentSelectedTags.task, remarks: $('rec-remarks').value, participants: currentSelectedTags.participant,
-                createdAt: cDate, likes: [], creatorName: currentUserProfile.name, creatorEmail: currentUserProfile.email, creatorAvatar: currentUserProfile.avatar 
-            }); 
+            await addDoc(collection(db, "motorcycle_records"), {
+                motorcycleId: cId,
+                type: rType,
+                unit: u,
+                date: d,
+                remarks: rem,
+                createdAt: new Date().toISOString(),
+                creatorEmail: currentUserProfile.email
+            });
+            alert('紀錄新增成功！');
             window.closeRecordModal();
-        } catch(e) { alert('發佈失敗：' + e.message); } finally { btn.disabled = false; btn.innerText = '發佈紀錄'; }
+        } catch(e) { alert('儲存失敗：' + e.message); } finally { btn.disabled = false; btn.innerText = '儲存紀錄'; }
     };
 
-    // ======== 相機實體表單 ========
-    window.openCameraModal = (id = null) => {
-        window.currentEditCamId = id; $('opt-project-input').value = '';
-        if (id && typeof id === 'string') { 
-            $('camera-modal-title').innerText = '📦 編輯相機'; 
-            const c = globalAssets.find(x => x.id === id); 
-            if(c) {
-                $('disp-opt-project').innerText = c.project || '閒置'; $('cam-name').value = c.item || ''; $('cam-brand').value = c.brand || ''; $('cam-model').value = c.model || ''; $('cam-sn').value = c.sn || ''; $('cam-date').value = c.purchase_date || ''; 
+    // ======== ✨ 主系統操作 (批次與資產) ========
+    window.openAssetModal = (id = null) => {
+        if (typeof id !== 'string') id = null;
+        window.currentEditAssetId = id; 
+        if (id) { 
+            $('asset-modal-title').innerText = '📦 編輯機車檔案'; 
+            const a = globalAssets.find(x => x.id === id); 
+            if(a) {
+                $('asset-item').value = a.item || '';
+                $('asset-is-external').value = (a.isExternal === true || String(a.isExternal) === 'true') ? 'true' : 'false';
+                $('asset-original-unit-group').style.display = $('asset-is-external').value === 'true' ? 'block' : 'none';
+                $('asset-original-unit').value = a.originalUnit || '';
+                $('asset-remarks').value = a.remarks || '';
             }
         } else { 
-            $('camera-modal-title').innerText = '➕ 新增相機'; 
-            $('disp-opt-project').innerText = '閒置'; $('cam-name').value = ''; ['cam-brand', 'cam-model', 'cam-sn', 'cam-date'].forEach(k => $(k).value = ''); 
+            $('asset-modal-title').innerText = '➕ 新增機車檔案'; 
+            $('asset-item').value = '';
+            $('asset-is-external').value = 'false';
+            $('asset-original-unit-group').style.display = 'none';
+            $('asset-original-unit').value = '';
+            $('asset-remarks').value = '';
         }
-        $('camera-modal-overlay').classList.add('active');
+        $('asset-modal-overlay').classList.add('active');
     };
-    window.closeCameraModal = () => $('camera-modal-overlay').classList.remove('active');
+    window.closeAssetModal = () => $('asset-modal-overlay').classList.remove('active');
     
-    window.saveCamera = async () => {
-        const n = $('cam-name').value.trim(); if(!n) return alert('機台名稱必填！');
-        const dt = { type: 'public', category: '縮時相機', assetType: 'fixed', office_id: 'TIMELAPSE_GLOBAL', item: n, project: $('disp-opt-project').innerText, brand: $('cam-brand').value, model: $('cam-model').value, sn: $('cam-sn').value, purchase_date: $('cam-date').value };
-        if(window.currentEditCamId) await setDoc(doc(db, "assets", window.currentEditCamId), dt, {merge:true}); else { dt.createdAt = new Date().toISOString(); await addDoc(collection(db, "assets"), dt); } window.closeCameraModal(); window.clearBatchSelection();
+    window.saveAssetData = async () => {
+        const item = $('asset-item').value.trim(); if(!item) return alert('車牌號碼為必填！');
+        const isExt = $('asset-is-external').value === 'true';
+        const orgUnit = isExt ? $('asset-original-unit').value.trim() : 'PMO';
+        
+        let data = { 
+            type: 'public', category: '公務機車', assetType: 'fixed', item: item, 
+            isExternal: isExt, originalUnit: orgUnit, remarks: $('asset-remarks').value.trim()
+        };
+        try { 
+            if(window.currentEditAssetId) await updateDoc(doc(db, "assets", window.currentEditAssetId), data); 
+            else {
+                data.createdAt = new Date().toISOString();
+                await addDoc(collection(db, "assets"), data); 
+            }
+            window.closeAssetModal(); window.clearBatchSelection(); 
+        } catch(e) { alert('儲存失敗：'+e.message); }
     };
 
-    window.openBatchEditModal = () => { $('batch-edit-proj').value = ''; $('batch-edit-modal-overlay').classList.add('active'); };
+    window.openBatchEditModal = () => { $('batch-edit-modal-overlay').classList.add('active'); $('batch-edit-external').value = ''; $('batch-edit-org').value = ''; };
     window.closeBatchEditModal = () => $('batch-edit-modal-overlay').classList.remove('active');
     window.executeBatchEdit = async () => {
-        const selIds = getSelectedIds(); const p = $('batch-edit-proj').value.trim(); if (!p) return alert('未填寫專案名稱！');
-        try { 
-            if(selIds.length > 0) {
-                await Promise.all(selIds.map(id => updateDoc(doc(db, "assets", id), { project: p }))); 
-                alert(`🎉 成功更新 ${selIds.length} 台相機狀態！`); 
-            }
-            window.closeBatchEditModal(); window.clearBatchSelection(); 
-        } catch (e) { alert('錯誤：' + e.message); }
+        const selIds = getSelectedIds(); let payload = {};
+        const ext = $('batch-edit-external').value; if (ext !== '') payload.isExternal = (ext === 'true');
+        const org = $('batch-edit-org').value.trim(); if (org) payload.originalUnit = org;
+        
+        if (Object.keys(payload).length === 0) return alert('未填寫修改內容！');
+        try { await Promise.all(selIds.map(id => updateDoc(doc(db, "assets", id), payload))); alert(`🎉 成功更新 ${selIds.length} 輛機車！`); window.closeBatchEditModal(); window.clearBatchSelection(); } catch (e) { alert('錯誤：' + e.message); }
     };
 
     window.batchDeleteAssets = async () => {
-        const selIds = getSelectedIds(); if(!confirm(`⚠️ 確定徹底刪除這 ${selIds.length} 台相機與所有關聯巡檢紀錄？(無法復原)`)) return;
+        const selIds = getSelectedIds(); if(!confirm(`⚠️ 確定徹底刪除這 ${selIds.length} 輛機車與其歷史紀錄？(無法復原)`)) return;
         try { 
-            const ops = [];
-            selIds.forEach(id => ops.push(deleteDoc(doc(db, "assets", id))));
-            
-            selIds.forEach(id => { 
-                const a = window.getMappedCameraData().find(x => x.id === id);
-                if (a) {
-                    const aNameLower = String(a.item || '').trim().toLowerCase();
-                    globalRecords.filter(r => {
-                        const rNameLower = String(r.cameraName || r.assetName || '').trim().toLowerCase();
-                        return r.cameraId === id || r.assetId === id || rNameLower === aNameLower;
-                    }).forEach(r => ops.push(deleteDoc(doc(db, "timelapse_records", r.id))));
-                }
+            const ops = selIds.map(id => deleteDoc(doc(db, "assets", id)));
+            selIds.forEach(id => {
+                globalMotoRecords.filter(r => r.motorcycleId === id).forEach(r => ops.push(deleteDoc(doc(db, "motorcycle_records", r.id))));
             });
             await Promise.all(ops); alert(`🎉 已刪除！`); window.clearBatchSelection(); 
         } catch(e) { alert('刪除發生錯誤：' + e.message); }
     };
 
-    // ======== ✨ 專屬 Excel 智慧匯入引擎 ========
-    window.handleExcelUpload = async (e) => {
+    // ======== ✨ 匯入預覽系統 ========
+    window.toggleSubmenu = (id, e) => { e.stopPropagation(); $$('.fab-submenu').forEach(s => { if(s.id!==id) s.classList.remove('open'); }); $(id).classList.toggle('open'); };
+
+    window.handlePreviewImport = async (e) => {
         const file = e.target.files[0]; if (!file) return; e.target.value = '';
-        const loader = $('loading-msg'); loader.innerHTML = '⏳ 正在解析並建檔相機資料...'; loader.style.display = 'block';
+        const loader = $('loading-msg'); loader.innerHTML = '⏳ 正在解析表格...'; loader.style.display = 'block';
         
+        const fileExt = file.name.split('.').pop().toLowerCase();
         const reader = new FileReader();
-        reader.onload = async (evt) => {
-            try {
-                const data = new Uint8Array(evt.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const targetSheet = workbook.SheetNames[0]; // 預設讀取第一個工作表
-                const j = XLSX.utils.sheet_to_json(workbook.Sheets[targetSheet], { header: 1 });
-                
-                let hi = j.findIndex(row => Array.isArray(row) && row.includes('編號') && row.includes('品牌')); 
-                if (hi === -1) hi = 0; 
-                
-                const h = j[hi], rows = j.slice(hi + 1), ops = []; 
-                let uc = 0, ac = 0;
-                let newLocations = new Set(options.location || []), newProjects = new Set(options.project || []);
 
-                for (const row of rows) {
-                    if (!row || row.length === 0) continue;
-                    const rd = {}; h.forEach((hk, i) => { if(hk) rd[hk.trim()] = row[i]; });
-                    const cn = rd['編號'] ? String(rd['編號']).trim() : ''; 
-                    if (!cn || cn.toLowerCase() === 'undefined') continue;
-
-                    const proj = rd['現使用專案'] || '閒置';
-                    newProjects.add(proj);
-
-                    const dt = { 
-                        type: 'public', category: '縮時攝影機', assetType: 'fixed', office_id: 'TIMELAPSE_GLOBAL', 
-                        item: cn, project: proj, brand: rd['品牌'] || 'N/A', model: rd['型號'] || 'N/A', 
-                        sn: String(rd['資產編號'] || 'N/A'), purchase_date: String(rd['移入(PMO)日期'] || ''),
-                        remarks: String(rd['備註'] || '')
-                    };
-                    
-                    const validCats = ['縮時', '相機', '攝影機'];
-                    const ex = globalAssets.find(c => {
-                        if (!c.category || !validCats.some(v => c.category.toLowerCase().includes(v))) return false;
-                        return String(c.item).trim().toLowerCase() === cn.toLowerCase();
-                    });
-
-                    let targetCamId = '';
-                    if (ex) { 
-                        targetCamId = ex.id;
-                        ops.push(updateDoc(doc(db, "assets", ex.id), dt)); 
-                        uc++; 
-                    } else { 
-                        const newDocRef = doc(collection(db, "assets"));
-                        targetCamId = newDocRef.id;
-                        dt.createdAt = new Date().toISOString();
-                        ops.push(setDoc(newDocRef, dt)); 
-                        ac++; 
-                    }
-
-                    // ✨ 自動產生第一筆建檔歷史紀錄，讓相機立刻有地點狀態
-                    let locs = [];
-                    if (rd['地點']) locs.push(String(rd['地點']).trim());
-                    if (rd['樓層']) locs.push(String(rd['樓層']).trim());
-                    if (rd['位置']) locs.push(String(rd['位置']).trim());
-                    locs = locs.filter(Boolean);
-                    locs.forEach(l => newLocations.add(l));
-
-                    const existingInit = globalRecords.find(r => r.cameraId === targetCamId && r.remarks === '由 Excel 總表匯入建檔');
-                    if (!existingInit && locs.length > 0) {
-                         ops.push(addDoc(collection(db, "timelapse_records"), {
-                            cameraId: targetCamId, cameraName: cn, project: proj, location: locs,
-                            battery: '', capacity: '64GB', power: '關', task: ['建檔巡檢'],
-                            remarks: '由 Excel 總表匯入建檔', participants: [currentUserProfile.name],
-                            createdAt: new Date().toISOString(), likes: [], creatorName: currentUserProfile.name,
-                            creatorEmail: currentUserProfile.email, creatorAvatar: currentUserProfile.avatar
-                        }));
-                    }
-                }
-                
-                options.location = Array.from(newLocations);
-                options.project = Array.from(newProjects);
-                ops.push(setDoc(doc(db, "settings", "timelapse_options"), options));
-
-                if (ops.length > 0) { 
-                    await Promise.all(ops); 
-                    alert(`🎉 匯入完成！\n新增建檔 ${ac} 台相機，更新 ${uc} 台`); 
-                } else alert('沒有匯入任何資料。');
-            } catch(err) { alert('匯入失敗：' + err.message); } finally { loader.style.display = 'none'; }
-        }; 
-        reader.readAsArrayBuffer(file);
-        $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); $('import-submenu').classList.remove('open');
-    };
-
-    window.handleCSVUpload = async (e) => {
-        const file = e.target.files[0]; if (!file) return; e.target.value = '';
-        const loader = $('loading-msg'); loader.innerHTML = '⏳ 正在為您解析 Notion CSV 資料...'; loader.style.display = 'block';
-
-        const getVal = (row, possibleKeys) => {
-            for (let pk of possibleKeys) { for (let k of Object.keys(row)) { if (k.trim().toLowerCase() === pk.toLowerCase()) return row[k]; } }
-            for (let pk of possibleKeys) { for (let k of Object.keys(row)) { if (k.toLowerCase().includes(pk.toLowerCase())) return row[k]; } }
-            return '';
+        const getVal = (r, possibleKeys) => { 
+            for (let pk of possibleKeys) { 
+                const foundKey = Object.keys(r).find(k => String(k).toLowerCase().includes(pk.toLowerCase())); 
+                if (foundKey && r[foundKey] !== undefined && r[foundKey] !== '') return String(r[foundKey]).trim(); 
+            } 
+            return ''; 
         };
 
-        const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
-                const data = new Uint8Array(evt.target.result);
-                let text = new TextDecoder('utf-8').decode(data);
-                if (text.includes('\uFFFD')) text = new TextDecoder('big5').decode(data);
-                const workbook = XLSX.read(text, { type: 'string' });
-                const j = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
-                
-                const ops = []; let ac = 0;
-                let newLocations = new Set(options.location || []), newTasks = new Set(options.task || []), newParticipants = new Set(options.participant || []);
-
-                for (const row of j) {
-                    const rawCamName = getVal(row, ['機台名稱', 'name']);
-                    if (!rawCamName) continue;
-                    const camName = String(rawCamName).replace(/縮時/g, '').trim();
-                    if (!camName) continue;
-
-                    const locs = String(getVal(row, ['地點', 'location'])).split(',').map(s => s.trim()).filter(s => s);
-                    const tasks = String(getVal(row, ['工項', 'task'])).split(',').map(s => s.trim()).filter(s => s);
-                    const partStr = String(getVal(row, ['參與人', 'participant']));
-                    locs.forEach(l => newLocations.add(l)); tasks.forEach(t => newTasks.add(t));
-
-                    let parts = [];
-                    if (partStr.toLowerCase().includes('rong')) parts.push('Rong Rong');
-                    else parts.push(currentUserProfile.name);
-                    parts.forEach(p => newParticipants.add(p));
-
-                    let dateStr = getVal(row, ['檢查時間', 'date', 'time']);
-                    let createdAt = new Date().toISOString();
-                    if (dateStr) { const parsed = new Date(dateStr); if (!isNaN(parsed.getTime())) createdAt = parsed.toISOString(); }
-
-                    const validCats = ['縮時', '相機', '攝影機'];
-                    const exCam = globalAssets.find(c => {
-                        if (!c.category || !validCats.some(v => c.category.toLowerCase().includes(v))) return false;
-                        return String(c.item).trim().toLowerCase() === camName.toLowerCase();
-                    });
-                    
-                    if (!exCam) continue; // 捨棄找不到對應實體機台的幽靈紀錄
-
-                    const camId = exCam.id;
-                    const proj = getVal(row, ['專案', 'project']) || exCam.project;
-
-                    ops.push(addDoc(collection(db, "timelapse_records"), {
-                        cameraId: camId, cameraName: camName, project: proj, location: locs,
-                        battery: String(getVal(row, ['電量', 'battery', '(%)'])).replace(/\D/g, ''), capacity: String(getVal(row, ['容量', 'capacity', 'gb']) || '64GB'),
-                        power: String(getVal(row, ['電源', 'power']) || '關').includes('開') ? '開' : '關',
-                        task: tasks, remarks: '', participants: parts, createdAt: createdAt, likes: [],
-                        creatorName: parts[0], creatorEmail: 'imported@csv', creatorAvatar: 'https://via.placeholder.com/32'
-                    })); ac++;
+                let workbook;
+                if (fileExt === 'csv') {
+                    const uint8 = new Uint8Array(evt.target.result);
+                    let text = new TextDecoder('utf-8').decode(uint8);
+                    if (text.includes('\uFFFD')) { text = new TextDecoder('big5').decode(uint8); }
+                    workbook = XLSX.read(text, { type: 'string' });
+                } else {
+                    const data = new Uint8Array(evt.target.result); 
+                    workbook = XLSX.read(data, { type: 'array' });
                 }
 
-                options.location = Array.from(newLocations); options.task = Array.from(newTasks); options.participant = Array.from(newParticipants);
-                ops.push(setDoc(doc(db, "settings", "timelapse_options"), options));
+                let targetSheetName = '';
+                let hi = -1;
+                let rawRows = [];
 
-                if (ops.length > 0) { await Promise.all(ops); alert(`🎉 匯入完成！成功寫入 ${ac} 筆巡檢紀錄！\n未建檔的相機紀錄已被系統自動捨棄。`); } 
-                else alert('沒有匯入任何有效的歷史紀錄。');
-            } catch(err) { alert('匯入失敗：' + err.message); } finally { loader.style.display = 'none'; }
-        }; reader.readAsArrayBuffer(file);
-        $('fab-container').classList.remove('active'); $('fab-menu').classList.remove('active'); $('import-submenu').classList.remove('open');
+                for (let sheetName of workbook.SheetNames) {
+                    const sheet = workbook.Sheets[sheetName];
+                    const tempRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    const headerIdx = tempRows.findIndex(row => Array.isArray(row) && row.some(cell => {
+                        if(typeof cell !== 'string') return false;
+                        const s = cell.toLowerCase();
+                        return s.includes('車號') || s.includes('編號') || s.includes('機車');
+                    }));
+                    if (headerIdx !== -1) { targetSheetName = sheetName; hi = headerIdx; rawRows = tempRows.slice(headerIdx); break; }
+                }
+
+                if (rawRows.length === 0) throw new Error("找不到有效的標題列 (需包含「車號」等關鍵字)");
+
+                const headers = rawRows[0] || [];
+                const rows = rawRows.slice(1).map(row => { let obj = {}; headers.forEach((h, i) => { if (h !== undefined && h !== '') obj[h.toString().trim()] = row[i]; }); return obj; });
+
+                window.pendingImports = [];
+                rows.forEach(r => {
+                    let item = getVal(r, ['車號', '機車', '編號']); if (!item) return;
+                    let assetUnit = getVal(r, ['資產單位', '原屬單位']) || 'PMO';
+                    let isExt = assetUnit !== 'PMO';
+                    
+                    window.pendingImports.push({ 
+                        id: 'preview_' + Math.random().toString(36).substr(2, 9), 
+                        item: String(item).trim(), 
+                        isExternal: isExt,
+                        originalUnit: assetUnit,
+                        rawRow: r
+                    });
+                });
+                
+                if (window.pendingImports.length > 0) { window.renderPreviewModal(); $('import-preview-modal-overlay').classList.add('active'); } else { alert('表格無有效資料'); }
+            } catch(err) { alert('解析失敗：' + err.message); } finally { loader.style.display = 'none'; }
+        }; 
+        reader.readAsArrayBuffer(file);
+        const fc = $('fab-container'); if(fc) fc.classList.remove('active'); const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
-    window.executeExport = () => {
-        let aoa = [["機台名稱", "專案狀態", "最新地點", "電源", "電量", "最新工項", "更新時間"]];
-        const data = window.getMappedCameraData();
-        data.forEach(m => { aoa.push([m._name, m._project, m._locationStr, m._power, m._battery+'%', m._taskStr, m._date]); });
-        const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "縮時相機總表");
-        XLSX.writeFile(wb, `PMO_縮時相機總表_${new Date().toISOString().slice(0,10)}.xlsx`);
+    window.renderPreviewModal = () => {
+        const tb = $('preview-tbody'); if($('cb-preview-all')) $('cb-preview-all').checked = false;
+        const thead = $('preview-thead');
+        
+        thead.innerHTML = `<tr><th style="width:40px;"><input type="checkbox" id="cb-preview-all" class="batch-checkbox" onchange="window.toggleAllPreview(this)"></th><th>車號</th><th>外調車輛</th><th>資產單位</th><th>系統比對狀態</th></tr>`;
+        
+        let htmlStr = '';
+        window.pendingImports.forEach(p => {
+            const matchAsset = globalAssets.find(a => String(a.item).trim() === p.item);
+            const matchStatus = matchAsset ? `<span style="color:var(--warning);">⚠️ 車輛已存在 (將覆蓋屬性並寫入紀錄)</span>` : `<span style="color:var(--success);">✅ 全新車輛建立</span>`;
+            htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-preview-row batch-checkbox" value="${p.id}"></td><td><b style="color:var(--primary); font-size:16px;">${p.item}</b></td><td><span style="font-weight:bold; color:${p.isExternal?'#991b1b':'var(--text-muted)'};">${p.isExternal?'是':'否'}</span></td><td>${p.originalUnit}</td><td>${matchStatus}</td></tr>`;
+        });
+        tb.innerHTML = htmlStr;
     };
 
-    // ======== 關閉浮窗事件綁定 ========
+    window.closeImportPreviewModal = () => { if(confirm('確定要捨棄這些尚未匯入的資料？')) { window.pendingImports = []; $('import-preview-modal-overlay').classList.remove('active'); } };
+    window.previewBatchDelete = () => { const selIds = Array.from($$('.cb-preview-row:checked')).map(cb => cb.value); if(selIds.length === 0) return alert('未勾選'); window.pendingImports = window.pendingImports.filter(p => !selIds.includes(p.id)); window.renderPreviewModal(); };
+
+    window.confirmImport = async () => {
+        if(!confirm(`確定匯入 ${window.pendingImports.length} 筆機車資料與歷史紀錄？`)) return;
+        const loader = $('loading-msg'); loader.innerHTML = '⏳ 正在寫入資料庫與還原時間軸...'; loader.style.display = 'block'; $('import-preview-modal-overlay').classList.remove('active');
+        try {
+            const ops = [];
+            for (const p of window.pendingImports) {
+                let assetId = '';
+                const match = globalAssets.find(a => String(a.item).trim() === p.item);
+                if (match) {
+                    assetId = match.id;
+                    ops.push(updateDoc(doc(db, 'assets', match.id), { isExternal: p.isExternal, originalUnit: p.originalUnit }));
+                } else {
+                    const newDocRef = doc(collection(db, 'assets'));
+                    assetId = newDocRef.id;
+                    ops.push(setDoc(newDocRef, { type: 'public', category: '公務機車', assetType: 'fixed', item: p.item, isExternal: p.isExternal, originalUnit: p.originalUnit, createdAt: new Date().toISOString() }));
+                }
+
+                const rr = p.rawRow;
+                for (let i = 1; i <= 6; i++) {
+                    const unitKey = `使用單位${i}`; const dateKey = `歸還PMO日期${i}`;
+                    const u = rr[unitKey] || (Object.keys(rr).find(k=>k.includes(`使用單位${i}`) && rr[k]) ? rr[Object.keys(rr).find(k=>k.includes(`使用單位${i}`))] : null);
+                    const d = rr[dateKey] || (Object.keys(rr).find(k=>k.includes(`歸還PMO日期${i}`) && rr[k]) ? rr[Object.keys(rr).find(k=>k.includes(`歸還PMO日期${i}`))] : null);
+                    
+                    if (u) {
+                        const fakeBorrowDate = d ? new Date(new Date(d).getTime() - 86400000).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+                        ops.push(addDoc(collection(db, 'motorcycle_records'), { motorcycleId: assetId, type: 'borrow', unit: u, date: fakeBorrowDate, remarks: `歷史匯入 (階段${i})`, createdAt: new Date().toISOString() }));
+                    }
+                    if (d) {
+                        ops.push(addDoc(collection(db, 'motorcycle_records'), { motorcycleId: assetId, type: 'return', unit: 'PMO', date: d, remarks: `歷史歸還 (階段${i})`, createdAt: new Date().toISOString() }));
+                    }
+                }
+                if (rr['歸還原單位'] && rr['歸還日期']) {
+                    ops.push(addDoc(collection(db, 'motorcycle_records'), { motorcycleId: assetId, type: 'return', unit: '原單位', date: rr['歸還日期'], remarks: '歸還原資產單位', createdAt: new Date().toISOString() }));
+                }
+            }
+            await Promise.all(ops); alert('🎉 匯入成功！'); window.pendingImports = [];
+        } catch(e) { alert('寫入失敗: '+e.message); } finally { loader.style.display = 'none'; }
+    };
+
+    // ======== ✨ 匯出中心 ========
+    window.openExportModal = () => {
+        let aoa = [["車號", "外調車輛", "資產單位", "目前使用單位", "最新歸還日期", "最新維修紀錄"]];
+        const data = window.getMappedMotoData();
+        data.forEach(m => {
+            aoa.push([m._plate, m._isExtStr, m.originalUnit || 'PMO', m._currentUnit, m._returnDate, m._maintenance]);
+        });
+        const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "公務機車總表");
+        XLSX.writeFile(wb, `PMO_公務機車總表_${new Date().toISOString().slice(0,10)}.xlsx`);
+    };
+
+    window.toggleFabMenu = (e) => { 
+        if(e) e.stopPropagation(); 
+        const c = $('fab-container'); if(c) c.classList.toggle('active'); 
+        const m = $('fab-menu'); if(m) m.classList.toggle('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+    };
+
     window.addEventListener('click', (e) => { 
         const panel = $('col-filter-panel'); 
-        if (panel && panel.style.display === 'flex') { if (!panel.contains(e.target) && !e.target.closest('.th-filter-btn')) panel.style.display = 'none'; }
-        if (!e.target.closest('#fab-container')) { const fc = $('fab-container'); if(fc) fc.classList.remove('active'); const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open')); }
-        $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
+        if (panel && panel.style.display === 'flex') { 
+            if (!panel.contains(e.target) && !e.target.closest('.th-filter-btn')) panel.style.display = 'none'; 
+        }
+        if (!e.target.closest('#fab-container')) { 
+            const fc = $('fab-container'); if(fc) fc.classList.remove('active'); 
+            const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); 
+            $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+        }
     });
     
     // ======== ✨ 教學系統 ========
     window.startTutorial = () => { window.currentTutorialStep = 0; $('tutorial-overlay-mask').style.display = 'block'; $('tutorial-ring-container').style.display = 'block'; $('tutorial-dialog').style.display = 'flex'; window.renderTutorialStep(); };
-    window.exitTutorial = () => { if(confirm('確定離開教學？')) window.endTutorial(); };
+    window.exitTutorial = () => { window.endTutorial(); };
     window.endTutorial = () => { $('tutorial-overlay-mask').style.display = 'none'; $('tutorial-ring-container').style.display = 'none'; $('tutorial-dialog').style.display = 'none'; window.clearTutorialHighlights(); if(tutorialTimer) clearTimeout(tutorialTimer); };
     window.nextTutorialStep = () => { window.currentTutorialStep++; if (window.currentTutorialStep >= tutorialData.length) { alert('🎉 恭喜您完成教學！您可以隨時點擊頁面最上方標題重新觀看。'); window.endTutorial(); } else window.renderTutorialStep(); };
     window.clearTutorialHighlights = () => { $$('.tutorial-on-top').forEach(el => el.classList.remove('tutorial-on-top')); $('tutorial-ring-container').innerHTML = ''; };
 
     window.renderTutorialStep = () => {
-        window.clearTutorialHighlights(); const step = tutorialData[window.currentTutorialStep];
+        window.clearTutorialHighlights(); const step = tutorialData[window.currentTutorialStep]; window.switchTab(step.tab);
         $('tutorial-title').innerHTML = `💡 教學：${step.title}`; $('tutorial-text').innerText = step.text; $('tutorial-step-indicator').innerText = `${window.currentTutorialStep + 1} / ${tutorialData.length}`; $('tutorial-btn-next').innerText = window.currentTutorialStep === tutorialData.length - 1 ? '完成教學 ✔' : '下一步 ➔';
         if (tutorialTimer) clearTimeout(tutorialTimer);
         tutorialTimer = setTimeout(() => {
@@ -1041,16 +979,7 @@
         }, 150);
     };
 
-    window.addEventListener('keydown', (e) => { 
-        if (e.key === 'Escape') { 
-            const panel = $('col-filter-panel'); if (panel && panel.style.display === 'flex') panel.style.display = 'none'; 
-            $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); $$('.modal-overlay').forEach(m => m.classList.remove('active')); const fc = $('fab-container'); if(fc) fc.classList.remove('active'); const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open')); if($('tutorial-dialog').style.display === 'flex') window.exitTutorial(); 
-        } 
-    });
-    
-    $$('.custom-dropdown-panel input').forEach(inp => { 
-        inp.addEventListener('input', (e) => { window.renderOptionsList(e.target.id.replace('opt-', '').replace('-input', '')); }); 
-    });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const panel = $('col-filter-panel'); if (panel && panel.style.display === 'flex') panel.style.display = 'none'; $$('.modal-overlay').forEach(m => m.classList.remove('active')); const fc = $('fab-container'); if(fc) fc.classList.remove('active'); const fm = $('fab-menu'); if(fm) fm.classList.remove('active'); $$('.fab-submenu').forEach(s => s.classList.remove('open')); if($('tutorial-dialog').style.display === 'flex') window.exitTutorial(); } });
 </script>
 </body>
 </html>

@@ -95,7 +95,7 @@
     </div>
     <div id="tutorial-text" style="font-size: 14px; line-height: 1.7; color: var(--text-main);"></div>
     <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-        <span id="tutorial-step-indicator" style="font-size:12px; font-weight:bold; color:var(--text-muted);">1 / 2</span>
+        <span id="tutorial-step-indicator" style="font-size:12px; font-weight:bold; color:var(--text-muted);">1 / 3</span>
         <button id="tutorial-btn-next" onclick="window.nextTutorialStep()" class="btn-primary" style="background:var(--danger); box-shadow:0 4px 10px rgba(225,29,72,0.3);">下一步 ➔</button>
     </div>
 </div>
@@ -386,8 +386,14 @@
             if (s.exists()) { options = { ...options, ...s.data() }; } else { setDoc(doc(db, "settings", "timelapse_options"), options); }
         });
 
+        // ✨ 重大修復：放寬過濾條件，包含「縮時」、「相機」、「攝影機」等關鍵字
         onSnapshot(collection(db, "assets"), (s) => { 
-            globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.category === '縮時相機' && a.item && a.item.trim() !== ''); 
+            const validCats = ['縮時', '相機', '攝影機'];
+            globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => {
+                if (!a.category) return false;
+                const cat = a.category.toLowerCase();
+                return validCats.some(v => cat.includes(v));
+            }); 
             window.renderSummary(); 
         });
         
@@ -467,34 +473,73 @@
         window.summaryCurrentPage = 1; window.renderSummary();
     };
 
-    // ✨ 核心邏輯：合併資產與歷史紀錄推算
+    // ✨ 重大修復：嚴格依據「相機名稱」收斂歷史紀錄，拒絕產生無限分身機台
     window.getMappedCameraData = () => {
-        const merged = [...globalAssets];
-        const camIds = new Set(globalAssets.map(c => c.id));
+        const merged = [];
+        const realCamNames = new Set();
         
-        // 為了相容 CSV 匯入產生的歷史假機台
+        // 1. 將有正式資產身分的相機加入陣列
+        globalAssets.forEach(a => {
+            merged.push(a);
+            if (a.item) realCamNames.add(String(a.item).trim().toLowerCase());
+        });
+        
+        // 2. 爬梳歷史紀錄，找尋「沒有資產身分」的幽靈相機 (依相機名稱嚴格去重)
+        const virtualCams = new Map();
         globalRecords.forEach(r => {
-            if (!camIds.has(r.cameraId)) {
-                camIds.add(r.cameraId);
-                merged.push({ id: r.cameraId, item: r.cameraName, project: r.project || '閒置', isHistorical: true });
+            const cName = String(r.cameraName || r.assetName || '').trim();
+            const cNameLower = cName.toLowerCase();
+            
+            if (cName && !realCamNames.has(cNameLower)) {
+                if (!virtualCams.has(cNameLower)) {
+                    virtualCams.set(cNameLower, { 
+                        id: `virtual_${cNameLower}`, 
+                        item: cName, 
+                        project: r.project || '閒置', 
+                        isHistorical: true 
+                    });
+                }
             }
         });
+        
+        virtualCams.forEach(vc => merged.push(vc));
 
+        // 3. 把所有的紀錄跟機台綁定，找尋出最後一筆紀錄
         return merged.map(a => {
-            let recs = globalRecords.filter(r => r.cameraId === a.id).sort((x,y) => String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
+            const aNameLower = String(a.item || '').trim().toLowerCase();
+            
+            let recs = globalRecords.filter(r => {
+                const rNameLower = String(r.cameraName || r.assetName || '').trim().toLowerCase();
+                // 放寬對接條件：只要 ID 吻合，或是名稱字串吻合，都算是它的紀錄
+                return r.cameraId === a.id || r.assetId === a.id || rNameLower === aNameLower;
+            });
+            
+            // 透過 Firestore 文件 ID 去除重複的紀錄
+            recs = Array.from(new Map(recs.map(r => [r.id, r])).values());
+            
+            recs.sort((x,y) => {
+                const dx = x.date || x.checkoutDate || x.createdAt || '';
+                const dy = y.date || y.checkoutDate || y.createdAt || '';
+                return String(dy).localeCompare(String(dx));
+            });
+            
             let latest = recs[0] || {};
             
+            // 相容 Notion CSV 與 Asset 系統不同名稱的欄位
+            const loc = latest.location ? latest.location : (latest.officeName ? [latest.officeName] : []);
+            const task = latest.task ? latest.task : (latest.type ? [latest.type] : []);
+
             return { 
                 ...a, 
                 _name: a.item || '未命名', 
                 _project: a.project || '閒置',
-                _locationStr: (latest.location || []).join(', '),
-                _location: latest.location || [],
+                _locationStr: loc.join(', '),
+                _location: loc,
                 _power: latest.power || '無',
                 _battery: latest.battery || 0,
-                _taskStr: (latest.task || []).join(', '),
-                _task: latest.task || [],
-                _date: latest.createdAt ? new Date(latest.createdAt).toLocaleString('zh-TW', {hour12:false}) : '-'
+                _taskStr: task.join(', '),
+                _task: task,
+                _date: latest.createdAt ? new Date(latest.createdAt).toLocaleString('zh-TW', {hour12:false}) : (latest.date || latest.checkoutDate || '-')
             };
         });
     };
@@ -634,11 +679,18 @@
     window.closeHistoryModal = () => $('history-modal-overlay').classList.remove('active');
 
     window.renderHistoryModal = (camId) => {
-        const a = getMappedCameraData().find(x => x.id === camId); if(!a) return;
+        const a = window.getMappedCameraData().find(x => x.id === camId); if(!a) return;
         $('history-modal-title').innerText = `📷 歷程：${a._name}`;
         
         const tl = $('history-timeline'); tl.innerHTML = '';
-        const recs = globalRecords.filter(r => r.cameraId === camId).sort((x,y) => String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
+        
+        const aNameLower = String(a._name).toLowerCase();
+        let recs = globalRecords.filter(r => {
+            const rNameLower = String(r.cameraName || r.assetName || '').trim().toLowerCase();
+            return r.cameraId === camId || r.assetId === camId || rNameLower === aNameLower;
+        });
+        recs = Array.from(new Map(recs.map(r => [r.id, r])).values());
+        recs.sort((x,y) => String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
         
         if (recs.length === 0) {
             tl.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">尚無任何巡檢紀錄</div>';
@@ -646,16 +698,20 @@
         }
 
         recs.forEach(r => {
-            const pBadge = r.power === '開' ? '🟢 開機' : r.power === '關' ? '🔴 關機' : '⚪ 無';
+            const pwr = r.power || '無';
+            const pBadge = pwr === '開' ? '🟢 開機' : pwr === '關' ? '🔴 關機' : '⚪ 無';
+            
+            const loc = r.location ? r.location : (r.officeName ? [r.officeName] : []);
+            const task = r.task ? r.task : (r.type ? [r.type] : []);
             
             tl.innerHTML += `
                 <div class="history-item">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span style="font-weight:bold; color:var(--text-main);">📍 ${fmtTags(r.location, '#e0e7ff', '#4f46e5')}</span>
+                        <span style="font-weight:bold; color:var(--text-main);">📍 ${fmtTags(loc, '#e0e7ff', '#4f46e5')}</span>
                         <button class="btn-danger" style="padding:2px 6px; font-size:10px; background:none; color:var(--danger); border:none;" onclick="window.deleteSingleRecord('${r.id}', event)">刪除紀錄</button>
                     </div>
-                    <div style="font-size:13px; margin-bottom:5px;">⚡ ${pBadge} (${r.battery||0}%) | 🔧 ${fmtTags(r.task, '#fef08a', '#854d0e')}</div>
-                    <div style="font-family:monospace; font-size:12px; color:var(--text-muted); margin-bottom:5px;">${new Date(r.createdAt).toLocaleString('zh-TW', {hour12:false})} | 👤 ${fmtTags(r.participants, '#f8fafc', '#475569')}</div>
+                    <div style="font-size:13px; margin-bottom:5px;">⚡ ${pBadge} (${r.battery||0}%) | 🔧 ${fmtTags(task, '#fef08a', '#854d0e')}</div>
+                    <div style="font-family:monospace; font-size:12px; color:var(--text-muted); margin-bottom:5px;">${new Date(r.createdAt || r.date || r.checkoutDate).toLocaleString('zh-TW', {hour12:false})} | 👤 ${fmtTags(r.participants || (r.borrower ? [r.borrower] : []), '#f8fafc', '#475569')}</div>
                     ${r.remarks ? `<div style="font-size:12px; background:white; padding:6px; border-radius:4px; border:1px dashed #cbd5e1;">${r.remarks}</div>` : ''}
                 </div>
             `;
@@ -713,7 +769,15 @@
         window.currentRecordCamId = id; 
         
         const sel = $('record-asset-id'); sel.innerHTML = '';
-        globalAssets.sort((a,b) => String(a.item||'').localeCompare(String(b.item||''))).forEach(a => {
+        
+        // 生成給使用者選的機台列表 (過濾掉純粹的假機台，強制要求他們綁定到實體)
+        let selectionAssets = globalAssets.filter(a => {
+            if (!a.category) return false;
+            const cat = a.category.toLowerCase();
+            return ['縮時', '相機', '攝影機'].some(v => cat.includes(v));
+        });
+        
+        selectionAssets.sort((a,b) => String(a.item||'').localeCompare(String(b.item||''))).forEach(a => {
             sel.innerHTML += `<option value="${a.id}">${a.item} (${a.project||'閒置'})</option>`;
         });
         
@@ -758,13 +822,19 @@
     // ======== 相機實體表單 ========
     window.openCameraModal = (id = null) => {
         window.currentEditCamId = id; $('opt-project-input').value = '';
-        if (id && typeof id === 'string') { 
+        if (id && typeof id === 'string' && !id.startsWith('virtual_')) { 
             $('camera-modal-title').innerText = '📦 編輯相機'; 
             const c = globalAssets.find(x => x.id === id); 
             $('disp-opt-project').innerText = c.project || '閒置'; $('cam-name').value = c.item || ''; $('cam-brand').value = c.brand || ''; $('cam-model').value = c.model || ''; $('cam-sn').value = c.sn || ''; $('cam-date').value = c.purchase_date || ''; 
         } else { 
             $('camera-modal-title').innerText = '➕ 新增相機'; 
-            $('disp-opt-project').innerText = '閒置'; ['cam-name', 'cam-brand', 'cam-model', 'cam-sn', 'cam-date'].forEach(k => $(k).value = ''); 
+            // 虛擬機台按新增時，會自動帶入名稱讓他存成實體
+            let presetName = '';
+            if (id && typeof id === 'string' && id.startsWith('virtual_')) {
+                const vc = window.getMappedCameraData().find(v => v.id === id);
+                if (vc) presetName = vc.item;
+            }
+            $('disp-opt-project').innerText = '閒置'; $('cam-name').value = presetName; ['cam-brand', 'cam-model', 'cam-sn', 'cam-date'].forEach(k => $(k).value = ''); 
         }
         $('camera-modal-overlay').classList.add('active');
     };
@@ -773,21 +843,41 @@
     window.saveCamera = async () => {
         const n = $('cam-name').value.trim(); if(!n) return alert('機台名稱必填！');
         const dt = { type: 'public', category: '縮時相機', assetType: 'fixed', office_id: 'TIMELAPSE_GLOBAL', item: n, project: $('disp-opt-project').innerText, brand: $('cam-brand').value, model: $('cam-model').value, sn: $('cam-sn').value, purchase_date: $('cam-date').value };
-        if(window.currentEditCamId) await setDoc(doc(db, "assets", window.currentEditCamId), dt, {merge:true}); else await addDoc(collection(db, "assets"), dt); window.closeCameraModal(); window.clearBatchSelection();
+        if(window.currentEditCamId && !window.currentEditCamId.startsWith('virtual_')) await setDoc(doc(db, "assets", window.currentEditCamId), dt, {merge:true}); else await addDoc(collection(db, "assets"), dt); window.closeCameraModal(); window.clearBatchSelection();
     };
 
     window.openBatchEditModal = () => { $('batch-edit-proj').value = ''; $('batch-edit-modal-overlay').classList.add('active'); };
     window.closeBatchEditModal = () => $('batch-edit-modal-overlay').classList.remove('active');
     window.executeBatchEdit = async () => {
         const selIds = getSelectedIds(); const p = $('batch-edit-proj').value.trim(); if (!p) return alert('未填寫專案名稱！');
-        try { await Promise.all(selIds.map(id => updateDoc(doc(db, "assets", id), { project: p }))); alert(`🎉 成功更新 ${selIds.length} 台相機！`); window.closeBatchEditModal(); window.clearBatchSelection(); } catch (e) { alert('錯誤：' + e.message); }
+        try { 
+            const realIds = selIds.filter(id => !id.startsWith('virtual_'));
+            if(realIds.length > 0) {
+                await Promise.all(realIds.map(id => updateDoc(doc(db, "assets", id), { project: p }))); 
+                alert(`🎉 成功更新 ${realIds.length} 台實體相機！\n(註：未建立實體檔案的幽靈相機無法批次修改)`); 
+            }
+            window.closeBatchEditModal(); window.clearBatchSelection(); 
+        } catch (e) { alert('錯誤：' + e.message); }
     };
 
     window.batchDeleteAssets = async () => {
         const selIds = getSelectedIds(); if(!confirm(`⚠️ 確定徹底刪除這 ${selIds.length} 台相機與所有關聯巡檢紀錄？(無法復原)`)) return;
         try { 
-            const ops = selIds.map(id => deleteDoc(doc(db, "assets", id)));
-            selIds.forEach(id => { globalRecords.filter(r => r.cameraId === id).forEach(r => ops.push(deleteDoc(doc(db, "timelapse_records", r.id)))); });
+            const ops = [];
+            const realIds = selIds.filter(id => !id.startsWith('virtual_'));
+            realIds.forEach(id => ops.push(deleteDoc(doc(db, "assets", id))));
+            
+            // 刪除關聯的紀錄 (比照嚴格抓取邏輯)
+            selIds.forEach(id => { 
+                const a = window.getMappedCameraData().find(x => x.id === id);
+                if (a) {
+                    const aNameLower = String(a.item || '').trim().toLowerCase();
+                    globalRecords.filter(r => {
+                        const rNameLower = String(r.cameraName || r.assetName || '').trim().toLowerCase();
+                        return r.cameraId === id || r.assetId === id || rNameLower === aNameLower;
+                    }).forEach(r => ops.push(deleteDoc(doc(db, "timelapse_records", r.id))));
+                }
+            });
             await Promise.all(ops); alert(`🎉 已刪除！`); window.clearBatchSelection(); 
         } catch(e) { alert('刪除發生錯誤：' + e.message); }
     };
@@ -803,7 +893,6 @@
         XLSX.writeFile(wb, `PMO_縮時相機總表_${new Date().toISOString().slice(0,10)}.xlsx`);
     };
 
-    // ✨ Notion CSV 歷史紀錄匯入引擎
     window.handleCSVUpload = async (e) => {
         const file = e.target.files[0]; if (!file) return; e.target.value = '';
         const loader = $('loading-msg'); loader.innerHTML = '⏳ 正在為您解析 Notion CSV 資料...'; loader.style.display = 'block';
@@ -846,7 +935,13 @@
                     let createdAt = new Date().toISOString();
                     if (dateStr) { const parsed = new Date(dateStr); if (!isNaN(parsed.getTime())) createdAt = parsed.toISOString(); }
 
-                    const exCam = globalAssets.find(c => String(c.item).trim() === camName);
+                    // 自動找到關聯的機器 (放寬條件)
+                    const validCats = ['縮時', '相機', '攝影機'];
+                    const exCam = globalAssets.find(c => {
+                        if (!c.category || !validCats.some(v => c.category.toLowerCase().includes(v))) return false;
+                        return String(c.item).trim().toLowerCase() === camName.toLowerCase();
+                    });
+                    
                     const camId = exCam ? exCam.id : `historical_${camName}`;
                     const proj = getVal(row, ['專案', 'project']) || (exCam ? exCam.project : '閒置');
 
@@ -887,7 +982,13 @@
                     const rd = {}; h.forEach((hk, i) => { if(hk) rd[hk.trim()] = row[i]; });
                     const cn = rd['編號'] ? String(rd['編號']).replace(/縮時/g, '').trim() : ''; if (!cn || cn.toLowerCase() === 'undefined') continue;
                     const dt = { type: 'public', category: '縮時相機', assetType: 'fixed', office_id: 'TIMELAPSE_GLOBAL', item: cn, project: rd['現使用專案'] || '閒置', brand: rd['品牌'] || 'N/A', model: rd['型號'] || 'N/A', sn: String(rd['資產編號'] || 'N/A'), purchase_date: String(rd['移入(PMO)日期'] || '') };
-                    const ex = globalAssets.find(c => String(c.item).trim() === String(cn));
+                    
+                    const validCats = ['縮時', '相機', '攝影機'];
+                    const ex = globalAssets.find(c => {
+                        if (!c.category || !validCats.some(v => c.category.toLowerCase().includes(v))) return false;
+                        return String(c.item).trim().toLowerCase() === cn.toLowerCase();
+                    });
+
                     if (ex) { ops.push(updateDoc(doc(db, "assets", ex.id), dt)); uc++; } else { ops.push(addDoc(collection(db, "assets"), dt)); ac++; }
                 }
                 if (ops.length > 0) { await Promise.all(ops); alert(`🎉 匯入完成！\n新增 ${ac} 筆相機本體，覆蓋 ${uc} 筆`); } else alert('沒有匯入任何資料。');

@@ -340,8 +340,12 @@
 
         <div id="fixed-asset-fields">
             <div class="form-group"><label>資產類型</label><input type="text" id="asset-category" placeholder="例如：電腦、影印機"></div>
-            <!-- ✨ 新增：智慧同名帶入 -->
-            <div class="form-group"><label>資產名稱</label><input type="text" id="asset-item" placeholder="未命名設備 (選填)" oninput="window.autoFillAssetProperties('fixed')"></div>
+            <!-- ✨ 新增：智慧同名下拉選單 -->
+            <div class="form-group" style="position: relative;">
+                <label>資產名稱</label>
+                <input type="text" id="asset-item" placeholder="未命名設備 (選填)" autocomplete="off" oninput="window.showAssetSuggestions('fixed')" onfocus="window.showAssetSuggestions('fixed')">
+                <div class="custom-dropdown-panel" id="fixed-suggestions" style="max-height: 160px; overflow-y: auto;"></div>
+            </div>
             <div class="form-group"><label>資產編號 / SN (共同項)</label><input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)"></div>
             <!-- ✨ 新增：年份欄位 -->
             <div class="form-group"><label>年份</label><input type="number" id="asset-year" placeholder="例如：2023 (手動輸入年份)" min="1900" max="2100"></div>
@@ -349,8 +353,12 @@
         </div>
 
         <div id="consumable-asset-fields" style="display:none;">
-            <!-- ✨ 新增：智慧同名帶入 -->
-            <div class="form-group"><label>消耗品名稱</label><input type="text" id="consumable-item" placeholder="例如：A4 影印紙 (必填)" oninput="window.autoFillAssetProperties('consumable')"></div>
+            <!-- ✨ 新增：智慧同名下拉選單 -->
+            <div class="form-group" style="position: relative;">
+                <label>消耗品名稱</label>
+                <input type="text" id="consumable-item" placeholder="例如：A4 影印紙 (必填)" autocomplete="off" oninput="window.showAssetSuggestions('consumable')" onfocus="window.showAssetSuggestions('consumable')">
+                <div class="custom-dropdown-panel" id="consumable-suggestions" style="max-height: 160px; overflow-y: auto;"></div>
+            </div>
             <div class="form-group"><label>分類標籤</label><input type="text" id="consumable-tag" placeholder="例如：文具、清潔用品 (選填)"></div>
             <div class="form-group" style="display:flex; gap: 10px;"><div style="flex:2;"><label>目前庫存</label><input type="number" id="consumable-quantity" placeholder="0" min="0"></div><div style="flex:1;"><label>單位</label><input type="text" id="consumable-unit" placeholder="箱/包"></div></div>
             <div class="form-group" style="background:#fff7ed; padding:8px; border-radius:6px; border:1px solid #fef08a;"><label style="color:#b45309;">⚠️ 最低安全庫存 (0或空白即不警告)</label><input type="number" id="consumable-min" placeholder="預設: 10" min="0" style="border-color:#fef08a;"></div>
@@ -1253,25 +1261,72 @@
         $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
-    // ✨ 智慧帶入功能
-    window.autoFillAssetProperties = (type) => {
-        if (window.currentEditAssetId) return; // 編輯模式不帶入
-        const itemName = type === 'fixed' ? $('asset-item').value.trim() : $('consumable-item').value.trim();
-        if (!itemName) return;
+    // ✨ 智慧帶入下拉選單功能
+    window.showAssetSuggestions = (type) => {
+        if (window.currentEditAssetId) return; // 編輯模式不顯示建議
 
-        const matches = globalAssets.filter(a => a.assetType === type && a.item === itemName).sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
-        if (matches.length > 0) {
-            const latest = matches[0];
-            if (type === 'fixed') {
-                if (latest.category && !$('asset-category').value) $('asset-category').value = latest.category;
-                if (latest.year && !$('asset-year').value) $('asset-year').value = latest.year;
-            } else {
-                if (latest.tag && !$('consumable-tag').value) $('consumable-tag').value = latest.tag;
-                if (latest.unit && !$('consumable-unit').value) $('consumable-unit').value = latest.unit;
-                if (latest.minThreshold !== undefined && !$('consumable-min').value) $('consumable-min').value = latest.minThreshold;
-                if (latest.contactPerson && !$('consumable-contact').value) $('consumable-contact').value = latest.contactPerson;
-                if (latest.remarks && !$('consumable-remarks').value) $('consumable-remarks').value = latest.remarks;
+        const inputId = type === 'fixed' ? 'asset-item' : 'consumable-item';
+        const panelId = type === 'fixed' ? 'fixed-suggestions' : 'consumable-suggestions';
+        const inputVal = $(inputId).value.trim().toLowerCase();
+        const panel = $(panelId);
+        
+        if (!inputVal) {
+            panel.classList.remove('active');
+            return;
+        }
+
+        const matches = [];
+        const seen = new Set();
+        
+        // 依據時間由新到舊排序，取最新設定
+        const sortedAssets = [...globalAssets].sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+        
+        sortedAssets.forEach(a => {
+            if (a.assetType === type && a.item && a.item.toLowerCase().includes(inputVal)) {
+                if (!seen.has(a.item)) {
+                    seen.add(a.item);
+                    matches.push(a);
+                }
             }
+        });
+
+        if (matches.length > 0) {
+            panel.innerHTML = matches.slice(0, 10).map(m => {
+                const off = globalOffices.find(o => o.id === m.office_id);
+                const offName = off ? off.name : '未分配';
+                return `<div class="dropdown-item" style="flex-direction: column; align-items: flex-start; gap: 4px;" onclick="window.applyAssetSuggestion('${m.id}', '${type}')">
+                    <div style="font-weight: bold; color: var(--primary); font-size: 14px;">${m.item}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">
+                        ${type === 'fixed' ? `📁 ${m.category||'其他'} | 🏢 ${offName}` : `🏷️ ${m.tag||'未分類'} | 🏢 ${offName}`}
+                    </div>
+                </div>`;
+            }).join('');
+            panel.classList.add('active');
+        } else {
+            panel.classList.remove('active');
+        }
+    };
+
+    window.applyAssetSuggestion = (assetId, type) => {
+        const a = globalAssets.find(x => x.id === assetId);
+        if (!a) return;
+
+        if (a.office_id) $('asset-office-id').value = a.office_id;
+
+        if (type === 'fixed') {
+            $('asset-item').value = a.item || '';
+            if (a.category) $('asset-category').value = a.category;
+            if (a.year) $('asset-year').value = a.year;
+            $('fixed-suggestions').classList.remove('active');
+        } else {
+            $('consumable-item').value = a.item || '';
+            if (a.tag) $('consumable-tag').value = a.tag;
+            if (a.quantity !== undefined) $('consumable-quantity').value = a.quantity;
+            if (a.unit) $('consumable-unit').value = a.unit;
+            if (a.minThreshold !== undefined) $('consumable-min').value = a.minThreshold;
+            if (a.contactPerson) $('consumable-contact').value = a.contactPerson;
+            if (a.remarks) $('consumable-remarks').value = a.remarks;
+            $('consumable-suggestions').classList.remove('active');
         }
     };
 
@@ -1436,6 +1491,12 @@
         }
         
         $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
+
+        // 確保智慧帶入下拉選單也被關閉
+        const fSugg = $('fixed-suggestions');
+        if (fSugg && !e.target.closest('#asset-item')) fSugg.classList.remove('active');
+        const cSugg = $('consumable-suggestions');
+        if (cSugg && !e.target.closest('#consumable-item')) cSugg.classList.remove('active');
     });
     
     // ======== ✨ 教學系統 ========

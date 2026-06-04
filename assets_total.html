@@ -34,7 +34,7 @@
         .th-filter-btn:hover { background: #e2e8f0; color: var(--text-main); }
         .th-filter-btn.active-filter { background: var(--primary); color: white; border-color: var(--primary); }
         
-        #col-filter-panel { position: fixed; background: white; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 15px; z-index: 9999; max-height: 350px; display: none; flex-direction: column; gap: 8px; min-width: 220px; }
+        #col-filter-panel { position: fixed; background: white; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 15px; z-index: 99999; max-height: 350px; display: none; flex-direction: column; gap: 8px; min-width: 220px; }
         #filter-cb-list { overflow-y: auto; max-height: 220px; display: flex; flex-direction: column; gap: 5px; padding-right: 5px; }
 
         .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block; white-space: nowrap; }
@@ -60,18 +60,16 @@
         .fab-submenu { position: absolute; right: 100%; margin-right: 15px; display: flex; gap: 10px; white-space: nowrap; transition: all 0.3s ease; opacity: 0; transform: translateX(20px); pointer-events: none; }
         .fab-submenu.open { opacity: 1; transform: translateX(0); pointer-events: auto; }
         
+        /* ✨ 升級防擋彈窗樣式 */
+        .modal-overlay { z-index: 99999 !important; }
+        .modal-content { max-height: 85vh; overflow-y: auto !important; }
         #import-preview-modal-overlay .modal-content { max-width: 95vw; height: 90vh; display: flex; flex-direction: column; }
         #import-preview-modal-overlay .table-container { flex: 1; overflow: auto; margin-top: 15px; border: 1px solid #e2e8f0; }
 
-        .bar-chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-        .bar-chart-label { width: 80px; font-size: 11px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
-        .bar-chart-track { flex: 1; background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden; }
-        .bar-chart-fill { background: var(--primary); height: 100%; border-radius: 4px; transition: width 0.5s ease; }
-        .bar-chart-val { font-size: 11px; font-weight: bold; width: 30px; color: var(--text-muted); }
         .checkout-stats-wrapper { display:flex; gap:20px; align-items:center; background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); flex-wrap:wrap; }
 
         /* 新手教學專屬樣式 */
-        #tutorial-overlay-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 99990; display: none; }
+        #tutorial-overlay-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 99990; display: none; pointer-events: none; }
         #tutorial-ring-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99992; pointer-events: none; display: none; }
         .tutorial-on-top { z-index: 99991 !important; position: relative; background: white; border-radius: 12px; }
         #fab-container.tutorial-on-top { position: fixed !important; background: transparent; }
@@ -142,6 +140,7 @@
         <div class="table-container" style="display:flex; flex-direction:column;">
             <div style="overflow-x: auto;">
                 <table class="notion-table">
+                    <!-- 動態表頭將在此生成 -->
                     <thead id="summary-table-thead"></thead>
                     <tbody id="summary-table-tbody"></tbody>
                 </table>
@@ -156,6 +155,7 @@
         <div style="font-size: 13px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">💡 提示：點選表頭文字即可排序。點選文字右方的「⋯」可進行條件篩選。按住滑鼠左鍵可拖曳勾選！</div>
         <div class="table-container">
             <table class="notion-table">
+                <!-- 動態表頭將在此生成 -->
                 <thead id="registry-table-thead"></thead>
                 <tbody id="checkout-tbody"></tbody>
             </table>
@@ -173,7 +173,7 @@
 </div>
 
 <!-- ✨ FAB 右下角按鈕群 -->
-<div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 99995 !important;">
+<div class="fab-container" id="fab-container" style="bottom: 30px; right: 30px; z-index: 99995 !important; pointer-events: auto;">
     <div class="fab-menu" id="fab-menu">
         <button class="fab-item" onclick="event.stopPropagation(); window.openExportModal(); window.toggleFabMenu(event);">📤 匯出資料中心</button>
         <div style="position: relative; display: flex; align-items: center; justify-content: flex-end;">
@@ -311,6 +311,8 @@
         <div id="batch-edit-fixed-fields" style="display:none;">
             <div class="form-group"><label>設備狀態 (保留原始選擇則不修改)</label><select id="batch-edit-status"><option value="">-- 不修改 --</option><option value="正常">🟢 正常</option><option value="碳粉不足">🟡 碳粉不足</option><option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option></select></div>
             <div class="form-group"><label>變更資產類型 (保留空白不修改)</label><input type="text" id="batch-edit-category" placeholder="輸入新類型 (例如：攝影機)"></div>
+            <!-- ✨ 新增：批次編輯年份 -->
+            <div class="form-group"><label>變更年份 (保留空白不修改)</label><input type="number" id="batch-edit-year" placeholder="例如：2023" min="1900" max="2100"></div>
         </div>
 
         <div class="modal-footer"><button class="btn-secondary" onclick="window.closeBatchEditModal()">取消</button><button class="btn-primary" onclick="window.executeBatchEdit()">確定修改</button></div>
@@ -325,8 +327,8 @@
         <div class="form-group">
             <label>資產大類</label>
             <div style="display:flex; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
-                <button type="button" id="btn-type-fixed" onclick="if(window.switchAssetMainType) window.switchAssetMainType('fixed');" style="flex:1; padding:8px; border:none; background:var(--primary); color:white; font-weight:bold; cursor:pointer;">📌 固定資產</button>
-                <button type="button" id="btn-type-consumable" onclick="if(window.switchAssetMainType) window.switchAssetMainType('consumable');" style="flex:1; padding:8px; border:none; background:white; color:var(--text-main); font-weight:bold; cursor:pointer;">📦 消耗品</button>
+                <button type="button" id="btn-type-fixed" onclick="window.switchAssetMainType('fixed')" style="flex:1; padding:8px; border:none; background:var(--primary); color:white; font-weight:bold; cursor:pointer;">📌 固定資產</button>
+                <button type="button" id="btn-type-consumable" onclick="window.switchAssetMainType('consumable')" style="flex:1; padding:8px; border:none; background:white; color:var(--text-main); font-weight:bold; cursor:pointer;">📦 消耗品</button>
             </div>
             <input type="hidden" id="asset-main-type" value="fixed">
         </div>
@@ -338,13 +340,17 @@
 
         <div id="fixed-asset-fields">
             <div class="form-group"><label>資產類型</label><input type="text" id="asset-category" placeholder="例如：電腦、影印機"></div>
-            <div class="form-group"><label>資產名稱</label><input type="text" id="asset-item" placeholder="未命名設備 (選填)"></div>
+            <!-- ✨ 新增：智慧同名帶入 -->
+            <div class="form-group"><label>資產名稱</label><input type="text" id="asset-item" placeholder="未命名設備 (選填)" oninput="window.autoFillAssetProperties('fixed')"></div>
             <div class="form-group"><label>資產編號 / SN (共同項)</label><input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)"></div>
+            <!-- ✨ 新增：年份欄位 -->
+            <div class="form-group"><label>年份</label><input type="number" id="asset-year" placeholder="例如：2023 (手動輸入年份)" min="1900" max="2100"></div>
             <div class="form-group"><label>設備狀態</label><select id="asset-status"><option value="正常">🟢 正常</option><option value="碳粉不足">🟡 碳粉不足</option><option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option></select></div>
         </div>
 
         <div id="consumable-asset-fields" style="display:none;">
-            <div class="form-group"><label>消耗品名稱</label><input type="text" id="consumable-item" placeholder="例如：A4 影印紙 (必填)"></div>
+            <!-- ✨ 新增：智慧同名帶入 -->
+            <div class="form-group"><label>消耗品名稱</label><input type="text" id="consumable-item" placeholder="例如：A4 影印紙 (必填)" oninput="window.autoFillAssetProperties('consumable')"></div>
             <div class="form-group"><label>分類標籤</label><input type="text" id="consumable-tag" placeholder="例如：文具、清潔用品 (選填)"></div>
             <div class="form-group" style="display:flex; gap: 10px;"><div style="flex:2;"><label>目前庫存</label><input type="number" id="consumable-quantity" placeholder="0" min="0"></div><div style="flex:1;"><label>單位</label><input type="text" id="consumable-unit" placeholder="箱/包"></div></div>
             <div class="form-group" style="background:#fff7ed; padding:8px; border-radius:6px; border:1px solid #fef08a;"><label style="color:#b45309;">⚠️ 最低安全庫存 (0或空白即不警告)</label><input type="number" id="consumable-min" placeholder="預設: 10" min="0" style="border-color:#fef08a;"></div>
@@ -471,7 +477,7 @@
 
     function getSelectedIds() { return window.currentTab === 'summary' ? Array.from($$('.cb-summary-row:checked')).map(cb => cb.value) : []; }
 
-    // ======== ✨ 滿版圓環圖引擎 (優化版：佔比顯示) ========
+    // ======== ✨ 滿版圓環圖引擎 ========
     window.toggleDataDisplay = (type) => { window.displayMode[type] = window.displayMode[type] === 'qty' ? 'percent' : 'qty'; window.renderSummary(); };
 
     function drawSvgDonut(containerId, dataArray, totalValStr, percentValStr, totalLbl, percentLbl, typeKey) {
@@ -599,7 +605,7 @@
     window.toggleShortageFilter = () => { window.showOnlyShortage = !window.showOnlyShortage; window.summaryCurrentPage = 1; const card = $('card-shortage'); if(window.showOnlyShortage) { card.classList.add('active-filter'); } else { card.classList.remove('active-filter'); } window.renderSummary(); };
 
     function renderStatsDashboardHtml(prefix) {
-        window.checkoutStatsRange = window.checkoutStatsRange || 'all'; // ✨ 確保預設區間不跑掉
+        window.checkoutStatsRange = window.checkoutStatsRange || 'all'; 
         return `
         <div class="checkout-stats-wrapper">
             <div style="text-align:center;">
@@ -634,7 +640,7 @@
         const cons = globalAssets.filter(a => a.assetType === 'consumable');
         const fixed = globalAssets.filter(a => a.assetType !== 'consumable');
 
-        // ✨ 圖表數據計算 (使用佔比計算)
+        // 圖表數據計算
         const totalConsQty = cons.reduce((sum, c) => sum + (parseInt(c.quantity) || 0), 0);
         const totalFixedCount = fixed.length;
         const totalItemsQty = totalConsQty + totalFixedCount;
@@ -662,7 +668,6 @@
         let shortagePercent = (shortageKinds + normalKinds) === 0 ? 0 : Math.round((shortageKinds / (shortageKinds + normalKinds)) * 100);
         const shortageChartData = [{ label: '庫存不足', value: shortageKinds, color: '#ef4444' }, { label: '安全', value: normalKinds, color: '#10b981' }];
 
-        // ✨ 繪製新版佔比圓環
         drawSvgDonut('chart-cons', consChartData, totalConsQty, consPctStr, '總數量', `消耗品 / 所有資產`, 'cons');
         drawSvgDonut('chart-fixed', fixedChartData, totalFixedCount, fixedPctStr, '總件數', `固定資產 / 所有資產`, 'fixed');
         drawSvgDonut('chart-shortage', shortageChartData, shortagePercent + '%', '', window.showOnlyShortage ? '解除過濾' : '不足率', null, null);
@@ -706,10 +711,24 @@
             return passFilter;
         });
 
-        // 統一排序
+        // ✨ 統一排序邏輯修復
         allFiltered.sort((a, b) => {
             let col = window.tableSort.col;
             let dir = window.tableSort.dir;
+            
+            if (col === '_tag') {
+                let typeA = a.assetType === 'consumable' ? 1 : 0;
+                let typeB = b.assetType === 'consumable' ? 1 : 0;
+                
+                if (dir === 'desc') {
+                    if (typeA !== typeB) return typeA - typeB; // 固定資產優先
+                    return String(a._tag).localeCompare(String(b._tag), 'zh-TW');
+                } else {
+                    if (typeA !== typeB) return typeB - typeA; // 消耗品優先
+                    return String(a._tag).localeCompare(String(b._tag), 'zh-TW');
+                }
+            }
+
             let va = a[col] !== undefined ? a[col] : (a.createdAt||'');
             let vb = b[col] !== undefined ? b[col] : (b.createdAt||'');
             
@@ -745,7 +764,7 @@
                 qtyHtml = `<div style="font-family:monospace; font-weight:bold; color:var(--danger); margin-bottom:4px;">SN: ${a.sn || 'N/A'}</div><div style="font-size:12px; font-weight:bold; color:var(--text-main);">${si}</div>`;
             }
 
-            htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-summary-row batch-checkbox" value="${a.id}"></td><td>${tagHtml}</td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;" title="點擊編輯">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${a._offName}</span></td><td>${contactHtml}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td></tr>`;
+            htmlStr += `<tr><td style="text-align:center;"><input type="checkbox" class="cb-summary-row batch-checkbox" value="${a.id}" onchange="window.updateFloatingBar()"></td><td>${tagHtml}</td><td onclick="window.openAssetModal('${a.id}')"><b style="font-size:15px; color:var(--primary); cursor:pointer;" title="點擊編輯">${a.item}</b></td><td>${qtyHtml}</td><td><span style="font-weight:bold; color:var(--text-main);">${a._offName}</span></td><td>${contactHtml}</td><td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.remarks || '-'}</td></tr>`;
         });
         
         if (allFiltered.length === 0) htmlStr = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8;">找不到符合條件的資產或消耗品。</td></tr>';
@@ -839,7 +858,7 @@
         window.updateFloatingBar();
     };
 
-    // ✨ 領用統計長條圖 (修復匯入歷史資料後不顯示的問題)
+    // ✨ 領用統計長條圖 
     window.renderCheckoutStats = () => {
         const prefix = 'registry';
         const rangeSelect = $(`${prefix}-stats-range`);
@@ -865,7 +884,6 @@
             labelText = '全部歷史領用總數';
         }
 
-        // ✨ 長條圖計算改為出庫數量累加，而非次數
         const totalQty = targetRecords.reduce((sum, r) => sum + (parseInt(r.quantity)||1), 0);
         if($(`${prefix}-lbl-stats-total`)) $(`${prefix}-lbl-stats-total`).innerText = labelText;
         if($(`${prefix}-stats-total-qty`)) $(`${prefix}-stats-total-qty`).innerText = totalQty;
@@ -905,7 +923,7 @@
 
     window.openBatchEditModal = () => {
         $('batch-edit-consumable-fields').style.display = 'block'; $('batch-edit-fixed-fields').style.display = 'none';
-        ['batch-edit-tag', 'batch-edit-contact', 'batch-edit-min', 'batch-edit-remarks'].forEach(id => $(id).value = '');
+        ['batch-edit-tag', 'batch-edit-contact', 'batch-edit-min', 'batch-edit-remarks', 'batch-edit-category', 'batch-edit-status', 'batch-edit-year'].forEach(id => { if($(id)) $(id).value = ''; });
         $('batch-edit-modal-overlay').classList.add('active');
     };
     window.closeBatchEditModal = () => $('batch-edit-modal-overlay').classList.remove('active');
@@ -915,6 +933,10 @@
         const c = $('batch-edit-contact').value.trim(); if (c) payload.contactPerson = c;
         const r = $('batch-edit-remarks').value.trim(); if (r) payload.remarks = r;
         const m = $('batch-edit-min').value; if (m !== '') payload.minThreshold = parseInt(m) || 0;
+        
+        const st = $('batch-edit-status') ? $('batch-edit-status').value : ''; if (st) payload.status = st;
+        const cat = $('batch-edit-category') ? $('batch-edit-category').value.trim() : ''; if (cat) payload.category = cat;
+        const yr = $('batch-edit-year') ? $('batch-edit-year').value : ''; if (yr !== '') payload.year = parseInt(yr);
         
         if (Object.keys(payload).length === 0) return alert('未填寫任何修改內容！');
         try { await Promise.all(selIds.map(id => updateDoc(doc(db, "assets", id), payload))); alert(`🎉 成功批次更新 ${selIds.length} 項資產！`); window.closeBatchEditModal(); window.clearBatchSelection(); } catch (e) { alert('編輯發生錯誤：' + e.message); }
@@ -1057,7 +1079,8 @@
                         remarks: getVal(r, ['備註', '說明', 'remark']),
                         category: getVal(r, ['類型', '分類', '類別', '項目', 'category']) || '其他', 
                         sn: getVal(r, ['資產編號', 'SN', '序號', '編號']) || 'N/A', 
-                        status: getVal(r, ['狀態', 'status']) || '正常'
+                        status: getVal(r, ['狀態', 'status']) || '正常',
+                        year: parseInt(getVal(r, ['年份', 'year'])) || null
                     };
                     window.pendingImports.push(p);
                 });
@@ -1131,7 +1154,16 @@
             if(!confirm(`是否確認匯入 ${consC} 項消耗品、${fxC} 項固定資產至「總表」？`)) return;
             const loader = $('loading-msg'); loader.innerHTML = '⏳ 正在寫入資料庫...'; loader.style.display = 'block'; $('import-preview-modal-overlay').classList.remove('active');
             try {
-                const ops = window.pendingImports.map(p => { const d = {type: 'public', office_id: p.office_id, assetType: p.assetType, item: p.item, createdAt: p.createdAt}; if(p.assetType==='consumable') { d.tag=p.tag; d.quantity=p.quantity; d.unit=p.unit; d.minThreshold=p.minThreshold; d.contactPerson=p.contactPerson; d.remarks=p.remarks; } else { d.category=p.category; d.sn=p.sn; d.status=p.status; d.remarks=p.remarks; } return addDoc(collection(db, 'assets'), d); });
+                const ops = window.pendingImports.map(p => { 
+                    const d = {type: 'public', office_id: p.office_id, assetType: p.assetType, item: p.item, createdAt: p.createdAt}; 
+                    if(p.assetType==='consumable') { 
+                        d.tag=p.tag; d.quantity=p.quantity; d.unit=p.unit; d.minThreshold=p.minThreshold; d.contactPerson=p.contactPerson; d.remarks=p.remarks; 
+                    } else { 
+                        d.category=p.category; d.sn=p.sn; d.status=p.status; d.remarks=p.remarks; 
+                        if (p.year) d.year = p.year;
+                    } 
+                    return addDoc(collection(db, 'assets'), d); 
+                });
                 await Promise.all(ops); alert('🎉 資產匯入成功！'); window.pendingImports = [];
             } catch(e) { alert('寫入失敗: '+e.message); } finally { loader.style.display = 'none'; }
         } else {
@@ -1173,16 +1205,16 @@
 
         if (target === 'assets') {
             filename = `PMO_在列資產總表_${new Date().toISOString().slice(0,10)}`;
-            aoa = [["資產屬性", "類別/標籤", "名稱", "編號/庫存", "單位", "存放辦公室", "狀態", "最低安全庫存", "備註"]];
+            aoa = [["資產屬性", "類別/標籤", "名稱", "年份", "編號/庫存", "單位", "存放辦公室", "狀態", "最低安全庫存", "備註"]];
             let consQty = 0, fixedCnt = 0, shortCnt = 0;
             
             globalAssets.forEach(a => {
                 const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未分配';
                 if (a.assetType === 'consumable') {
                     consQty += (parseInt(a.quantity)||0); const m = a.minThreshold !== undefined ? parseInt(a.minThreshold) : 10; if(m > 0 && (parseInt(a.quantity)||0) < m) shortCnt++;
-                    aoa.push(["消耗品", a.tag||'未分類', a.item, a.quantity||0, a.unit||'個', offName, '-', m, a.remarks||'-']);
+                    aoa.push(["消耗品", a.tag||'未分類', a.item, '-', a.quantity||0, a.unit||'個', offName, '-', m, a.remarks||'-']);
                 } else {
-                    fixedCnt++; aoa.push(["固定資產", a.category||'其他', a.item||'未命名', a.sn||'N/A', '-', offName, a.status||'正常', '-', '-']);
+                    fixedCnt++; aoa.push(["固定資產", a.category||'其他', a.item||'未命名', a.year||'-', a.sn||'N/A', '-', offName, a.status||'正常', '-', '-']);
                 }
             });
 
@@ -1221,7 +1253,28 @@
         $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
-    // ✨ 補回遺失的資產類型切換控制器 (修復無法新增資產的問題)
+    // ✨ 智慧帶入功能
+    window.autoFillAssetProperties = (type) => {
+        if (window.currentEditAssetId) return; // 編輯模式不帶入
+        const itemName = type === 'fixed' ? $('asset-item').value.trim() : $('consumable-item').value.trim();
+        if (!itemName) return;
+
+        const matches = globalAssets.filter(a => a.assetType === type && a.item === itemName).sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+        if (matches.length > 0) {
+            const latest = matches[0];
+            if (type === 'fixed') {
+                if (latest.category && !$('asset-category').value) $('asset-category').value = latest.category;
+                if (latest.year && !$('asset-year').value) $('asset-year').value = latest.year;
+            } else {
+                if (latest.tag && !$('consumable-tag').value) $('consumable-tag').value = latest.tag;
+                if (latest.unit && !$('consumable-unit').value) $('consumable-unit').value = latest.unit;
+                if (latest.minThreshold !== undefined && !$('consumable-min').value) $('consumable-min').value = latest.minThreshold;
+                if (latest.contactPerson && !$('consumable-contact').value) $('consumable-contact').value = latest.contactPerson;
+                if (latest.remarks && !$('consumable-remarks').value) $('consumable-remarks').value = latest.remarks;
+            }
+        }
+    };
+
     window.switchAssetMainType = (type) => {
         const typeInput = document.getElementById('asset-main-type');
         if (typeInput) typeInput.value = type;
@@ -1252,12 +1305,26 @@
             const a = globalAssets.find(x => x.id === id); 
             if(a) {
                 window.switchAssetMainType(a.assetType || 'fixed'); $('asset-office-id').value = a.office_id || '';
-                if (a.assetType !== 'consumable') { $('asset-category').value = a.category || '其他'; $('asset-item').value = a.item || ''; $('asset-sn').value = a.sn || ''; $('asset-status').value = a.status || '正常'; } 
-                else { $('consumable-item').value = a.item || ''; $('consumable-tag').value = a.tag || ''; $('consumable-quantity').value = a.quantity || 0; $('consumable-unit').value = a.unit || '個'; $('consumable-min').value = a.minThreshold !== undefined ? a.minThreshold : 10; $('consumable-contact').value = a.contactPerson || ''; $('consumable-remarks').value = a.remarks || ''; }
+                if (a.assetType !== 'consumable') { 
+                    $('asset-category').value = a.category || '其他'; 
+                    $('asset-item').value = a.item || ''; 
+                    $('asset-sn').value = a.sn || ''; 
+                    $('asset-year').value = a.year || '';
+                    $('asset-status').value = a.status || '正常'; 
+                } 
+                else { 
+                    $('consumable-item').value = a.item || ''; 
+                    $('consumable-tag').value = a.tag || ''; 
+                    $('consumable-quantity').value = a.quantity || 0; 
+                    $('consumable-unit').value = a.unit || '個'; 
+                    $('consumable-min').value = a.minThreshold !== undefined ? a.minThreshold : 10; 
+                    $('consumable-contact').value = a.contactPerson || ''; 
+                    $('consumable-remarks').value = a.remarks || ''; 
+                }
             }
         } else { 
             $('asset-modal-title').innerText = '➕ 新增資產'; window.switchAssetMainType(window.currentTab === 'summary' ? 'consumable' : 'fixed'); 
-            ['asset-category', 'asset-item', 'asset-sn', 'consumable-item', 'consumable-tag', 'consumable-contact', 'consumable-remarks'].forEach(k => $(k).value = '');
+            ['asset-category', 'asset-item', 'asset-sn', 'asset-year', 'consumable-item', 'consumable-tag', 'consumable-contact', 'consumable-remarks'].forEach(k => $(k).value = '');
             $('asset-status').value = '正常'; $('consumable-quantity').value = '0'; $('consumable-unit').value = '個'; $('consumable-min').value = '10';
         }
         $('asset-modal-overlay').classList.add('active');
@@ -1267,8 +1334,30 @@
     window.saveAssetData = async () => {
         const aType = $('asset-main-type').value; const off = $('asset-office-id').value; if(!off) return alert('請選擇辦公室！');
         let data = { office_id: off, assetType: aType };
-        if (aType === 'fixed') { const cat = $('asset-category').value.trim() || '其他'; data = { ...data, type: 'public', category: cat, item: $('asset-item').value.trim() || cat, sn: $('asset-sn').value || 'N/A', status: $('asset-status').value, createdAt: new Date().toISOString() }; } 
-        else { const item = $('consumable-item').value.trim(); if(!item) return alert('名稱必填！'); data = { ...data, item: item, tag: $('consumable-tag').value || '未分類', quantity: parseInt($('consumable-quantity').value) || 0, minThreshold: parseInt($('consumable-min').value) || 0, unit: $('consumable-unit').value || '個', contactPerson: $('consumable-contact').value || '無', remarks: $('consumable-remarks').value || '', createdAt: new Date().toISOString() }; }
+        if (aType === 'fixed') { 
+            const cat = $('asset-category').value.trim() || '其他'; 
+            data = { 
+                ...data, type: 'public', category: cat, 
+                item: $('asset-item').value.trim() || cat, 
+                sn: $('asset-sn').value || 'N/A', 
+                year: $('asset-year').value ? parseInt($('asset-year').value) : null,
+                status: $('asset-status').value, 
+                createdAt: new Date().toISOString() 
+            }; 
+        } 
+        else { 
+            const item = $('consumable-item').value.trim(); if(!item) return alert('名稱必填！'); 
+            data = { 
+                ...data, item: item, 
+                tag: $('consumable-tag').value || '未分類', 
+                quantity: parseInt($('consumable-quantity').value) || 0, 
+                minThreshold: parseInt($('consumable-min').value) || 0, 
+                unit: $('consumable-unit').value || '個', 
+                contactPerson: $('consumable-contact').value || '無', 
+                remarks: $('consumable-remarks').value || '', 
+                createdAt: new Date().toISOString() 
+            }; 
+        }
         try { if(window.currentEditAssetId) await updateDoc(doc(db, "assets", window.currentEditAssetId), data); else await addDoc(collection(db, "assets"), data); window.closeAssetModal(); window.clearBatchSelection(); } catch(e) { alert('儲存失敗：'+e.message); }
     };
 

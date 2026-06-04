@@ -1261,15 +1261,17 @@
         $$('.fab-submenu').forEach(s => s.classList.remove('open'));
     };
 
-    // ✨ 智慧帶入下拉選單功能
-    window.showAssetSuggestions = (type) => {
+    // ✨ 智慧帶入下拉選單功能 (全面升級多欄位聯動偵測)
+    window.showAssetSuggestions = (type, inputEl) => {
         if (window.currentEditAssetId) return; // 編輯模式不顯示建議
 
-        const inputId = type === 'fixed' ? 'asset-item' : 'consumable-item';
-        const panelId = type === 'fixed' ? 'fixed-suggestions' : 'consumable-suggestions';
-        const inputVal = $(inputId).value.trim().toLowerCase();
+        const inputVal = inputEl.value.trim().toLowerCase();
+        const panelId = 'sugg-' + inputEl.id;
         const panel = $(panelId);
         
+        // 確保其他欄位的建議面板被隱藏，只顯示當下打字的這一個
+        $$('.suggestion-panel').forEach(p => { if (p.id !== panelId) p.classList.remove('active'); });
+
         if (!inputVal) {
             panel.classList.remove('active');
             return;
@@ -1282,7 +1284,15 @@
         const sortedAssets = [...globalAssets].sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
         
         sortedAssets.forEach(a => {
-            if (a.assetType === type && a.item && a.item.toLowerCase().includes(inputVal)) {
+            const aType = a.assetType === 'consumable' ? 'consumable' : 'fixed';
+            if (aType !== type) return;
+
+            const name = (a.item || '').toLowerCase();
+            const cat = (a.category || '').toLowerCase();
+            const tag = (a.tag || '').toLowerCase();
+
+            // 只要名稱、分類或標籤有符合輸入字串，就把它拉出來
+            if (name.includes(inputVal) || cat.includes(inputVal) || tag.includes(inputVal)) {
                 if (!seen.has(a.item)) {
                     seen.add(a.item);
                     matches.push(a);
@@ -1317,7 +1327,6 @@
             $('asset-item').value = a.item || '';
             if (a.category) $('asset-category').value = a.category;
             if (a.year) $('asset-year').value = a.year;
-            $('fixed-suggestions').classList.remove('active');
         } else {
             $('consumable-item').value = a.item || '';
             if (a.tag) $('consumable-tag').value = a.tag;
@@ -1326,8 +1335,10 @@
             if (a.minThreshold !== undefined) $('consumable-min').value = a.minThreshold;
             if (a.contactPerson) $('consumable-contact').value = a.contactPerson;
             if (a.remarks) $('consumable-remarks').value = a.remarks;
-            $('consumable-suggestions').classList.remove('active');
         }
+        
+        // 帶入完畢後隱藏面板
+        $$('.suggestion-panel').forEach(p => p.classList.remove('active'));
     };
 
     window.switchAssetMainType = (type) => {
@@ -1490,13 +1501,12 @@
             $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
         }
         
-        $$('.custom-dropdown-panel').forEach(p => p.classList.remove('active')); 
+        $$('.custom-dropdown-panel:not(.suggestion-panel)').forEach(p => p.classList.remove('active')); 
 
-        // 確保智慧帶入下拉選單也被關閉
-        const fSugg = $('fixed-suggestions');
-        if (fSugg && !e.target.closest('#asset-item')) fSugg.classList.remove('active');
-        const cSugg = $('consumable-suggestions');
-        if (cSugg && !e.target.closest('#consumable-item')) cSugg.classList.remove('active');
+        // ✨ 確保點擊表單外的空白處時，智慧帶入的下拉選單會被關閉
+        if (!e.target.closest('.form-group')) {
+            $$('.suggestion-panel').forEach(p => p.classList.remove('active'));
+        }
     });
     
     // ======== ✨ 教學系統 ========

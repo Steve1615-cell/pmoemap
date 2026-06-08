@@ -83,6 +83,9 @@
         .tutorial-ring { position: absolute; border: 4px solid var(--danger); border-radius: 20px; pointer-events: none; animation: pulse-ring 2s infinite; box-sizing: border-box; }
         @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(225, 29, 72, 0); } 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); } }
         #tutorial-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 99999; background: white; padding: 25px; border-radius: 16px; width: 90%; max-width: 450px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); display: none; flex-direction: column; gap: 15px; border-top: 5px solid var(--danger); }
+        
+        /* ✨ 確保新增紀錄彈窗永遠覆蓋在歷史彈窗之上 */
+        #record-modal-overlay { z-index: 99999 !important; }
     </style>
 </head>
 <body>
@@ -643,18 +646,23 @@
         }
 
         recs.forEach(r => {
-            const isRepair = r.unit.includes('修車') || r.unit.includes('維修');
+            const isRepair = (r.unit || '').includes('修車') || (r.unit || '').includes('維修');
             const clz = r.type === 'return' ? 'history-item return' : isRepair ? 'history-item repair' : 'history-item';
             const icon = r.type === 'return' ? '📥 歸還自' : isRepair ? '🔧 送修至' : '📤 出借至';
+            
+            const remarksDisplay = r.remarks ? r.remarks : '<span style="color:#94a3b8; font-style:italic;">(無備註)</span>';
             
             tl.innerHTML += `
                 <div class="${clz}">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span style="font-weight:bold; font-size:16px; color:var(--text-main);">${icon} ${r.unit}</span>
-                        <button class="btn-danger" style="padding:4px 8px; font-size:12px; background:none; color:var(--danger); border:none;" onclick="window.deleteMotoRecord('${r.id}')">刪除紀錄</button>
+                        <span style="font-weight:bold; color:var(--text-main);">${icon} ${r.unit || '未知'}</span>
+                        <button class="btn-danger" style="padding:2px 6px; font-size:10px; background:none; color:var(--danger); border:none;" onclick="window.deleteMotoRecord('${r.id}')">刪除紀錄</button>
                     </div>
-                    <div style="font-family:monospace; font-size:13px; color:var(--text-muted); margin-bottom:5px;">${r.date}</div>
-                    ${r.remarks ? `<div style="font-size:13px; background:white; padding:8px; border-radius:6px; border:1px dashed #cbd5e1; line-height:1.5;">${r.remarks}</div>` : ''}
+                    <div style="font-family:monospace; font-size:12px; color:var(--text-muted); margin-bottom:5px;">${r.date}</div>
+                    <div style="font-size:12px; background:white; padding:6px; border-radius:4px; border:1px dashed #cbd5e1; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                        <span style="flex:1; word-break:break-all;">${remarksDisplay}</span>
+                        <button class="btn-edit" style="padding:2px 6px; font-size:11px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; flex-shrink:0;" onclick="window.editMotoRecordRemarks('${r.id}', event)">✏️ 修改備註</button>
+                    </div>
                 </div>
             `;
         });
@@ -663,6 +671,22 @@
     window.deleteMotoRecord = async (rId) => {
         if(!confirm('確定刪除此筆歷史紀錄？')) return;
         await deleteDoc(doc(db, "motorcycle_records", rId));
+    };
+
+    // ✨ 新增修改歷史紀錄備註功能
+    window.editMotoRecordRemarks = async (rId, e) => {
+        if (e) e.stopPropagation();
+        const r = globalMotoRecords.find(x => x.id === rId);
+        if (!r) return;
+        
+        const newRemarks = prompt('請輸入或修改備註內容：', r.remarks || '');
+        if (newRemarks === null) return; // 點擊取消
+        
+        try {
+            await updateDoc(doc(db, "motorcycle_records", rId), { remarks: newRemarks.trim() });
+        } catch (err) {
+            alert('修改備註失敗：' + err.message);
+        }
     };
 
     // ======== ✨ 出借/歸還紀錄表單 ========

@@ -3,6 +3,14 @@ import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-
 import { auth, db } from './firebase-config.js';
 import { state } from './state.js';
 
+// ✨ 全型英數字轉半型工具函數 (修復修船大樓全形 ３Ｆ/４Ｆ 導致排版偏斜的問題)
+export function toHalfWidth(str) {
+    if (!str) return '';
+    return str.replace(/[\uFF01-\uFF5E]/g, function(ch) {
+        return String.fromCharCode(ch.charCodeAt(0) - 0xfee0);
+    }).replace(/\u3000/g, ' ');
+}
+
 export function customAlert(msg, isDanger = false) {
     const toast = document.getElementById('custom-toast');
     if(!toast) return;
@@ -28,8 +36,17 @@ export function initView() {
     const gridNav = document.getElementById('floor-list-container');
     if (gridNav) {
         gridNav.innerHTML = ''; const floorMap = {};
-        state.globalRegions.forEach(r => { floorMap[r.name] = { id: r.id, name: r.name, offices: [], isRegion: true }; });
-        state.globalOffices.forEach(o => { const f = o.floor || '未分類區域'; if (!floorMap[f]) floorMap[f] = { id: f, name: f, offices: [], isRegion: false }; floorMap[f].offices.push(o); });
+        // ✨ 對 Region 進行半形標準化處理
+        state.globalRegions.forEach(r => { 
+            const normalizedName = toHalfWidth(r.name);
+            floorMap[normalizedName] = { id: r.id, name: normalizedName, offices: [], isRegion: true }; 
+        });
+        // ✨ 對 Office 的 Floor 進行半形標準化處理
+        state.globalOffices.forEach(o => { 
+            const f = toHalfWidth(o.floor || '未分類區域'); 
+            if (!floorMap[f]) floorMap[f] = { id: f, name: f, offices: [], isRegion: false }; 
+            floorMap[f].offices.push(o); 
+        });
         let sortedFloors = Object.keys(floorMap).sort();
         
         if (sortedFloors.length === 0) {
@@ -46,7 +63,6 @@ export function initView() {
         }
     }
     
-    // ✨ 新增：讓開關按鈕的外觀與記憶狀態同步
     const devToggle = document.getElementById('dev-options-toggle');
     if (devToggle) devToggle.checked = state.devOptionsEnabled;
 
@@ -59,14 +75,12 @@ export function initView() {
     }
     updateNavigationUI(); 
     
-    // 防止重複塞入首頁歷史紀錄
     if (!history.state) history.replaceState({ level: 0 }, "");
     
     updateVersionDisplay();
 }
 
 export function updateVersionDisplay() {
-    // ✨ 修改：升級至 1.7.5
     const CURRENT_VERSION = '1.7.5'; 
     const vf = document.querySelector('.version-footer');
     if (vf) vf.innerHTML = `PMO電子圖資系統 v${CURRENT_VERSION} © 2026`;
@@ -92,7 +106,14 @@ export function syncHeaderLayout() { const l = document.getElementById('header-l
 export function renderSidebarTree() {
     const t = document.getElementById('sidebar-nav-tree'); if (!t) return;
     let html = `<div class="menu-item" onclick="window.goHome(); window.closeSidebar();" style="border-bottom: 1px solid #f1f5f9;">🏠 首頁</div>`;
-    const map = {}; state.globalRegions.forEach(r => map[r.name] = []); state.globalOffices.forEach(o => { const f = o.floor || '其他樓層'; if (!map[f]) map[f] = []; map[f].push(o); });
+    const map = {}; 
+    // ✨ 樹狀選單 Region 與 Office 地區套用半形正規化
+    state.globalRegions.forEach(r => map[toHalfWidth(r.name)] = []); 
+    state.globalOffices.forEach(o => { 
+        const f = toHalfWidth(o.floor || '其他樓層'); 
+        if (!map[f]) map[f] = []; 
+        map[f].push(o); 
+    });
     Object.keys(map).sort().forEach((f, idx) => {
         html += `<div class="tree-floor" onclick="window.toggleTreeFloor('floor-${idx}')"><span>🏢 ${f}</span><span id="floor-${idx}-arrow" style="font-size:12px; transition: transform 0.3s;">▼</span></div><ul class="tree-office-list" id="floor-${idx}-list">`;
         if (map[f].length > 0) { map[f].sort((a,b)=>(a.name||'').localeCompare(b.name||'')).forEach(off => { html += `<li class="tree-office" onclick="window.showDetail('${off.id}', '${off.name}'); window.closeSidebar();">↳ ${off.name}</li>`; }); } else { html += `<li class="tree-office" style="color:#cbd5e1; cursor:default;">(無房間)</li>`; }
@@ -109,7 +130,6 @@ export function closeFabMenu() { document.getElementById('fab-container').classL
 
 export function toggleDevOptions(e) {
     state.devOptionsEnabled = e.target.checked;
-    // ✨ 新增：寫入 localStorage 記憶狀態
     localStorage.setItem('pmo_dev_options', state.devOptionsEnabled);
     if (state.currentLevel === 0) { document.getElementById('dev-tabs-container').style.display = state.devOptionsEnabled ? 'flex' : 'none'; }
 }
@@ -139,12 +159,12 @@ export function updateNavigationUI() {
     document.getElementById('dev-tabs-container').style.display = (state.currentLevel === 0 && state.devOptionsEnabled) ? 'flex' : 'none'; syncHeaderLayout();
     
     if (state.currentLevel === 0) updateMainTitle('ＰＭＯ電子圖資系統'); 
-    else if (state.currentLevel === 1) updateMainTitle(state.currentFloor); 
+    else if (state.currentLevel === 1) updateMainTitle(toHalfWidth(state.currentFloor)); 
     else if (state.currentLevel === 2) updateMainTitle(state.currentOfficeName); 
     else if (state.currentLevel === 4) updateMainTitle('在列資產總表');
 
     let html = state.currentLevel === 0 ? `<span class="breadcrumb-item current">首頁</span>` : `<span class="breadcrumb-item" onclick="window.goHome()">首頁</span>`;
-    if (state.currentLevel === 1 || state.currentLevel === 2) html += `<span class="breadcrumb-separator">/</span>${state.currentLevel === 1 ? `<span class="breadcrumb-item current">${state.currentFloor}</span>` : `<span class="breadcrumb-item" onclick="window.showOffices('${state.currentFloor}')">${state.currentFloor}</span>`}`;
+    if (state.currentLevel === 1 || state.currentLevel === 2) html += `<span class="breadcrumb-separator">/</span>${state.currentLevel === 1 ? `<span class="breadcrumb-item current">${toHalfWidth(state.currentFloor)}</span>` : `<span class="breadcrumb-item" onclick="window.showOffices('${toHalfWidth(state.currentFloor)}')">${toHalfWidth(state.currentFloor)}</span>`}`;
     if (state.currentLevel === 2) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">${state.currentOfficeName}</span>`;
     if (state.currentLevel === 4) html += `<span class="breadcrumb-separator">/</span><span class="breadcrumb-item current">在列資產總表</span>`;
     bc.innerHTML = html; updateFabMenu();
@@ -165,11 +185,13 @@ export function goUpLevel(push = true) {
 }
 
 export function showOffices(floor, push = true) {
-    state.currentLevel = 1; state.currentFloor = floor; state.currentOfficeId = ''; state.currentOfficeName = ''; 
-    if (push) history.pushState({ level: 1, floor: floor }, "");
+    const normalizedFloor = toHalfWidth(floor);
+    state.currentLevel = 1; state.currentFloor = normalizedFloor; state.currentOfficeId = ''; state.currentOfficeName = ''; 
+    if (push) history.pushState({ level: 1, floor: normalizedFloor }, "");
     
     const l = document.getElementById('office-list'); l.innerHTML = '';
-    state.globalOffices.filter(o => o.floor === floor).forEach(off => {
+    // ✨ 比對時也使用半形校正，防止兩邊資料編碼不一致而遺漏房間
+    state.globalOffices.filter(o => toHalfWidth(o.floor) === normalizedFloor).forEach(off => {
         const c = document.createElement('div'); c.className = 'nav-card'; const rt = off.roomType || '辦公室';
         c.innerHTML = `${rt !== '辦公室' ? `<div style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${rt}</div>` : ''}<button class="card-edit-btn" onclick="event.stopPropagation(); window.openOfficeModal('${off.id}')">✏️</button><h2>${off.name} ${rt === '會議室' ? `<span style="font-size:12px; color:var(--success); font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; margin-left:10px;">🟢 可預約</span>` : ''}</h2><div class="password-container"><span class="password-badge">${off.pwd || 'N/A'}</span></div><div style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>`;
         c.onclick = () => showDetail(off.id, off.name); l.appendChild(c);
@@ -179,7 +201,8 @@ export function showOffices(floor, push = true) {
 
 export function showDetail(id, name, push = true) {
     state.currentLevel = 2; state.currentOfficeId = id; state.currentOfficeName = name; 
-    const od = state.globalOffices.find(o => o.id === state.currentOfficeId); if (od && od.floor) state.currentFloor = od.floor;
+    // ✨ 載入細部視圖時自動轉換父級樓層
+    const od = state.globalOffices.find(o => o.id === state.currentOfficeId); if (od && od.floor) state.currentFloor = toHalfWidth(od.floor);
     if (push) history.pushState({ level: 2, floor: state.currentFloor, officeId: id, officeName: name }, "");
     const rt = od ? (od.roomType || '辦公室') : '辦公室'; const tr = state.ROOM_TRAITS[rt] || state.ROOM_TRAITS['DEFAULT'];
     const tc = document.getElementById('dynamic-room-tabs'); tc.innerHTML = tr.tabs.map(k => `<button id="tab-${k}" class="tab-btn" onclick="window.switchTab('${k}')">${state.TAB_LABELS[k]}</button>`).join('');
@@ -213,7 +236,7 @@ export function updateDetailContent() {
 
         if (state.calendarViewMode === 'month') {
             const yy = state.currentCalendarDate.getFullYear(), mm = state.currentCalendarDate.getMonth(), fd = new Date(yy, mm, 1).getDay(), dim = new Date(yy, mm + 1, 0).getDate();
-            html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; background:white; padding:10px 15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05);"><button class="btn-secondary" onclick="window.changeCalendarMonth(-1)" style="padding:4px 12px;">◀ 上月</button><h3 style="margin:0; color:var(--primary); font-size:18px;">${yy}年 ${mm + 1}月</h3><button class="btn-secondary" onclick="window.changeCalendarMonth(1)" style="padding:4px 12px;">下月 ▶</button></div><div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:1px; background:#cbd5e1; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">`;
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; background:white; padding:10px 15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05);"><button class="btn-secondary" onclick="window.changeCalendarMonth(-1)" style="padding:4px 12px;">◀ 上意</button><h3 style="margin:0; color:var(--primary); font-size:18px;">${yy}年 ${mm + 1}月</h3><button class="btn-secondary" onclick="window.changeCalendarMonth(1)" style="padding:4px 12px;">下月 ▶</button></div><div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:1px; background:#cbd5e1; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">`;
             ['日', '一', '二', '三', '四', '五', '六'].forEach(w => { html += `<div style="background:#f8fafc; padding:8px; text-align:center; font-size:13px; font-weight:bold; color:${w==='日'||w==='六'?'var(--danger)':'var(--text-muted)'};">${w}</div>`; });
             for(let i=0; i<fd; i++) html += `<div style="background:white; min-height:80px; padding:5px; opacity:0.3;"></div>`;
             for(let d=1; d<=dim; d++) {
@@ -366,7 +389,7 @@ export function renderPinnedItems() {
     state.myPinnedItems.forEach((item, idx) => {
         const c = document.createElement('div'); c.className = 'nav-card pinned-full-card'; c.draggable = true; c.dataset.index = idx;
         let h = '', oc = `window.handlePinClick('${item.type}', '${item.id}', event)`, b = `<div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">區域</div>`;
-        if (item.type === 'floor') h = `${b}<h2 style="margin-top:15px;">${item.name}</h2><div class="card-content-detail" style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看樓層</div>`;
+        if (item.type === 'floor') h = `${b}<h2 style="margin-top:15px;">${toHalfWidth(item.name)}</h2><div class="card-content-detail" style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看樓層</div>`;
         else if (item.type === 'office') { const o = state.globalOffices.find(x => x.id === item.id); if (o) { const rt = o.roomType || '辦公室'; h = `<div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${rt}</div><h2 style="margin-top:15px;">${o.name} ${rt === '會議室' ? `<span style="font-size:12px; color:var(--success); font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; margin-left:10px;">🟢 可預約</span>` : ''}</h2><div class="password-container" style="max-height:none; opacity:1;"><span class="password-badge">${o.pwd || 'N/A'}</span></div><div class="card-content-detail" style="font-size:12px; color:var(--primary); margin-top:10px;">點擊查看詳情</div>`; } else h = `<h2 style="color:var(--danger)">該房間已移除</h2>`; }
         else if (item.type === 'member') { const m = state.globalMembers.find(x => x.id === item.id); if (m) { const pc = state.globalAssets.find(a => a.category === '電腦' && a.owner_id === m.id); h = `<div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">人員</div><div style="text-align: left; margin-top:5px;"><h3 style="margin:0 0 5px 0;">${m.name}</h3></div><div class="detail-info card-content-detail" style="border-top: none; padding-top: 0; margin-top: 5px; opacity: 1; max-height: none;"><div><b>職稱：</b>${m.title || 'N/A'}</div><div><b>分機：</b>${m.ext}</div><div><b>入廠日：</b>${m.join_date ? m.join_date.replace(/-/g, '/') : 'N/A'}</div><div><b>電腦編號：</b>${pc && pc.pc_id && pc.pc_id !== 'N/A' ? pc.pc_id : '無設備'}</div></div>`; } else h = `<h2 style="color:var(--danger)">該人員已移除</h2>`; }
         else if (item.type === 'asset') { const a = state.globalAssets.find(x => x.id === item.id); if (a) { let oName = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) oName = `👤 使用者: ${owner.name}`; } let t = a.item || '未命名設備'; if (a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`; h = `<div class="pinned-type-badge" style="position:absolute; top:12px; left:15px; font-size:12px; color:var(--text-muted); background:var(--accent); padding:2px 8px; border-radius:12px;">${a.category || '資產'}</div><div style="text-align:left; margin-top:5px;"><h3 style="margin:0;">${t}</h3></div><div class="card-content-detail">${a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${oName}</div>` : ''}<div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div><div style="font-size:12px; font-weight:bold; color: var(--text-main);">${a.status === '正常' ? '🟢' : a.status === '待修' ? '🔴' : a.status === '報廢' ? '⚫' : a.status === '碳粉不足' ? '🟡' : '⚪'} ${a.status || '未登記'}</div></div>`; } else h = `<h2 style="color:var(--danger)">該資產已移除</h2>`; }
@@ -429,7 +452,7 @@ export async function trackLinkClick(i, url) {
     window.open(url, '_blank'); 
 }
 
-// ✨ 監聽瀏覽器上一頁/下一頁事件 (popstate)
+// 監聽瀏覽器上一頁/下一頁事件 (popstate)
 window.addEventListener('popstate', (e) => {
     const s = e.state;
     if (!s) {
@@ -444,7 +467,7 @@ window.addEventListener('popstate', (e) => {
     }
 });
 
-// ✨ 全域鍵盤事件監聽 (支援 Esc 鍵關閉一切)
+// 全域鍵盤事件監聽
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' || e.keyCode === 27) {
         const activeDropdowns = document.querySelectorAll('.custom-dropdown-panel.active');

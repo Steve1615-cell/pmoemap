@@ -88,9 +88,9 @@
 <div id="col-filter-panel"></div>
 
 <!-- 教學遮罩與互動層 -->
-<div id="tutorial-overlay-mask"></div>
-<div id="tutorial-ring-container"></div>
-<div id="tutorial-dialog">
+<div id="tutorial-overlay-mask" style="display:none; pointer-events:none;"></div>
+<div id="tutorial-ring-container" style="display:none; pointer-events:none;"></div>
+<div id="tutorial-dialog" style="display:none;">
     <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
         <b id="tutorial-title" style="color:var(--danger); font-size: 18px; display:flex; align-items:center; gap:8px;">💡 系統教學</b>
         <button onclick="window.exitTutorial()" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; font-weight:bold; line-height:1;">&times;</button>
@@ -387,7 +387,6 @@
             if (s.exists()) { options = { ...options, ...s.data() }; } else { setDoc(doc(db, "settings", "timelapse_options"), options); }
         });
 
-        // ✨ 重大修復：放寬過濾條件，包含「縮時」、「相機」、「攝影機」等關鍵字
         onSnapshot(collection(db, "assets"), (s) => { 
             const validCats = ['縮時', '相機', '攝影機'];
             globalAssets = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => {
@@ -474,22 +473,17 @@
         window.summaryCurrentPage = 1; window.renderSummary();
     };
 
-    // ✨ 重大修復：嚴格依據「相機實體」收斂歷史紀錄，拒絕無限分身
     window.getMappedCameraData = () => {
-        // 只以有註冊的實體機台為基準
         return globalAssets.map(a => {
             const aNameLower = String(a.item || '').trim().toLowerCase();
             
-            // 過濾出屬於該相機的所有紀錄 (依據 ID 或 名稱 雙重比對)
             let recs = globalRecords.filter(r => {
                 const rNameLower = String(r.cameraName || r.assetName || '').trim().toLowerCase();
                 return r.cameraId === a.id || r.assetId === a.id || rNameLower === aNameLower;
             });
             
-            // 透過 Firestore 文件 ID 去除重複
             recs = Array.from(new Map(recs.map(r => [r.id, r])).values());
             
-            // 由新到舊排序
             recs.sort((x,y) => {
                 const dx = x.date || x.checkoutDate || x.createdAt || '';
                 const dy = y.date || y.checkoutDate || y.createdAt || '';
@@ -549,7 +543,6 @@
         const keyword = ($('search-input') ? $('search-input').value.toLowerCase().trim() : '');
         let allMapped = window.getMappedCameraData();
 
-        // 統計計算
         const totalCams = allMapped.length;
         let idleCount = 0, activeCount = 0;
         allMapped.forEach(m => {
@@ -565,7 +558,6 @@
         drawSvgDonut('chart-idle', idleChart, idleCount, Math.round((idleCount/totalCams)*100)+'%', '在庫數', `佔總數 (${idleCount}/${totalCams})`, 'idle');
         drawSvgDonut('chart-active', activeChart, activeCount, Math.round((activeCount/totalCams)*100)+'%', '出借數', `佔總數 (${activeCount}/${totalCams})`, 'active');
 
-        // 動態生成表頭
         const thead = $('summary-table-thead'); 
         thead.innerHTML = `<tr>
             <th style="width: 40px; text-align:center;"><input type="checkbox" id="cb-select-all-summary" class="batch-checkbox" onchange="window.toggleAllCheckboxes('cb-summary-row', this)"></th>
@@ -599,7 +591,6 @@
             return passFilter;
         });
 
-        // 統一排序 (無法使用者置底)
         allFiltered.sort((a, b) => {
             if (a._project === '無法使用' && b._project !== '無法使用') return 1;
             if (a._project !== '無法使用' && b._project === '無法使用') return -1;
@@ -1011,6 +1002,20 @@
         data.forEach(m => { aoa.push([m._name, m._project, m._locationStr, m._power, m._battery+'%', m._taskStr, m._date]); });
         const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "縮時相機總表");
         XLSX.writeFile(wb, `PMO_縮時相機總表_${new Date().toISOString().slice(0,10)}.xlsx`);
+    };
+
+    // ✨ 補回懸浮按鈕開關控制器
+    window.toggleFabMenu = (e) => { 
+        if(e) e.stopPropagation(); 
+        const c = $('fab-container'); if(c) c.classList.toggle('active'); 
+        const m = $('fab-menu'); if(m) m.classList.toggle('active'); 
+        $$('.fab-submenu').forEach(s => s.classList.remove('open')); 
+    };
+
+    window.toggleSubmenu = (id, e) => { 
+        if(e) e.stopPropagation(); 
+        $$('.fab-submenu').forEach(s => { if(s.id!==id) s.classList.remove('open'); }); 
+        $(id).classList.toggle('open'); 
     };
 
     // ======== 關閉浮窗事件綁定 ========

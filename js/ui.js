@@ -283,36 +283,90 @@ export function updateDetailContent() {
     else if (state.currentTab === 'assets') {
         if(officeAssetsList.length === 0) return grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: #64748b;">目前尚無資產資料</div>';
         
-        let html = '';
-        
-        if (fixedAssets.length > 0) {
-            html += `<div style="grid-column: 1/-1; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid var(--primary); font-size:16px;">📌 固定資產</h3></div>`;
-            let displayFixed = fixedAssets.map(a => { let on = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) on = `👤 使用者: ${owner.name}`; } let t = a.item || '未命名設備'; if (a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`; return { ...a, _on: on, _t: t }; });
-            displayFixed.forEach(a => {
-                let si = a.status === '正常' ? '🟢' : a.status === '待修' ? '🔴' : a.status === '報廢' ? '⚫' : a.status === '碳粉不足' ? '🟡' : '⚪'; 
-                html += `<div class="nav-card"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><h3 style="margin:0; text-align:left;">${a._t}</h3><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></div>${a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${a._on}</div>` : ''}<div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div><div style="font-size:12px; font-weight:bold; color: var(--text-main);">${si} ${a.status || '未登記'}</div></div>`; 
-            });
+        // ✨ 動態偵測是否為庫房，套用不同的排序系統
+        const od = state.globalOffices.find(o => o.id === state.currentOfficeId);
+        const isStoreroom = od && od.roomType === '庫房';
+        const assetSortSelect = document.getElementById('asset-sort-select');
+
+        if (assetSortSelect) {
+            if (isStoreroom && !assetSortSelect.querySelector('option[value="type"]')) {
+                assetSortSelect.innerHTML = `<option value="type">🏷️ 依類型排序 (預設)</option><option value="name">📌 依名稱排序</option><option value="date">📅 依登錄日期</option><option value="qty">🔢 依數量排序</option>`;
+                assetSortSelect.value = localStorage.getItem('pmo_storeroom_sort') || 'type';
+            } else if (!isStoreroom && !assetSortSelect.querySelector('option[value="sn"]')) {
+                assetSortSelect.innerHTML = `<option value="name">📌 依資產名稱</option><option value="sn">🔢 依資產編號</option><option value="status">🚦 依設備狀態</option><option value="owner">👤 依使用者名稱</option>`;
+                assetSortSelect.value = localStorage.getItem('pmo_asset_sort') || 'name';
+            }
+            assetSortSelect.onchange = (e) => {
+                if (isStoreroom) localStorage.setItem('pmo_storeroom_sort', e.target.value);
+                else localStorage.setItem('pmo_asset_sort', e.target.value);
+                window.updateDetailContent(); // 重新渲染
+            };
         }
 
-        if (consumableAssets.length > 0) {
-            html += `<div style="grid-column: 1/-1; margin-top: 20px; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid #8b5cf6; font-size:16px; color:#8b5cf6;">📦 消耗品</h3></div>`;
-            consumableAssets.forEach(a => {
-                html += `
-                <div class="nav-card" style="border: 2px solid #ede9fe; background: white;">
-                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                       <span style="background:#ede9fe; color:#8b5cf6; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">🏷️ ${a.tag || '未分類'}</span>
-                       <button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button>
-                   </div>
-                   <h3 style="margin: 0 0 10px 0; color:var(--text-main); font-size: 16px;">${a.item}</h3>
-                   <div style="font-size: 36px; font-weight: bold; color: var(--primary); margin: 15px 0;">
-                       ${a.quantity || 0} <span style="font-size:14px; color:var(--text-muted); font-weight:normal;">${a.unit || '個'}</span>
-                   </div>
-                   <div style="font-size:12px; color:var(--text-muted); text-align:left; background:#f8fafc; padding:10px; border-radius:8px; border: 1px solid #e2e8f0;">
-                       <div style="margin-bottom:6px;">📞 <b>領取找:</b> ${a.contactPerson || '無指定'}</div>
-                       <div>📝 <b>備註:</b> ${a.remarks || '無'}</div>
-                   </div>
-                </div>`;
+        let sortMode = isStoreroom ? (localStorage.getItem('pmo_storeroom_sort') || 'type') : (localStorage.getItem('pmo_asset_sort') || 'name');
+
+        // ✨ 統一格式化資料，方便進行跨類型排序
+        let displayAssets = officeAssetsList.map(a => {
+            let isCons = a.assetType === 'consumable';
+            let t = a.item || '未命名設備';
+            if (!isCons && a.category && a.category !== t && !t.includes(a.category)) t = `${a.category}：${t}`;
+            let qty = isCons ? (parseInt(a.quantity) || 0) : 1;
+            let date = a.createdAt || '1970-01-01';
+            return { ...a, _isCons: isCons, _t: t, _qty: qty, _date: date };
+        });
+
+        // ✨ 套用排序邏輯
+        if (isStoreroom) {
+            if (sortMode === 'name') displayAssets.sort((a,b) => a._t.localeCompare(b._t, 'zh-TW'));
+            else if (sortMode === 'date') displayAssets.sort((a,b) => b._date.localeCompare(a._date)); // 越新越上面
+            else if (sortMode === 'qty') displayAssets.sort((a,b) => b._qty - a._qty); // 數量越多越上面
+            else { 
+                // 預設依類型排序 (固定資產優先，其次是消耗品)
+                displayAssets.sort((a,b) => {
+                    if (a._isCons !== b._isCons) return a._isCons ? 1 : -1;
+                    return a._t.localeCompare(b._t, 'zh-TW');
+                });
+            }
+        } else {
+            if (sortMode === 'name') displayAssets.sort((a,b) => a._t.localeCompare(b._t, 'zh-TW'));
+            else if (sortMode === 'sn') displayAssets.sort((a,b) => (a.sn||'').localeCompare(b.sn||''));
+            else if (sortMode === 'status') displayAssets.sort((a,b) => (a.status||'').localeCompare(b.status||''));
+            else if (sortMode === 'owner') displayAssets.sort((a,b) => (a.owner_id||'').localeCompare(b.owner_id||''));
+            else displayAssets.sort((a,b) => a._t.localeCompare(b._t, 'zh-TW'));
+        }
+
+        // 獨立出兩種卡片的渲染函數
+        const renderFixedCard = (a) => {
+            let on = '💻 公用設備'; if (a.category === '電腦' && a.owner_id) { const owner = state.globalMembers.find(m => m.id === a.owner_id); if (owner) on = `👤 使用者: ${owner.name}`; }
+            let si = a.status === '正常' ? '🟢' : a.status === '待修' ? '🔴' : a.status === '報廢' ? '⚫' : a.status === '碳粉不足' ? '🟡' : '⚪'; 
+            return `<div class="nav-card"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><h3 style="margin:0; text-align:left;">${a._t}</h3><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></div>${a.category === '電腦' && a.owner_id ? `<div style="font-size:12px; color:#64748b; margin-bottom:5px;">${on}</div>` : ''}<div class="password-badge" style="font-size:14px; margin:10px 0;">SN: ${a.sn || 'N/A'}</div><div style="font-size:12px; font-weight:bold; color: var(--text-main);">${si} ${a.status || '未登記'}</div></div>`;
+        };
+
+        const renderConsumableCard = (a) => {
+            return `<div class="nav-card" style="border: 2px solid #ede9fe; background: white;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="background:#ede9fe; color:#8b5cf6; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">🏷️ ${a.tag || '未分類'}</span><button class="btn-edit" onclick="window.openAssetModal('${a.id}')">✏️ 編輯</button></div><h3 style="margin: 0 0 10px 0; color:var(--text-main); font-size: 16px;">${a.item}</h3><div style="font-size: 36px; font-weight: bold; color: var(--primary); margin: 15px 0;">${a.quantity || 0} <span style="font-size:14px; color:var(--text-muted); font-weight:normal;">${a.unit || '個'}</span></div><div style="font-size:12px; color:var(--text-muted); text-align:left; background:#f8fafc; padding:10px; border-radius:8px; border: 1px solid #e2e8f0;"><div style="margin-bottom:6px;">📞 <b>領取找:</b> ${a.contactPerson || '無指定'}</div><div>📝 <b>備註:</b> ${a.remarks || '無'}</div></div></div>`;
+        };
+
+        let html = '';
+        
+        // ✨ 如果是庫房且選用「非預設類型」的排序，將所有項目合併成一覽表顯示
+        if (isStoreroom && sortMode !== 'type') {
+            html += `<div style="grid-column: 1/-1; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid #94a3b8; font-size:16px; color:#475569;">📋 所有庫存清單</h3></div>`;
+            displayAssets.forEach(a => {
+                html += a._isCons ? renderConsumableCard(a) : renderFixedCard(a);
             });
+        } else {
+            // 預設或非庫房狀態：依然保持固定資產與消耗品的上下分區
+            const fixedArr = displayAssets.filter(a => !a._isCons);
+            const consArr = displayAssets.filter(a => a._isCons);
+            
+            if (fixedArr.length > 0) {
+                html += `<div style="grid-column: 1/-1; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid var(--primary); font-size:16px;">📌 固定資產</h3></div>`;
+                fixedArr.forEach(a => { html += renderFixedCard(a); });
+            }
+            if (consArr.length > 0) {
+                html += `<div style="grid-column: 1/-1; margin-top: 20px; margin-bottom: 10px;"><h3 style="margin:0; padding-bottom:5px; border-bottom: 2px solid #8b5cf6; font-size:16px; color:#8b5cf6;">📦 消耗品</h3></div>`;
+                consArr.forEach(a => { html += renderConsumableCard(a); });
+            }
         }
         
         grid.innerHTML = html;

@@ -192,8 +192,24 @@
 </div>
 <input type="file" id="file-upload" accept=".xlsx, .xls, .csv" style="display:none;" onchange="window.handlePreviewImport(event)">
 
+<!-- ================= Modal: 查看機車歷史軌跡 (70% 放大版) ================= -->
+<div id="history-modal-overlay" class="modal-overlay" style="z-index: 80000;" onclick="if(event.target===this) window.closeHistoryModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span id="history-modal-title" style="font-size: 22px;">🛵 機車歷程</span>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-primary" style="padding:6px 15px; font-size:14px; background:var(--danger);" onclick="window.openRecordModal(window.currentHistoryCamId, 'borrow')">📤 出借</button>
+                <button class="btn-primary" style="padding:6px 15px; font-size:14px; background:var(--success);" onclick="window.openRecordModal(window.currentHistoryCamId, 'return')">📥 歸還</button>
+                <button class="btn-close" style="font-size: 28px;" onclick="window.closeHistoryModal()">×</button>
+            </div>
+        </div>
+        <div id="history-timeline" class="history-timeline"></div>
+        <div class="modal-footer"><button class="btn-secondary" onclick="window.closeHistoryModal()">關閉</button></div>
+    </div>
+</div>
+
 <!-- ================= Modal: 新增出借/歸還紀錄 ================= -->
-<div id="record-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeRecordModal()">
+<div id="record-modal-overlay" class="modal-overlay" style="z-index: 99999;" onclick="if(event.target===this) window.closeRecordModal()">
     <div class="modal-content" style="overflow: visible;">
         <div class="modal-header"><span>📝 新增紀錄 (出借/歸還/維修)</span><button class="btn-close" onclick="window.closeRecordModal()">×</button></div>
         <div class="form-group">
@@ -222,22 +238,6 @@
             <textarea id="record-remarks" rows="2" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; resize:vertical;" placeholder="補充說明..."></textarea>
         </div>
         <div class="modal-footer"><button class="btn-secondary" onclick="window.closeRecordModal()">取消</button><button class="btn-primary" onclick="window.saveRecord()">儲存紀錄</button></div>
-    </div>
-</div>
-
-<!-- ================= Modal: 查看機車歷史軌跡 (70% 放大版) ================= -->
-<div id="history-modal-overlay" class="modal-overlay" onclick="if(event.target===this) window.closeHistoryModal()">
-    <div class="modal-content">
-        <div class="modal-header">
-            <span id="history-modal-title" style="font-size: 22px;">🛵 機車歷程</span>
-            <div style="display:flex; gap:10px;">
-                <button class="btn-primary" style="padding:6px 15px; font-size:14px; background:var(--danger);" onclick="window.openRecordModal(window.currentHistoryCamId, 'borrow')">📤 出借</button>
-                <button class="btn-primary" style="padding:6px 15px; font-size:14px; background:var(--success);" onclick="window.openRecordModal(window.currentHistoryCamId, 'return')">📥 歸還</button>
-                <button class="btn-close" style="font-size: 28px;" onclick="window.closeHistoryModal()">×</button>
-            </div>
-        </div>
-        <div id="history-timeline" class="history-timeline"></div>
-        <div class="modal-footer"><button class="btn-secondary" onclick="window.closeHistoryModal()">關閉</button></div>
     </div>
 </div>
 

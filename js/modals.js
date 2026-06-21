@@ -3,7 +3,7 @@ import { collection, doc, updateDoc, setDoc, addDoc, deleteDoc } from "https://w
 import { auth, db } from './firebase-config.js';
 import { state } from './state.js';
 import { safeWrite, backupToRecycleBin } from './db.js';
-import { customAlert, closeSidebar, closeFabMenu, updateDetailContent, showOffices, initView, goHome, goUpLevel } from './ui.js';
+import { customAlert, closeSidebar, closeFabMenu, updateDetailContent, showOffices, initView, goHome, goUpLevel, toHalfWidth } from './ui.js';
 import { approveRequest, rejectRequest, promptStrictAction } from './auth.js';
 
 // ✨ 管理員專屬功能提示
@@ -121,7 +121,6 @@ export function renderTitleRankList() {
 }
 export function promptSaveTitleRanks() { const t = document.getElementById('title-rank-scope').options[document.getElementById('title-rank-scope').selectedIndex].text; state.pendingDeleteAction = { type: 'titleRanks' }; document.getElementById('confirm-modal-title').innerText = '⚠️ 套用設定確認'; document.getElementById('confirm-msg').innerText = `確定將此排序套用至\n「${t}」？`; document.getElementById('confirm-modal-overlay').classList.add('active'); }
 
-// ✨ 寫入 v1.7.5 更新日誌
 export function openUpdateLogModal() { 
     closeSidebar(); 
     const d = document.getElementById('avatar-dropdown'); if(d) d.style.display = 'none';
@@ -129,8 +128,18 @@ export function openUpdateLogModal() {
     if (logContent) {
         logContent.innerHTML = `
             <div style="margin-bottom: 20px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px;">
-                <h3 style="margin: 0 0 10px 0; color: var(--primary);">v1.7.5 (最新版本)</h3>
+                <h3 style="margin: 0 0 10px 0; color: var(--primary);">v2.0.0 (最新大改版)</h3>
                 <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-main); line-height: 1.6;">
+                    <li>【重磅上線】空間地圖導覽正式推出！支援 SVG 圖資上傳與房間綁定，快速查看空間相對位置。</li>
+                    <li>【全新模組】公務機車總表啟用！專屬介面讓您輕鬆追蹤與管理所有機車的出借與歸還歷程。</li>
+                    <li>【功能優化】在列資產總表大升級！支援出庫領用與入庫補充雙向登記，首頁並附帶即時統計圖表。</li>
+                    <li>【體驗提升】互動式教學引導上線！各子網頁皆加入視覺化新手提示，幫助第一次使用的夥伴快速掌握功能。</li>
+                    <li>【介面整合】資產表、機車表、相機表版面全面統一！完美整合統計儀表板與匯出功能，切換操作邏輯更加絲滑順暢。</li>
+                </ul>
+            </div>
+            <div style="margin-bottom: 20px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px;">
+                <h3 style="margin: 0 0 10px 0; color: var(--text-muted);">v1.7.5</h3>
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.6;">
                     <li>【系統】開發人員選項狀態將永久記憶，不受網頁重整影響。</li>
                     <li>【新增】全新附屬網頁「縮時相機管理」正式上線，擁有獨立視窗與專屬資料流。</li>
                     <li>【新增】相機管理支援從 Excel (相機庫) 與 Notion CSV (巡檢紀錄) 智慧匯入。</li>
@@ -172,16 +181,18 @@ export function renderRecycleBinList() {
 export function openRegionModal() { closeFabMenu(); document.getElementById('region-name-input').value = ''; document.getElementById('region-modal-overlay').classList.add('active'); }
 export function closeRegionModal() { document.getElementById('region-modal-overlay').classList.remove('active'); }
 export async function saveRegionData() {
-    const n = document.getElementById('region-name-input').value.trim(); if (!n) return customAlert('名稱不能為空！', true);
-    if (state.globalRegions.find(r => r.name === n) || state.globalOffices.find(o => o.floor === n)) return customAlert('此區域已存在！', true);
+    let n = document.getElementById('region-name-input').value.trim(); if (!n) return customAlert('名稱不能為空！', true);
+    // ✨ 寫入 Firebase 前自動全域轉半型英數字，保證資料庫整潔
+    n = toHalfWidth(n);
+    if (state.globalRegions.find(r => toHalfWidth(r.name) === n) || state.globalOffices.find(o => toHalfWidth(o.floor) === n)) return customAlert('此區域已存在！', true);
     try { await safeWrite(setDoc(doc(collection(db, 'regions')), { name: n, createdAt: new Date().toISOString() })); closeRegionModal(); customAlert(`成功新增區域：${n}`); } catch(e) { customAlert('新增失敗', true); }
 }
 export function promptDeleteRegion(rName, rId) {
-    const off = state.globalOffices.filter(o => o.floor === rName);
+    const off = state.globalOffices.filter(o => toHalfWidth(o.floor) === toHalfWidth(rName));
     if (off.length === 0) { if(confirm(`確定刪除空白區域「${rName}」？`)) safeWrite(deleteDoc(doc(db, 'regions', rId))).then(() => customAlert(`已刪除區域：${rName}`)); } 
     else {
         let c = off.length; off.forEach(o => { c += state.globalMembers.filter(m => m.office_id === o.id).length; c += state.globalAssets.filter(a => a.office_id === o.id).length; c += state.globalBookings.filter(b => b.office_id === o.id).length; });
-        state.pendingDeleteAction = { type: 'region', payload: { rId, rName, off }, count: c, step: 1 };
+        state.pendingDeleteAction = { type: 'region', payload: { rId, rName, offices: off }, count: c, step: 1 };
         document.getElementById('confirm-modal-title').innerText = '⚠️ 刪除警告'; document.getElementById('confirm-msg').innerText = `區域「${rName}」內包含 ${c} 項資料。\n刪除將連帶永久刪除所有房間與資產！\n確認進入刪除程序？`; document.getElementById('confirm-modal-overlay').classList.add('active');
     }
 }
@@ -193,21 +204,21 @@ export function openOfficeModal(id) {
     window.selectRoomType(o.roomType || '辦公室'); document.getElementById('office-modal-overlay').classList.add('active');
 }
 export function openAddOfficeModal() {
-    closeFabMenu(); state.isOfficeEditMode = false; state.currentEditOfficeId = null; document.getElementById('office-modal-title').innerText = '➕ 新增房間/辦公室'; document.getElementById('office-floor-group').style.display = 'block'; document.getElementById('office-floor').value = state.currentFloor; document.getElementById('office-name').value = ''; document.getElementById('office-pwd').value = ''; document.getElementById('btn-delete-office').style.display = 'none'; document.getElementById('room-type-dropdown-btn').style.pointerEvents = 'auto'; document.getElementById('room-type-dropdown-btn').style.background = 'white'; document.getElementById('room-type-lock-hint').style.display = 'none'; document.getElementById('room-type-dropdown-arrow').style.display = 'inline'; window.selectRoomType('辦公室'); document.getElementById('office-modal-overlay').classList.add('active');
+    closeFabMenu(); state.isOfficeEditMode = false; state.currentEditOfficeId = null; document.getElementById('office-modal-title').innerText = '➕ 新增房間/辦公室'; document.getElementById('office-floor-group').style.display = 'block'; document.getElementById('office-floor').value = toHalfWidth(state.currentFloor); document.getElementById('office-name').value = ''; document.getElementById('office-pwd').value = ''; document.getElementById('btn-delete-office').style.display = 'none'; document.getElementById('room-type-dropdown-btn').style.pointerEvents = 'auto'; document.getElementById('room-type-dropdown-btn').style.background = 'white'; document.getElementById('room-type-lock-hint').style.display = 'none'; document.getElementById('room-type-dropdown-arrow').style.display = 'inline'; window.selectRoomType('辦公室'); document.getElementById('office-modal-overlay').classList.add('active');
 }
 export function closeOfficeModal() { document.getElementById('office-modal-overlay').classList.remove('active'); }
 
 export async function saveOfficeData() {
     const n = document.getElementById('office-name').value.trim(), p = document.getElementById('office-pwd').value || 'N/A'; if (!n) return customAlert('辦公室名稱不能為空！', true); const btn = document.getElementById('btn-save-office'); btn.disabled = true; btn.innerText = '儲存中...';
+    // ✨ 新增辦公室時自動為所屬樓層 (Floor) 套用半形化處理，徹底杜絕歷史髒資料與未來重複資料
+    const targetFloor = toHalfWidth(state.isOfficeEditMode ? (state.globalOffices.find(o => o.id === state.currentEditOfficeId)?.floor || state.currentFloor) : state.currentFloor);
     try {
         if (state.isOfficeEditMode) {
-            const currentOffice = state.globalOffices.find(o => o.id === state.currentEditOfficeId);
-            const targetFloor = currentOffice ? currentOffice.floor : state.currentFloor;
-            if (state.globalOffices.find(o => o.name === n && o.floor === targetFloor && o.id !== state.currentEditOfficeId)) return (customAlert(`「${targetFloor}」已存在同名房間！`, true), btn.disabled = false, btn.innerText = '儲存'); 
+            if (state.globalOffices.find(o => o.name === n && toHalfWidth(o.floor) === targetFloor && o.id !== state.currentEditOfficeId)) return (customAlert(`「${targetFloor}」已存在同名房間！`, true), btn.disabled = false, btn.innerText = '儲存'); 
             await safeWrite(updateDoc(doc(db, 'offices', state.currentEditOfficeId), { name: n, pwd: p })); closeOfficeModal(); customAlert(`房間資訊已更新！`);
         } else {
-            if (state.globalOffices.find(o => o.name === n && o.floor === state.currentFloor)) return (customAlert(`「${state.currentFloor}」已存在同名房間！`, true), btn.disabled = false, btn.innerText = '儲存'); 
-            await safeWrite(setDoc(doc(collection(db, 'offices')), { name: n, floor: state.currentFloor, pwd: p, roomType: state.currentRoomType })); closeOfficeModal(); customAlert(`成功新增房間：${n}`);
+            if (state.globalOffices.find(o => o.name === n && toHalfWidth(o.floor) === targetFloor)) return (customAlert(`「${targetFloor}」已存在同名房間！`, true), btn.disabled = false, btn.innerText = '儲存'); 
+            await safeWrite(setDoc(doc(collection(db, 'offices')), { name: n, floor: targetFloor, pwd: p, roomType: state.currentRoomType })); closeOfficeModal(); customAlert(`成功新增房間：${n}`);
         }
     } catch(err) { customAlert("錯誤", true); } finally { btn.disabled = false; btn.innerText = '儲存'; }
 }
@@ -511,7 +522,7 @@ export async function executeConfirmAction() {
             ops.push(deleteDoc(doc(db, 'offices', offId))); await safeWrite(Promise.all(ops));
             if (document.getElementById('office-modal-overlay')?.classList.contains('active')) window.closeOfficeModal(); closeConfirmModal(); customAlert(`房間「${offName}」及內部資料已移至回收桶！`); if (state.currentLevel === 2) goUpLevel();
         } else if (state.pendingDeleteAction.type === 'region') {
-            const rId = state.pendingDeleteAction.payload.regionId; const rName = state.pendingDeleteAction.payload.regionName; const offices = state.pendingDeleteAction.payload.offices; const ops = [];
+            const rId = state.pendingDeleteAction.payload.rId; const rName = state.pendingDeleteAction.payload.rName; const offices = state.pendingDeleteAction.payload.offices; const ops = [];
             const rData = state.globalRegions.find(r => r.id === rId); if(rData) ops.push(backupToRecycleBin('regions', rId, rData, `區域：${rName}`));
             offices.forEach(o => {
                 ops.push(backupToRecycleBin('offices', o.id, o, `辦公室：${o.name}`));

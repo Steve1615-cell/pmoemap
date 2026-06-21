@@ -81,7 +81,7 @@ export function initView() {
 }
 
 export function updateVersionDisplay() {
-    const CURRENT_VERSION = '1.7.5'; 
+    const CURRENT_VERSION = '2.0.0'; 
     const vf = document.querySelector('.version-footer');
     if (vf) vf.innerHTML = `PMO電子圖資系統 v${CURRENT_VERSION} © 2026`;
     

@@ -755,9 +755,29 @@
         $('rec-date').value = now.toISOString().slice(0,10);
 
         ['location', 'capacity', 'task', 'participant'].forEach(k => { if($(`opt-${k}-input`)) $(`opt-${k}-input`).value = ''; });
+        
+        // ✨ 新增邏輯：若歷史彈窗開啟中，先將其隱藏並記錄狀態，防止圖層錯位
+        const historyOverlay = $('history-modal-overlay');
+        if (historyOverlay && historyOverlay.classList.contains('active')) {
+            historyOverlay.classList.remove('active');
+            window._restoreHistoryCamId = window.currentHistoryCamId;
+        } else {
+            window._restoreHistoryCamId = null;
+        }
+
         $('record-modal-overlay').classList.add('active');
     };
-    window.closeRecordModal = () => $('record-modal-overlay').classList.remove('active');
+    
+    window.closeRecordModal = () => {
+        $('record-modal-overlay').classList.remove('active');
+        
+        // ✨ 新增邏輯：關閉紀錄表單時，若有紀錄歷史彈窗狀態，則將其恢復顯示並刷新資料
+        if (window._restoreHistoryCamId) {
+            $('history-modal-overlay').classList.add('active');
+            window.renderHistoryModal(window._restoreHistoryCamId);
+            window._restoreHistoryCamId = null;
+        }
+    };
     
     window.saveRecord = async () => {
         const cId = $('record-asset-id').value; if (!cId) return alert('請選擇相機！');

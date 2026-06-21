@@ -211,8 +211,15 @@
             <input type="hidden" id="checkout-location-id" value="">
         </div>
         <div class="form-group" style="display:flex; gap:10px;">
-            <div style="flex:1;"><label>出庫數量</label><input type="number" id="checkout-qty" value="1" min="1"></div>
-            <div style="flex:2;"><label>領取人</label><input type="text" id="checkout-borrower" placeholder="輸入領取人姓名" oninput="window.autoFillCheckoutRemarks()"></div>
+            <div style="flex:1;">
+                <label>異動類型</label>
+                <select id="checkout-type" style="border:1px solid #cbd5e1; border-radius:6px; padding:8px; width:100%; font-weight:bold; color:var(--primary); outline:none;">
+                    <option value="out">📤 出庫 (領用)</option>
+                    <option value="in">📥 入庫 (補充)</option>
+                </select>
+            </div>
+            <div style="flex:1;"><label>數量</label><input type="number" id="checkout-qty" value="1" min="1"></div>
+            <div style="flex:2;"><label>領取/負責人</label><input type="text" id="checkout-borrower" placeholder="輸入姓名" oninput="window.autoFillCheckoutRemarks()"></div>
         </div>
         <div class="form-group"><label>日期時間</label><input type="datetime-local" id="checkout-date"></div>
         <div class="form-group"><label>備註 (智慧帶入前例)</label><textarea id="checkout-remarks" rows="2" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; resize:vertical;" placeholder="可自由修改補充說明..."></textarea></div>
@@ -311,7 +318,6 @@
         <div id="batch-edit-fixed-fields" style="display:none;">
             <div class="form-group"><label>設備狀態 (保留原始選擇則不修改)</label><select id="batch-edit-status"><option value="">-- 不修改 --</option><option value="正常">🟢 正常</option><option value="碳粉不足">🟡 碳粉不足</option><option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option></select></div>
             <div class="form-group"><label>變更資產類型 (保留空白不修改)</label><input type="text" id="batch-edit-category" placeholder="輸入新類型 (例如：攝影機)"></div>
-            <!-- ✨ 新增：批次編輯年份 -->
             <div class="form-group"><label>變更年份 (保留空白不修改)</label><input type="number" id="batch-edit-year" placeholder="例如：2023" min="1900" max="2100"></div>
         </div>
 
@@ -339,27 +345,32 @@
         </div>
 
         <div id="fixed-asset-fields">
-            <div class="form-group"><label>資產類型</label><input type="text" id="asset-category" placeholder="例如：電腦、影印機"></div>
-            <!-- ✨ 新增：智慧同名下拉選單 -->
+            <div class="form-group" style="position: relative;">
+                <label>資產類型</label>
+                <input type="text" id="asset-category" placeholder="例如：電腦、影印機" autocomplete="off" oninput="window.showAssetSuggestions('fixed', this)" onfocus="window.showAssetSuggestions('fixed', this)">
+                <div class="custom-dropdown-panel suggestion-panel" id="sugg-asset-category" style="max-height: 160px; overflow-y: auto; z-index: 999999;"></div>
+            </div>
             <div class="form-group" style="position: relative;">
                 <label>資產名稱</label>
-                <input type="text" id="asset-item" placeholder="未命名設備 (選填)" autocomplete="off" oninput="window.showAssetSuggestions('fixed')" onfocus="window.showAssetSuggestions('fixed')">
-                <div class="custom-dropdown-panel" id="fixed-suggestions" style="max-height: 160px; overflow-y: auto;"></div>
+                <input type="text" id="asset-item" placeholder="未命名設備 (選填)" autocomplete="off" oninput="window.showAssetSuggestions('fixed', this)" onfocus="window.showAssetSuggestions('fixed', this)">
+                <div class="custom-dropdown-panel suggestion-panel" id="sugg-asset-item" style="max-height: 160px; overflow-y: auto; z-index: 999999;"></div>
             </div>
             <div class="form-group"><label>資產編號 / SN (共同項)</label><input type="text" id="asset-sn" placeholder="例如：P-001 (無則填 N/A)"></div>
-            <!-- ✨ 新增：年份欄位 -->
             <div class="form-group"><label>年份</label><input type="number" id="asset-year" placeholder="例如：2023 (手動輸入年份)" min="1900" max="2100"></div>
             <div class="form-group"><label>設備狀態</label><select id="asset-status"><option value="正常">🟢 正常</option><option value="碳粉不足">🟡 碳粉不足</option><option value="待修">🔴 待修</option><option value="報廢">⚫ 報廢</option><option value="其他">⚪ 其他</option></select></div>
         </div>
 
         <div id="consumable-asset-fields" style="display:none;">
-            <!-- ✨ 新增：智慧同名下拉選單 -->
             <div class="form-group" style="position: relative;">
                 <label>消耗品名稱</label>
-                <input type="text" id="consumable-item" placeholder="例如：A4 影印紙 (必填)" autocomplete="off" oninput="window.showAssetSuggestions('consumable')" onfocus="window.showAssetSuggestions('consumable')">
-                <div class="custom-dropdown-panel" id="consumable-suggestions" style="max-height: 160px; overflow-y: auto;"></div>
+                <input type="text" id="consumable-item" placeholder="例如：A4 影印紙 (必填)" autocomplete="off" oninput="window.showAssetSuggestions('consumable', this)" onfocus="window.showAssetSuggestions('consumable', this)">
+                <div class="custom-dropdown-panel suggestion-panel" id="sugg-consumable-item" style="max-height: 160px; overflow-y: auto; z-index: 999999;"></div>
             </div>
-            <div class="form-group"><label>分類標籤</label><input type="text" id="consumable-tag" placeholder="例如：文具、清潔用品 (選填)"></div>
+            <div class="form-group" style="position: relative;">
+                <label>分類標籤</label>
+                <input type="text" id="consumable-tag" placeholder="例如：文具、清潔用品 (選填)" autocomplete="off" oninput="window.showAssetSuggestions('consumable', this)" onfocus="window.showAssetSuggestions('consumable', this)">
+                <div class="custom-dropdown-panel suggestion-panel" id="sugg-consumable-tag" style="max-height: 160px; overflow-y: auto; z-index: 999999;"></div>
+            </div>
             <div class="form-group" style="display:flex; gap: 10px;"><div style="flex:2;"><label>目前庫存</label><input type="number" id="consumable-quantity" placeholder="0" min="0"></div><div style="flex:1;"><label>單位</label><input type="text" id="consumable-unit" placeholder="箱/包"></div></div>
             <div class="form-group" style="background:#fff7ed; padding:8px; border-radius:6px; border:1px solid #fef08a;"><label style="color:#b45309;">⚠️ 最低安全庫存 (0或空白即不警告)</label><input type="number" id="consumable-min" placeholder="預設: 10" min="0" style="border-color:#fef08a;"></div>
             <div class="form-group"><label>領取聯絡人</label><input type="text" id="consumable-contact" placeholder="例如：王小明"></div>
@@ -849,11 +860,19 @@
 
         let htmlStr = '';
         filtered.forEach(c => {
+            // ✨ 升級：視覺化區分出庫與入庫
+            let qtyDisplay = '';
+            if (c._qty < 0) {
+                qtyDisplay = `<span style="font-size:18px; font-weight:bold; color:var(--success);">+${Math.abs(c._qty)} (入庫)</span>`;
+            } else {
+                qtyDisplay = `<span style="font-size:18px; font-weight:bold; color:var(--danger);">${c._qty}</span>`;
+            }
+
             htmlStr += `<tr>
                 <td style="text-align:center;"><input type="checkbox" class="cb-checkout-row batch-checkbox" value="${c.id}" onchange="window.updateFloatingBar()"></td>
                 <td><b style="font-size:15px; color:var(--primary);">${c._name}</b></td>
                 <td><span style="font-weight:bold; color:var(--text-main);">${c._office}</span></td>
-                <td><span style="font-size:18px; font-weight:bold; color:var(--danger);">${c._qty}</span></td>
+                <td>${qtyDisplay}</td>
                 <td><span style="font-weight:bold;">${c._borrower}</span></td>
                 <td style="font-family:monospace; color:var(--text-muted);">${c._date}</td>
                 <td style="font-size:12px; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.remarks || '-'}</td>
@@ -1264,13 +1283,16 @@
     // ✨ 智慧帶入下拉選單功能 (全面升級多欄位聯動偵測)
     window.showAssetSuggestions = (type, inputEl) => {
         if (window.currentEditAssetId) return; // 編輯模式不顯示建議
+        if (!inputEl) return;
 
         const inputVal = inputEl.value.trim().toLowerCase();
         const panelId = 'sugg-' + inputEl.id;
         const panel = $(panelId);
         
         // 確保其他欄位的建議面板被隱藏，只顯示當下打字的這一個
-        $$('.suggestion-panel').forEach(p => { if (p.id !== panelId) p.classList.remove('active'); });
+        $$('.suggestion-panel').forEach(p => { if (p && p.id !== panelId) p.classList.remove('active'); });
+
+        if (!panel) return;
 
         if (!inputVal) {
             panel.classList.remove('active');
@@ -1339,6 +1361,13 @@
         
         // 帶入完畢後隱藏面板
         $$('.suggestion-panel').forEach(p => p.classList.remove('active'));
+        
+        // ✨ 視覺回饋：提示使用者已成功帶入
+        const toast = document.createElement('div');
+        toast.innerText = '✅ 已成功套用該資產的歷史設定！';
+        toast.style.cssText = 'position:fixed; top:20px; left:50%; transform:translateX(-50%); background:var(--success); color:white; padding:10px 20px; border-radius:30px; z-index:999999; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,0.15); transition: opacity 0.5s;';
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 2000);
     };
 
     window.switchAssetMainType = (type) => {
@@ -1433,7 +1462,6 @@
                 alert('資產已更新！');
             } else { 
                 await addDoc(collection(db, "assets"), data); 
-                // ✨ 核心修正：新增入庫後不關閉彈窗，僅清空特定欄位以利連續新增
                 if (aType === 'fixed') {
                     $('asset-sn').value = '';
                 } else {
@@ -1453,7 +1481,53 @@
     };
     window.closeCheckoutModal = () => $('checkout-modal-overlay').classList.remove('active');
 
-    // ... 中間省略 toggleDropdown 等 ... 找到 saveCheckout
+    window.toggleDropdown = (t, e) => { 
+        if(e) e.stopPropagation(); 
+        $$('.custom-dropdown-panel:not(.suggestion-panel)').forEach(p => { if(p.id !== `${t}-panel`) p.classList.remove('active'); }); 
+        const panel = $(`${t}-panel`);
+        if(panel) {
+            panel.classList.toggle('active'); 
+            if(panel.classList.contains('active')) {
+                const inp = $(`${t}-input`);
+                if(inp) inp.focus();
+            }
+        }
+    };
+
+    window.renderCheckoutAssetList = () => {
+        const iv = $('opt-checkout-asset-input').value.toLowerCase().trim(); 
+        const ld = $('opt-checkout-asset-list'); 
+        if(!ld) return;
+        ld.innerHTML = '';
+        const f = globalAssets.filter(a => (a.item||'').toLowerCase().includes(iv) || (a.sn||'').toLowerCase().includes(iv) || (a.tag||'').toLowerCase().includes(iv) || (a.category||'').toLowerCase().includes(iv));
+        
+        if(f.length === 0) return ld.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到符合的資產</div>';
+        
+        f.slice(0,50).forEach(a => {
+            const off = globalOffices.find(o => o.id === a.office_id); 
+            const offName = off ? off.name : '未知辦公室'; 
+            const ty = a.assetType === 'consumable' ? '📦' : '📌';
+            const d = document.createElement('div'); d.className = 'dropdown-item'; 
+            d.innerHTML = `<span>${ty} ${a.item} <span style="font-size:11px; color:#94a3b8;">(${offName})</span></span>`;
+            d.onclick = (e) => { 
+                e.stopPropagation(); 
+                $('checkout-asset-id').value = a.id; 
+                $('disp-checkout-asset').innerText = `${ty} ${a.item}`; 
+                $('checkout-location-id').value = off ? off.id : ''; 
+                $('checkout-location').value = offName; 
+                $('opt-checkout-asset-panel').classList.remove('active'); 
+                window.autoFillCheckoutRemarks(); 
+            }; 
+            ld.appendChild(d);
+        });
+    };
+
+    window.autoFillCheckoutRemarks = () => {
+        const aId = $('checkout-asset-id').value; const oName = $('checkout-location').value; const bName = $('checkout-borrower').value.trim().toLowerCase();
+        if (!aId || !bName) return;
+        const past = globalCheckouts.find(c => { let matches = 0; if (c.assetId === aId) matches++; if (c.officeName === oName) matches++; if ((c.borrower||'').toLowerCase() === bName) matches++; return matches >= 2 && c.remarks; });
+        if (past && !$('checkout-remarks').value.trim()) $('checkout-remarks').value = past.remarks;
+    };
 
     window.saveCheckout = async () => {
         const aId = $('checkout-asset-id').value; 
@@ -1467,11 +1541,9 @@
         if(!aId || isNaN(qty) || qty <= 0 || !borrower || !dStr) return alert('資產、異動數量(須大於0)、人員與日期皆為必填！');
         const asset = globalAssets.find(a => a.id === aId); if(!asset) return alert('資產不存在！');
 
-        // 計算實際扣除量 (出庫為正數扣減，入庫轉為負數增加)
         const actualDeductQty = moveType === 'out' ? qty : -qty;
         let newQty = 0;
 
-        // ✨ 庫存低於 0 防呆機制
         if (asset.assetType === 'consumable') {
             const currentQty = parseInt(asset.quantity) || 0;
             newQty = currentQty - actualDeductQty;

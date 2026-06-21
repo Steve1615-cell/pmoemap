@@ -643,7 +643,7 @@
 
     window.renderHistoryModal = (camId) => {
         const a = window.getMappedCameraData().find(x => x.id === camId); if(!a) return;
-        $('history-modal-title').innerText = `📷 歷程：${a._name}`;
+        $('history-modal-title').innerHTML = `📷 歷程：${a._name} <span style="font-size:14px; font-weight:normal; color:var(--text-muted); margin-left:10px;">(SN: ${a.sn && a.sn !== 'N/A' ? a.sn : '無'})</span>`;
         
         const tl = $('history-timeline'); tl.innerHTML = '';
         

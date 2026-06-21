@@ -616,7 +616,10 @@
             
             htmlStr += `<tr class="${rowClass}">
                 <td style="text-align:center;"><input type="checkbox" class="cb-summary-row batch-checkbox" value="${a.id}" onchange="window.updateFloatingBar()"></td>
-                <td><a href="#" onclick="event.preventDefault(); window.openHistoryModal('${a.id}')" style="font-size:16px; font-weight:bold; color:var(--primary); text-decoration:none;">${a._name}</a></td>
+                <td>
+                    <a href="#" onclick="event.preventDefault(); window.openHistoryModal('${a.id}')" style="font-size:16px; font-weight:bold; color:var(--primary); text-decoration:none;">${a._name}</a>
+                    ${a.sn && a.sn !== 'N/A' ? `<div style="font-size:12px; font-family:monospace; color:var(--text-muted); margin-top:4px;">SN: ${a.sn}</div>` : ''}
+                </td>
                 <td><span class="badge tag">${a._project}</span></td>
                 <td>${fmtTags(a._location, '#e0e7ff', '#4f46e5')}</td>
                 <td>${pBadge} <span style="font-size:12px; font-weight:bold; margin-left:5px;">${a._battery ? a._battery+'%' : ''}</span></td>

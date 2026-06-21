@@ -1424,58 +1424,74 @@
                 createdAt: new Date().toISOString() 
             }; 
         }
-        try { if(window.currentEditAssetId) await updateDoc(doc(db, "assets", window.currentEditAssetId), data); else await addDoc(collection(db, "assets"), data); window.closeAssetModal(); window.clearBatchSelection(); } catch(e) { alert('儲存失敗：'+e.message); }
+        const btn = document.getElementById('btn-save-asset'); 
+        if(btn) { btn.disabled = true; btn.innerText = '儲存中...'; }
+        try { 
+            if(window.currentEditAssetId) {
+                await updateDoc(doc(db, "assets", window.currentEditAssetId), data); 
+                window.closeAssetModal(); 
+                alert('資產已更新！');
+            } else { 
+                await addDoc(collection(db, "assets"), data); 
+                // ✨ 核心修正：新增入庫後不關閉彈窗，僅清空特定欄位以利連續新增
+                if (aType === 'fixed') {
+                    $('asset-sn').value = '';
+                } else {
+                    $('consumable-quantity').value = '0';
+                }
+                alert('🎉 成功新增入庫！彈窗將保留以供您連續建立下一筆。');
+            } 
+            window.clearBatchSelection(); 
+        } catch(e) { alert('儲存失敗：'+e.message); } finally { if(btn){ btn.disabled = false; btn.innerText = '儲存'; } }
     };
 
     window.openCheckoutModal = () => {
         const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         $('checkout-date').value = now.toISOString().slice(0,16); $('checkout-borrower').value = currentUserProfile.name || ''; $('checkout-qty').value = 1; $('checkout-remarks').value = ''; $('checkout-asset-id').value = ''; $('checkout-location-id').value = ''; $('checkout-location').value = ''; $('disp-checkout-asset').innerText = '請搜尋並選擇資產...'; $('opt-checkout-asset-input').value = '';
+        if($('checkout-type')) $('checkout-type').value = 'out';
         window.renderCheckoutAssetList(); $('checkout-modal-overlay').classList.add('active');
     };
     window.closeCheckoutModal = () => $('checkout-modal-overlay').classList.remove('active');
 
-    // ✨ 下拉選單控制引擎
-    window.toggleDropdown = (t, e) => { 
-        if(e) e.stopPropagation(); 
-        $$('.custom-dropdown-panel').forEach(p => { if(p.id !== `${t}-panel`) p.classList.remove('active'); }); 
-        const panel = $(`${t}-panel`);
-        if(panel) {
-            panel.classList.toggle('active'); 
-            if(panel.classList.contains('active')) {
-                const inp = $(`${t}-input`);
-                if(inp) inp.focus();
-            }
-        }
-    };
-
-    window.renderCheckoutAssetList = () => {
-        const iv = $('opt-checkout-asset-input').value.toLowerCase().trim(); const ld = $('opt-checkout-asset-list'); ld.innerHTML = '';
-        const f = globalAssets.filter(a => (a.item||'').toLowerCase().includes(iv) || (a.sn||'').toLowerCase().includes(iv) || (a.tag||'').toLowerCase().includes(iv));
-        if(f.length === 0) return ld.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:13px; text-align:center;">找不到資產</div>';
-        f.slice(0,50).forEach(a => {
-            const off = globalOffices.find(o => o.id === a.office_id); const offName = off ? off.name : '未知辦公室'; const ty = a.assetType === 'consumable' ? '📦' : '📌';
-            const d = document.createElement('div'); d.className = 'dropdown-item'; d.innerHTML = `<span>${ty} ${a.item} <span style="font-size:11px; color:#94a3b8;">(${offName})</span></span>`;
-            d.onclick = (e) => { e.stopPropagation(); $('checkout-asset-id').value = a.id; $('disp-checkout-asset').innerText = `${ty} ${a.item}`; $('checkout-location-id').value = off ? off.id : ''; $('checkout-location').value = offName; $('opt-checkout-asset-panel').classList.remove('active'); window.autoFillCheckoutRemarks(); }; ld.appendChild(d);
-        });
-    };
-
-    window.autoFillCheckoutRemarks = () => {
-        const aId = $('checkout-asset-id').value; const oName = $('checkout-location').value; const bName = $('checkout-borrower').value.trim().toLowerCase();
-        if (!aId || !bName) return;
-        const past = globalCheckouts.find(c => { let matches = 0; if (c.assetId === aId) matches++; if (c.officeName === oName) matches++; if ((c.borrower||'').toLowerCase() === bName) matches++; return matches >= 2 && c.remarks; });
-        if (past && !$('checkout-remarks').value.trim()) $('checkout-remarks').value = past.remarks;
-    };
+    // ... 中間省略 toggleDropdown 等 ... 找到 saveCheckout
 
     window.saveCheckout = async () => {
-        const aId = $('checkout-asset-id').value; const qty = parseInt($('checkout-qty').value); const borrower = $('checkout-borrower').value.trim(); const dStr = $('checkout-date').value; const rem = $('checkout-remarks').value.trim(); const locName = $('checkout-location').value;
-        if(!aId || !qty || !borrower || !dStr) return alert('資產、數量、領取人與日期皆為必填！');
+        const aId = $('checkout-asset-id').value; 
+        const moveType = $('checkout-type').value;
+        const qty = parseInt($('checkout-qty').value); 
+        const borrower = $('checkout-borrower').value.trim(); 
+        const dStr = $('checkout-date').value; 
+        const rem = $('checkout-remarks').value.trim(); 
+        const locName = $('checkout-location').value;
+        
+        if(!aId || isNaN(qty) || qty <= 0 || !borrower || !dStr) return alert('資產、異動數量(須大於0)、人員與日期皆為必填！');
         const asset = globalAssets.find(a => a.id === aId); if(!asset) return alert('資產不存在！');
-        const checkoutData = { assetId: asset.id, assetName: asset.item || '未命名', assetType: asset.assetType || 'fixed', officeName: locName, quantity: qty, borrower: borrower, checkoutDate: dStr, remarks: rem, createdAt: new Date().toISOString(), creatorName: currentUserProfile.name, creatorEmail: currentUserProfile.email, creatorAvatar: currentUserProfile.avatar, likes: [] };
+
+        // 計算實際扣除量 (出庫為正數扣減，入庫轉為負數增加)
+        const actualDeductQty = moveType === 'out' ? qty : -qty;
+        let newQty = 0;
+
+        // ✨ 庫存低於 0 防呆機制
+        if (asset.assetType === 'consumable') {
+            const currentQty = parseInt(asset.quantity) || 0;
+            newQty = currentQty - actualDeductQty;
+            if (newQty < 0) {
+                return alert(`⚠️ 庫存不足防呆：\n目前「${asset.item}」庫存僅剩 ${currentQty} ${asset.unit || '個'}，無法出庫 ${qty} ${asset.unit || '個'}！`);
+            }
+        }
+
+        const checkoutData = { assetId: asset.id, assetName: asset.item || '未命名', assetType: asset.assetType || 'fixed', officeName: locName, quantity: actualDeductQty, borrower: borrower, checkoutDate: dStr, remarks: rem, createdAt: new Date().toISOString(), creatorName: currentUserProfile.name, creatorEmail: currentUserProfile.email, creatorAvatar: currentUserProfile.avatar, likes: [] };
+        
         const btn = document.querySelector('#checkout-modal-overlay .btn-primary'); btn.disabled = true; btn.innerText = '登記中...';
         try {
             const ops = [];
-            if (asset.assetType === 'consumable') { const currentQty = parseInt(asset.quantity) || 0; const newQty = Math.max(0, currentQty - qty); ops.push(updateDoc(doc(db, 'assets', asset.id), { quantity: newQty })); }
-            ops.push(addDoc(collection(db, 'asset_checkouts'), checkoutData)); await Promise.all(ops); alert('🎉 領用登記成功！'); window.closeCheckoutModal();
+            if (asset.assetType === 'consumable') { 
+                ops.push(updateDoc(doc(db, 'assets', asset.id), { quantity: newQty })); 
+            }
+            ops.push(addDoc(collection(db, 'asset_checkouts'), checkoutData)); 
+            await Promise.all(ops); 
+            alert('🎉 領用/入庫登記成功！'); 
+            window.closeCheckoutModal();
         } catch(e) { alert('登記失敗：' + e.message); } finally { btn.disabled = false; btn.innerText = '確認登記'; }
     };
 
